@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pick Your Table</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;text-align:center}
+    #room{background:#f5f5f5;border:1px solid #ccc;margin:20px auto;position:relative;width:320px;height:480px}
+    .table{position:absolute;border-radius:50%;cursor:pointer;background:#4caf50;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;transition:background .2s}
+    .taken{background:#9e9e9e!important;cursor:not-allowed}
+    #payBtn{margin-top:15px;padding:12px 24px;font-size:16px;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer}
+    #payBtn:disabled{background:#bbb}
+  </style>
+</head>
+<body>
+  <h2>Tap the table you want</h2>
+  <div id="room"></div>
+  <button id="payBtn" disabled>Pay $5.99 – Stripe</button>
+
+  <script>
+    /* CONFIG – paste YOUR keys here */
+    const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+    const room = document.getElementById('room');
+    const payBtn = document.getElementById('payBtn');
+
+    let selectedTable = null;
+
+    /* 1. Load table positions */
+    async function loadTables() {
+      const { data, error } = await _supa.from('tables').select('*').order('id');
+      if (error) { console.error(error); return; }
+      data.forEach(drawTable);
+    }
+
+    /* 2. Draw table circle */
+    function drawTable(t) {
+      const d = document.createElement('div');
+      d.className = 'table';
+      d.id = 't-' + t.id;
+      d.textContent = t.name;
+      d.style.left = t.x + 'px';
+      d.style.top = t.y + 'px';
+      d.style.width = t.w + 'px';
+      d.style.height = t.h + 'px';
+      d.onclick = () => selectTable(t.id);
+      room.appendChild(d);
+    }
+
+    /* 3. Handle click */
+    function selectTable(id) {
+      if (document.getElementById('t-' + id).classList.contains('taken')) return;
+      document.querySelectorAll('.table').forEach(el => el.style.border = '');
+      document.getElementById('t-' + id).style.border = '3px solid #ffeb3b';
+      selectedTable = id;
+      payBtn.disabled = false;
+    }
+
+    /* 4. Listen for “taken” changes (real-time) */
+    _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
+      if (payload.new.paid) greyOut(payload.new.table_id);
+    }).subscribe();
+
+    /* 5. Grey out table */
+    function greyOut(id) {
+      const el = document.getElementById('t-' + id);
+      if (el) el.classList.add('taken');
+    }
+
+    /* 6. Stripe Checkout (next message) */
+    payBtn.onclick = () => {
+      if (!selectedTable) return;
+      /* We’ll fill this with Stripe in Step 3 */
+      alert('Stripe Checkout will open here. Table ' + selectedTable);
+    };
+
+    /* GO */
+    loadTables();
+  </script>
+</body>
+</html>
