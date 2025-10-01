@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Admin – Drag Tables</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/konva@9"></script>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f7f7f7}
+    h2{margin:10px}
+    button{padding:8px 16px;font-size:14px;margin:0 5px}
+    #save{background:#388e3c;color:#fff;border:none;border-radius:4px;cursor:pointer}
+    #container{display:flex;justify-content:center;margin-top:10px}
+  </style>
+</head>
+<body>
+  <h2>Drag tables where you want → <button id="save">Save layout</button></h2>
+  <div id="container"></div>
+
+  <script>
+    /* CONFIG – same keys as customer page */
+    const supabaseUrl = 'https://YOUR_SUPABASE_URL.supabase.co';
+    const supabaseAnon = 'YOUR_SUPABASE_ANON_KEY';
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+
+    const stage = new Konva.Stage({ container: 'container', width: 
