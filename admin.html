@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-  <style> 
+  <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f7f7f7}
     h2{margin:10px}
     button{padding:8px 16px;font-size:14px;margin:0 5px}
@@ -19,9 +19,57 @@
   <div id="container"></div>
 
   <script>
-    /* CONFIG – same keys as customer page */
+    /* CONFIG – your real keys already inside */
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const stage = new Konva.Stage({ container: 'container', width: 
+    const stage = new Konva.Stage({ container: 'container', width: 320, height: 480 });
+    const layer = new Konva.Layer();
+    stage.add(layer);
+
+    let tables = [];
+
+    async function loadTables() {
+      console.log('Fetching tables...');
+      const { data, error } = await _supa.from('tables').select('*').order('id');
+      if (error) {
+        alert('Load error: ' + error.message);
+        console.error(error);
+        return;
+      }
+      if (!data || data.length === 0) {
+        alert('No table rows returned from Supabase');
+        console.log('Empty data');
+        return;
+      }
+      tables = data;
+      data.forEach(drawTable);
+      console.log('Loaded ' + data.length + ' tables');
+    }
+
+    function drawTable(t) {
+      const group = new Konva.Group({ x: t.x, y: t.y, draggable: true, id: 'g-' + t.id });
+      const circle = new Konva.Circle({ radius: 30, fill: '#4caf50', stroke: '#fff', strokeWidth: 2 });
+      const text = new Konva.Text({ text: t.name, fontSize: 14, fill: '#fff', offsetX: 14, offsetY: 7 });
+      group.add(circle, text);
+      layer.add(group);
+
+      group.on('dragend', () => {
+        const idx = tables.findIndex(tt => tt.id === t.id);
+        tables[idx].x = Math.round(group.x());
+        tables[idx].y = Math.round(group.y());
+      });
+    }
+
+    save.onclick = async () => {
+      const updates = tables.map(t => ({ id: t.id, x: t.x, y: t.y }));
+      const { error } = await _supa.from('tables').upsert(updates);
+      if (error) alert('Save failed');
+      else alert('Layout saved – customers see it instantly');
+    };
+
+    loadTables();
+  </script>
+</body>
+</html>
