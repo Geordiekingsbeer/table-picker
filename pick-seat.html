@@ -39,7 +39,7 @@
       const d = document.createElement('div');
       d.className = 'table';
       d.id = 't-' + t.id;
-      d.textContent = t.name;
+      // **NO customer-visible text** – they just see the shape
       d.style.left = t.x + 'px';
       d.style.top = t.y + 'px';
       d.style.width = t.w + 'px';
