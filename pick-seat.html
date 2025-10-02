@@ -66,35 +66,39 @@
       if (el) el.classList.add('taken');
     }
 
-    /* Stripe Checkout via your Vercel Function */
-    payBtn.onclick = async () => {
-      if (!selectedTable) return;
+    /* Stripe Checkout via Vercel */
+payBtn.onclick = async () => {
+  if (!selectedTable) return;
 
-      const body = {
+  // Ask user for email
+  const email = prompt('Enter your email for confirmation:');
+  if (!email) return alert('Email is required');
+
+  try {
+    const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         table_id: selectedTable,
-        email: prompt('Enter your email for confirmation:')
-      };
+        email: email
+      })
+    });
 
-      try {
-        const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
+    const data = await res.json();
 
-        const data = await res.json();
+    if (data.url) {
+      // Redirect customer to Stripe checkout page
+      window.location.href = data.url;
+    } else {
+      console.error(data);
+      alert('Checkout creation failed. See console for details.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Checkout creation failed. See console for details.');
+  }
+};
 
-        if (data.url) {
-          window.location.href = data.url; // redirect to Stripe Checkout
-        } else {
-          alert('Checkout creation failed. See console for details.');
-          console.error(data);
-        }
-      } catch (err) {
-        alert('Checkout creation failed. See console for details.');
-        console.error(err);
-      }
-    };
 
     loadTables();
   </script>
