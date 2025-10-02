@@ -20,9 +20,11 @@
   <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
   <script>
+    // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+
     const room = document.getElementById('room');
     const payBtn = document.getElementById('payBtn');
 
@@ -64,14 +66,15 @@
       if (el) el.classList.add('taken');
     }
 
-    /* Stripe Checkout via Vercel */
+    /* Stripe Checkout via your Vercel Function */
     payBtn.onclick = async () => {
       if (!selectedTable) return;
+
       const body = {
         table_id: selectedTable,
         email: prompt('Enter your email for confirmation:')
       };
-      
+
       try {
         const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
           method: 'POST',
@@ -80,14 +83,15 @@
         });
 
         const data = await res.json();
+
         if (data.url) {
           window.location.href = data.url; // redirect to Stripe Checkout
         } else {
-          alert('Checkout creation failed');
+          alert('Checkout creation failed. See console for details.');
           console.error(data);
         }
       } catch (err) {
-        alert('Checkout creation failed');
+        alert('Checkout creation failed. See console for details.');
         console.error(err);
       }
     };
