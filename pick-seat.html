@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8"/>
   <title>Pick Your Table</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -20,10 +20,9 @@
   <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
   <script>
-    /* CONFIG – paste YOUR keys here */
+    /* CONFIG – your real keys */
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
     const room = document.getElementById('room');
     const payBtn = document.getElementById('payBtn');
@@ -72,22 +71,21 @@
     }
 
     /* 6. Stripe Checkout via Make */
-payBtn.onclick = async () => {
-  if (!selectedTable) return;
-  const body = {
-    table_id: selectedTable,
-    email: prompt('Enter your email for confirmation:'),
-    price_id: 'prod_TA1O5gXzpCm1yE'   // $4.99
-  };
-  const res = await fetch('https://hook.integromat.com/YOUR_MAKE_WEBHOOK_URL', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const { url } = await res.json();
-  if (url) window.location.href = url;   // jump to Stripe Hosted Checkout
-  else alert('Checkout creation failed');
-};
+    payBtn.onclick = async () => {
+      if (!selectedTable) return;
+      const body = {
+        table_id: selectedTable,
+        email: prompt('Enter your email for confirmation:'),
+        price_id: 'price_YOUR_4P99_PRICE_ID'   // £4.99
+      };
+      const res = await fetch('https://hook.integromat.com/YOUR_MAKE_WEBHOOK_URL', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const { url } = await res.json();
+      if (url) window.location.href = url;   // jump to Stripe Hosted Checkout
+      else alert('Checkout creation failed');
     };
 
     /* GO */
