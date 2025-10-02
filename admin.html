@@ -21,10 +21,10 @@
   <script>
     /* CONFIG – your real keys already inside */
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    // Admin uses the SAME 480×480 room as customer page
+    // Admin uses the **SAME** 480×480 room as customer page
     const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
     const layer = new Konva.Layer();
     stage.add(layer);
@@ -52,7 +52,7 @@
     function drawTable(t) {
       const group = new Konva.Group({ x: t.x, y: t.y, draggable: true, id: 'g-' + t.id });
 
-      // Draw the table as a **rectangle** (no rounded corners)
+      // Draw the table as a **rectangle** (no rounded corners) at the EXACT pixel sizes you gave me
       const rect = new Konva.Rect({
         width:  t.w,
         height: t.h,
