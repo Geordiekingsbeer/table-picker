@@ -64,22 +64,32 @@
       if (el) el.classList.add('taken');
     }
 
-    /* 6. Stripe Checkout via Make */
+    /* Stripe Checkout via Vercel */
     payBtn.onclick = async () => {
       if (!selectedTable) return;
       const body = {
         table_id: selectedTable,
-        email: prompt('Enter your email for confirmation:'),
-        price_id: 'price_1SDhLmITnh5jyqHABU67zgew'   // £4.99
+        email: prompt('Enter your email for confirmation:')
       };
-      const res = await fetch('https://hook.eu2.make.com/vk4e7bupgsynan7olb6k1a4lxpdnwtwy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const { url } = await res.json();
-      if (url) window.location.href = url;
-      else alert('Checkout creation failed');
+      
+      try {
+        const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url; // redirect to Stripe Checkout
+        } else {
+          alert('Checkout creation failed');
+          console.error(data);
+        }
+      } catch (err) {
+        alert('Checkout creation failed');
+        console.error(err);
+      }
     };
 
     loadTables();
