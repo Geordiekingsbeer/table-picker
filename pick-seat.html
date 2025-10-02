@@ -21,9 +21,9 @@
 
   <script>
     // Supabase setup
-    const supaBaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+    const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-    const _supa = supabase.createClient(supaBaseUrl, supabaseAnon);
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
     const room = document.getElementById('room');
     const payBtn = document.getElementById('payBtn');
 
@@ -85,7 +85,7 @@
         }
       } catch (err) {
         console.error(err);
-        alert('Checkout creation failed. See console for details.');
+          alert('Checkout creation failed. See console for details.');
       }
     };
 
