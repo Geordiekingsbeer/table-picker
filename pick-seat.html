@@ -71,11 +71,23 @@
       if (el) el.classList.add('taken');
     }
 
-    /* 6. Stripe Checkout (next message) */
-    payBtn.onclick = () => {
-      if (!selectedTable) return;
-      /* We’ll fill this with Stripe in Step 3 */
-      alert('Stripe Checkout will open here. Table ' + selectedTable);
+    /* 6. Stripe Checkout via Make */
+payBtn.onclick = async () => {
+  if (!selectedTable) return;
+  const body = {
+    table_id: selectedTable,
+    email: prompt('Enter your email for confirmation:'),
+    price_id: 'price_1ABC...'   // we’ll create this next
+  };
+  const res = await fetch('https://hook.integromat.com/YOUR_MAKE_WEBHOOK_URL', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const { url } = await res.json();
+  if (url) window.location.href = url;   // jump to Stripe Hosted Checkout
+  else alert('Checkout creation failed');
+};
     };
 
     /* GO */
