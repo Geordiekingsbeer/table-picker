@@ -9,52 +9,49 @@
     body {
       font-family: Arial, Helvetica, sans-serif;
       text-align: center;
+      background: #f7f7f7;
       margin: 0;
       padding: 20px 0;
-      background: #f7f7f7;
     }
 
     h2 {
       font-size: 24px;
+      font-weight: bold;
       color: #333;
       margin-bottom: 20px;
     }
 
     #room {
-      position: relative;
-      width: 480px;
-      max-width: 100%; /* responsive */
-      aspect-ratio: 1; /* maintain square */
-      margin: 0 auto 20px;
       background: url('floorplan.png') no-repeat center center;
       background-size: contain;
       border: 1px solid #ccc;
+      margin: 0 auto 20px;
+      position: relative;
+      width: 480px;
+      height: 480px;
     }
 
     .table {
       position: absolute;
-      border-radius: 0;
+      border-radius: 0px;
       cursor: pointer;
       background: #b7d7a8;
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: bold;
-      transition: background 0.2s, border 0.2s;
-      border: 1px solid #000;
-      touch-action: manipulation; /* helps with mobile clicks */
+      transition: background 0.2s;
+      border: 1px solid #000; /* Thin black border */
     }
 
-    .table.taken {
+    .taken {
       background: #9e9e9e !important;
       cursor: not-allowed;
     }
 
-    .table.selected {
-      border: 3px solid #ffeb3b;
-    }
-
     #payBtn {
+      margin-top: 15px;
       padding: 12px 24px;
       font-size: 16px;
       background: #1976d2;
@@ -62,12 +59,10 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      transition: background 0.2s;
     }
 
     #payBtn:disabled {
       background: #bbb;
-      cursor: not-allowed;
     }
   </style>
 </head>
@@ -77,62 +72,57 @@
   <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
   <script>
+    // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-    const supabase = supabase.createClient(supabaseUrl, supabaseAnon);
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const room = document.getElementById('room');
     const payBtn = document.getElementById('payBtn');
+
     let selectedTable = null;
 
     async function loadTables() {
-      const { data, error } = await supabase.from('tables').select('*').order('id');
+      const { data, error } = await _supa.from('tables').select('*').order('id');
       if (error) { console.error(error); return; }
+      data.forEach(drawTable);
+    }
 
-      // Floorplan scaling factor
-      const scaleX = room.clientWidth / 480;
-      const scaleY = room.clientHeight / 480;
-
-      data.forEach(t => {
-        const d = document.createElement('div');
-        d.className = 'table';
-        d.id = 't-' + t.id;
-        d.style.width = (t.w * scaleX) + 'px';
-        d.style.height = (t.h * scaleY) + 'px';
-        d.style.left = (t.x * scaleX) + 'px';
-        d.style.top = (t.y * scaleY) + 'px';
-        d.textContent = t.name || '';
-        d.addEventListener('click', () => selectTable(t.id));
-        room.appendChild(d);
-
-        if (t.taken) d.classList.add('taken');
-      });
+    function drawTable(t) {
+      const d = document.createElement('div');
+      d.className = 'table';
+      d.id = 't-' + t.id;
+      d.style.left = t.x + 'px';
+      d.style.top = t.y + 'px';
+      d.style.width = t.w + 'px';
+      d.style.height = t.h + 'px';
+      // Mobile + desktop support
+      d.addEventListener('click', () => selectTable(t.id));
+      d.addEventListener('touchstart', () => selectTable(t.id));
+      room.appendChild(d);
     }
 
     function selectTable(id) {
-      const tableDiv = document.getElementById('t-' + id);
-      if (tableDiv.classList.contains('taken')) return;
-
-      document.querySelectorAll('.table').forEach(el => el.classList.remove('selected'));
-      tableDiv.classList.add('selected');
-
+      const el = document.getElementById('t-' + id);
+      if (el.classList.contains('taken')) return;
+      document.querySelectorAll('.table').forEach(el => el.style.border = '1px solid #000');
+      el.style.border = '3px solid #ffeb3b';
       selectedTable = id;
       payBtn.disabled = false;
     }
 
-    supabase.channel('picks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
-        if (payload.new.paid) greyOut(payload.new.table_id);
-      }).subscribe();
+    _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
+      if (payload.new.paid) greyOut(payload.new.table_id);
+    }).subscribe();
 
     function greyOut(id) {
       const el = document.getElementById('t-' + id);
       if (el) el.classList.add('taken');
     }
 
+    /* Stripe Checkout via Vercel */
     payBtn.onclick = async () => {
       if (!selectedTable) return;
-
       const email = prompt('Enter your email for confirmation:');
       if (!email) return alert('Email is required');
 
@@ -140,9 +130,8 @@
         const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_id: selectedTable, email })
+          body: JSON.stringify({ table_id: selectedTable, email: email })
         });
-
         const data = await res.json();
         if (data.url) window.location.href = data.url;
         else { console.error(data); alert('Checkout creation failed.'); }
@@ -153,24 +142,6 @@
     };
 
     loadTables();
-
-    // Recalculate positions if the window resizes (responsive)
-    window.addEventListener('resize', () => {
-      const scaleX = room.clientWidth / 480;
-      const scaleY = room.clientHeight / 480;
-
-      document.querySelectorAll('.table').forEach(d => {
-        const tableId = parseInt(d.id.replace('t-', ''));
-        supabase.from('tables').select('*').eq('id', tableId).then(({data}) => {
-          if (data && data[0]) {
-            d.style.width = (data[0].w * scaleX) + 'px';
-            d.style.height = (data[0].h * scaleY) + 'px';
-            d.style.left = (data[0].x * scaleX) + 'px';
-            d.style.top = (data[0].y * scaleY) + 'px';
-          }
-        });
-      });
-    });
   </script>
 </body>
 </html>
