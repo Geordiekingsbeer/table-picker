@@ -10,28 +10,29 @@
     body{
         font-family:Arial,Helvetica,sans-serif;
         background:#f7f7f7;
-        /* Vertical Centering: Use Flexbox on the body */
+        /* Vertical Centering: Use Flexbox */
         display: flex;
         flex-direction: column;
-        align-items: center; /* Center content block horizontally */
-        justify-content: center; /* Center content block vertically */
+        align-items: center; /* Center block horizontally */
+        justify-content: center; /* Center block vertically */
         min-height: 100vh; /* Full viewport height */
         margin: 0; 
-        padding: 20px 0; /* Add top/bottom padding so content isn't flush with edge */
+        padding: 20px 0; /* Add slight padding for edge clearance */
     }
-    /* FIX: Force H2 content to center and set typography */
+    /* FIX: Ensure H2 text is centered and apply stronger styling */
     h2 {
         font-size: 24px;
         font-weight: bold;
+        color: #333; /* Darker font color for better contrast */
         text-align: center; 
         margin-bottom: 20px;
+        width: 100%; /* Ensure H2 takes full width for text-align to work on its content */
     }
     #container{
-      /* Removed margin as Flexbox and H2 margin handle spacing */
       width:480px;
       height:480px;
       border:1px solid #ccc;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Added box shadow */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Slightly stronger shadow */
     }
     button{
         padding:8px 16px;
@@ -41,13 +42,17 @@
         border: none;
         border-radius: 4px;
         transition: background-color 0.2s, box-shadow 0.2s;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+        /* FIX: Ensure button font is clearly white and has a good lift */
+        font-weight: 600;
+        color: #fff !important; 
+        box-shadow: 0 3px 6px rgba(0,0,0,0.3);
     }
     button:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 5px 10px rgba(0,0,0,0.4);
+        opacity: 0.9;
     }
-    #save{background:#388e3c;color:#fff;}
-    #rotate{background:#1976d2;color:#fff;}
+    #save{background:#388e3c;}
+    #rotate{background:#1976d2;}
   </style>
 </head>
 <body>
