@@ -2,108 +2,142 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Admin – Drag Tables</title>
+  <title>Admin – Table Layout</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f7f7f7;text-align:center}
-    h2{margin:10px}
-    button{padding:8px 16px;font-size:14px;margin:0 5px}
-    #save{background:#388e3c;color:#fff;border:none;border-radius:4px;cursor:pointer}
-    #container{display:flex;justify-content:center;margin-top:10px}
+    body { font-family: Arial, Helvetica, sans-serif; text-align: center; }
+    h2 { margin-top: 10px; }
+    #room {
+      background: url('floorplan.png') no-repeat center center;
+      background-size: contain;
+      border: 1px solid #ccc;
+      margin: 20px auto;
+      position: relative;
+      width: 480px;
+      height: 480px;
+    }
+    .table {
+      position: absolute;
+      background: #A8E6CF;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      border: 1px solid #000;
+      cursor: move;
+      user-select: none;
+      transform-origin: center center;
+    }
+    .rotateBtn {
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      padding: 2px 5px;
+      cursor: pointer;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 3px;
+    }
+    #saveBtn {
+      margin-top: 15px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h2>
-    Drag tables where you want → 
-    <button id="save">Save layout</button>
-    <button id="rotate">Rotate Selected</button>
-  </h2>
-  <div id="container"></div>
+  <h2>Drag tables where you want → Rotate → Save layout</h2>
+  <div id="room"></div>
+  <button id="saveBtn">Save Layout</button>
 
   <script>
-    /* CONFIG – Supabase setup */
+    // ✅ Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg'; // your anon key
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';  // <-- replace with your real anon key
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
-    const layer = new Konva.Layer();
-    stage.add(layer);
-
-    let tables = [];
-    let selectedGroup = null;
+    const room = document.getElementById('room');
+    const saveBtn = document.getElementById('saveBtn');
 
     async function loadTables() {
       const { data, error } = await _supa.from('tables').select('*').order('id');
-      if (error) { alert('Load error: ' + error.message); return; }
-      tables = data;
+      if (error) { console.error(error); return; }
       data.forEach(drawTable);
     }
 
     function drawTable(t) {
-      const group = new Konva.Group({
-        x: t.x,
-        y: t.y,
-        draggable: true,
-        id: 'g-' + t.id,
-        rotation: t.rotation || 0
-      });
+      const d = document.createElement('div');
+      d.className = 'table';
+      d.id = 't-' + t.id;
+      d.style.left = t.x + 'px';
+      d.style.top = t.y + 'px';
+      d.style.width = t.w + 'px';
+      d.style.height = t.h + 'px';
+      d.style.transform = `rotate(${t.rotation || 0}deg)`;
 
-      const rect = new Konva.Rect({
-        width: t.w,
-        height: t.h,
-        fill: '#A8E6CF',
-        stroke: '#000',
-        cornerRadius: 4,
-        offsetX: t.w / 2,
-        offsetY: t.h / 2
-      });
+      // rotate button
+      const rotateBtn = document.createElement('button');
+      rotateBtn.textContent = '⟳';
+      rotateBtn.className = 'rotateBtn';
+      rotateBtn.onclick = (e) => {
+        e.stopPropagation();
+        let current = parseInt(d.dataset.rotation || t.rotation || 0);
+        current = (current + 90) % 360;
+        d.dataset.rotation = current;
+        d.style.transform = `rotate(${current}deg)`;
+      };
 
-      group.add(rect);
+      d.appendChild(rotateBtn);
 
-      // Click to select table
-      group.on('click', () => {
-        selectedGroup = group;
-        layer.draw();
-      });
+      // drag behaviour
+      let offsetX, offsetY;
+      d.onmousedown = (e) => {
+        if (e.target.tagName === 'BUTTON') return; // ignore clicks on rotate button
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        function move(ev) {
+          d.style.left = (ev.pageX - room.offsetLeft - offsetX) + 'px';
+          d.style.top = (ev.pageY - room.offsetTop - offsetY) + 'px';
+        }
+        document.addEventListener('mousemove', move);
+        document.onmouseup = () => {
+          document.removeEventListener('mousemove', move);
+          document.onmouseup = null;
+        };
+      };
 
-      group.on('dragend', () => {
-        const idx = tables.findIndex(tt => tt.id === t.id);
-        tables[idx].x = Math.round(group.x());
-        tables[idx].y = Math.round(group.y());
-      });
-
-      layer.add(group);
+      room.appendChild(d);
     }
 
-    // Rotate button
-    rotate.onclick = () => {
-      if (!selectedGroup) {
-        alert('Click on a table first!');
-        return;
+    saveBtn.onclick = async () => {
+      const updates = [];
+      document.querySelectorAll('.table').forEach(el => {
+        const id = el.id.replace('t-', '');
+        updates.push({
+          id: parseInt(id),
+          x: parseInt(el.style.left),
+          y: parseInt(el.style.top),
+          w: parseInt(el.style.width),
+          h: parseInt(el.style.height),
+          rotation: parseInt(el.dataset.rotation || 0)
+        });
+      });
+      for (let row of updates) {
+        const { error } = await _supa.from('tables').update(row).eq('id', row.id);
+        if (error) console.error(error);
       }
-      const currentRotation = selectedGroup.rotation();
-      selectedGroup.rotation(currentRotation + 90);
-      layer.draw();
-
-      // Save new rotation in our local array
-      const id = parseInt(selectedGroup.id().split('-')[1]);
-      const idx = tables.findIndex(tt => tt.id === id);
-      tables[idx].rotation = selectedGroup.rotation();
-    };
-
-    save.onclick = async () => {
-      const updates = tables.map(t => ({
-        id: t.id,
-        x: t.x,
-        y: t.y,
-        rotation: t.rotation || 0
-      }));
-      const { error } = await _supa.from('tables').upsert(updates);
-      if (error) alert('Save failed');
-      else alert('Layout saved – customers see it instantly');
+      alert('Layout saved!');
     };
 
     loadTables();
