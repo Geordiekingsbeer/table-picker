@@ -12,9 +12,7 @@
       margin:20px auto; /* Centers horizontally */
       width:480px;
       height:480px;
-      /* Ensure the background image and styling are applied */
-      background:url('floorplan.png') no-repeat center center;
-      background-size:contain;
+      /* The background styling will be applied directly below */
       border:1px solid #ccc;
     }
     button{padding:8px 16px;font-size:14px;margin:0 5px;cursor:pointer;}
@@ -24,7 +22,7 @@
 </head>
 <body>
   <h2>Drag tables → <button id="save">Save layout</button> <button id="rotate">Rotate Table 90°</button></h2>
-  <div id="container"></div>
+    <div id="container" style="background:url('floorplan.png') no-repeat center center; background-size:contain;"></div>
 
   <script>
     // Supabase
@@ -42,7 +40,6 @@
     const SEAT_COLOR = '#555';
 
     async function loadTables() {
-      // Ensure 'rotation' is selected
       const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
       if(error){ console.error(error); alert('Error loading tables'); return; }
       tables = data;
@@ -62,7 +59,6 @@
     }
 
     function drawTable(t){
-      // NOTE: Initial x and y are temporary until the loadTables function adjusts them to center-point.
       const group = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, draggable:true });
       layer.add(group);
 
