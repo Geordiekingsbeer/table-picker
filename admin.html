@@ -8,56 +8,60 @@
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <style>
     body{
-        font-family: Arial, Helvetica, sans-serif;
-        background:#f7f7f7;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-        margin: 0;
-        padding: 20px 0;
-    }
+        font-family: Arial, Helvetica, sans-serif;
+        background:#f7f7f7;
+        /* Vertical Centering: Use Flexbox */
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center block horizontally */
+        justify-content: center; /* Center block vertically */
+        min-height: 100vh; /* Full viewport height */
+        margin: 0; 
+        padding: 20px 0; /* Add slight padding for edge clearance */
+    }
 
-    h2 {
-        font-size: 24px;
-        font-weight: bold;
-        color: #333;
-        text-align: center; 
-        margin-bottom: 20px;
-        width: 100%;
-    }
+    h2 {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        text-align: center; 
+        margin-bottom: 20px;
+        width: 100%;
+    }
 
-    #container-wrapper {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-    }
+    #container-wrapper {
+        /* FIX: This wrapper is necessary to keep Konva inside a centered flex item */
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
 
     #container{
       width:480px;
       height:480px;
       border:1px solid #ccc;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Container Shadow */
       background:#fff;
     }
 
     button{
-        padding:8px 16px;
-        font-size:14px;
-        margin:0 5px;
-        cursor:pointer;
-        border: none;
-        border-radius: 4px;
-        transition: background-color 0.2s, box-shadow 0.2s;
-        font-weight: 600;
-        color: #fff !important; 
-        box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-    }
+        padding:8px 16px;
+        font-size:14px;
+        margin:0 5px;
+        cursor:pointer;
+        border: none;
+        border-radius: 4px;
+        transition: background-color 0.2s, box-shadow 0.2s;
+        /* Button Aesthetics */
+        font-weight: 600;
+        color: #fff !important; 
+        box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    }
 
-    button:hover {
-        box-shadow: 0 5px 10px rgba(0,0,0,0.4);
-        opacity: 0.9;
-    }
+    button:hover {
+        box-shadow: 0 5px 10px rgba(0,0,0,0.4);
+        opacity: 0.9;
+    }
 
     #save{background:#388e3c;}
     #rotate{background:#1976d2;}
@@ -72,7 +76,7 @@
   <script>
     // --- Supabase setup ---
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K55jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const STAGE_WIDTH = 480;
@@ -113,9 +117,14 @@
       tables.forEach(t => {
         const group = drawTable(t);
         const tableRect = group.findOne('.main-table');
+        
+        // Setup for rotation
         group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+        
+        // Position Correction
         group.x(t.x + tableRect.width()/2);
         group.y(t.y + tableRect.height()/2);
+        
         group.rotation(t.rotation || 0); 
       });
       layer.draw();
@@ -135,7 +144,7 @@
       });
       group.add(tableRect);
 
-      // --- Re-integrating Final Seat Logic ---
+      // --- Final Seat Logic ---
       const baseSeatSize = 12; 
       const seatHalf = baseSeatSize / 2; 
 
@@ -144,7 +153,6 @@
       }
       
       if (t.w === 30 && t.h === 30) {
-        // 2 seats (top, bottom only) - Horizontal (12x6)
         const seatW = baseSeatSize; 
         const seatH = seatHalf;     
         
@@ -152,7 +160,6 @@
         makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);              
         
       } else if (t.w === 30 && t.h === 50) {
-        // 4 seats (2 left, 2 right) - Vertical (6x12)
         const seatW = seatHalf;     
         const seatH = baseSeatSize; 
         
@@ -165,7 +172,6 @@
         makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);          
         
       } else if (t.w === 90 && t.h === 30) {
-        // 6 seats (3 top, 3 bottom) - Horizontal (12x6)
         const seatW = baseSeatSize; 
         const seatH = seatHalf;     
         
