@@ -9,29 +9,29 @@
   <style>
     body{
         font-family:Arial,Helvetica,sans-serif;
-        text-align:center;
         background:#f7f7f7;
         /* Vertical Centering: Use Flexbox on the body */
         display: flex;
         flex-direction: column;
-        align-items: center; 
-        justify-content: center; 
-        min-height: 100vh; 
+        align-items: center; /* Center content block horizontally */
+        justify-content: center; /* Center content block vertically */
+        min-height: 100vh; /* Full viewport height */
         margin: 0; 
+        padding: 20px 0; /* Add top/bottom padding so content isn't flush with edge */
     }
+    /* FIX: Force H2 content to center and set typography */
     h2 {
-        /* This prevents the h2 from taking up full width and makes the centering look cleaner */
-        width: 100%;
-        margin: 0;
-        padding-top: 20px;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center; 
+        margin-bottom: 20px;
     }
     #container{
-      margin-top:20px; /* Spacing from the header */
-      margin-bottom: 20px;
+      /* Removed margin as Flexbox and H2 margin handle spacing */
       width:480px;
       height:480px;
       border:1px solid #ccc;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Added box shadow for a nicer lift */
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Added box shadow */
     }
     button{
         padding:8px 16px;
@@ -41,7 +41,7 @@
         border: none;
         border-radius: 4px;
         transition: background-color 0.2s, box-shadow 0.2s;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Added button shadow */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
     }
     button:hover {
         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
@@ -90,7 +90,7 @@
         backgroundLayer.draw();
         if (callback) callback();
       };
-      imageObj.src = 'floorplan.png'; // Make sure this path is correct
+      imageObj.src = 'floorplan.png'; 
     }
 
     async function loadTables() {
