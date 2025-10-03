@@ -57,9 +57,8 @@
       group.add(tableRect);
 
       // 2. Draw seats with 'cut in half' appearance
-      const baseSeatSize = 12;
-      const seatHalf = baseSeatSize / 2;
-      const seatOffset = seatHalf; // Used to position seat halfway over the edge
+      const baseSeatSize = 12; // Base dimension (W or H)
+      const seatHalf = baseSeatSize / 2; // Fixed half dimension (6)
 
       function makeSeat(x, y, w, h) {
         group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
@@ -68,17 +67,19 @@
       // -- Applying corrected seat logic based on table dimensions --
 
       if (t.w === 30 && t.h === 30) {
-        // FIX: 2 seats (top, bottom only)
-        const seatW = baseSeatSize; // Horizontal seat width
-        const seatH = seatHalf;     // Horizontal seat height
+        // 2 seats (top, bottom only) - Horizontal (12x6)
+        const seatW = baseSeatSize; 
+        const seatH = seatHalf;     
+        const seatOffset = seatH / 2; // FIX: Offset for top/bottom is 3px (half of seatH)
 
         makeSeat(t.w/2 - seatW/2, -seatOffset, seatW, seatH);           // top
         makeSeat(t.w/2 - seatW/2, t.h - seatOffset, seatW, seatH);      // bottom
         
       } else if (t.w === 30 && t.h === 50) {
-        // FIX: 4 seats (2 left, 2 right) rotated 90 degrees (vertical rectangles)
-        const seatW = seatHalf;     // Vertical seat width
-        const seatH = baseSeatSize; // Vertical seat height
+        // 4 seats (2 left, 2 right) - Vertical (6x12)
+        const seatW = seatHalf;     
+        const seatH = baseSeatSize; 
+        const seatOffset = seatW / 2; // FIX: Offset for left/right is 3px (half of seatW)
         
         // Vertical spacing logic for 2 seats on the long side (50px)
         const v_spacing = (t.h - 2 * seatH) / 3; 
@@ -92,11 +93,12 @@
         makeSeat(t.w - seatOffset, v_spacing * 2 + seatH, seatW, seatH);
         
       } else if (t.w === 90 && t.h === 30) {
-        // FIX: 6 seats (3 top, 3 bottom)
-        const seatW = baseSeatSize; // Horizontal seat width
-        const seatH = seatHalf;     // Horizontal seat height
+        // 6 seats (3 top, 3 bottom) - Horizontal (12x6)
+        const seatW = baseSeatSize; 
+        const seatH = seatHalf;     
+        const seatOffset = seatH / 2; // FIX: Offset for top/bottom is 3px (half of seatH)
 
-        const h_spacing = t.w / 4; // Use 4 sections for 3 seats (e.g., space-seat-space-seat-space-seat-space)
+        const h_spacing = t.w / 4; 
         
         for(let i=0; i<3; i++){
             const x_pos = h_spacing * (i+1) - seatW/2;
