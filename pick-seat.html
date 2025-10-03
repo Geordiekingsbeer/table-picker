@@ -102,7 +102,7 @@
       group.add(tableRect);
 
       // Add click handler to the group
-      group.on('click', () => selectTable(t.id));
+      group.on('click tap', () => selectTable(t.id));
 
       // 2. Draw seats (using finalized, flush logic)
       const baseSeatSize = 12; 
