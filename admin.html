@@ -7,106 +7,145 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f7f7f7;text-align:center;}
-    h2{margin:10px;}
-    button{padding:8px 16px;font-size:14px;margin:0 5px;}
-    #save{background:#388e3c;color:#fff;border:none;border-radius:4px;cursor:pointer;}
-    #rotate{background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer;}
-    #container{display:flex;justify-content:center;margin-top:10px;position:relative;width:480px;height:480px;background:url('floorplan.png') no-repeat center center;background-size:contain;}
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+      background: #f7f7f7;
+    }
+    h2 {
+      margin: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      margin: 0 5px;
+      cursor: pointer;
+    }
+    #save {
+      background: #388e3c;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    #container {
+      margin: 20px auto;
+      width: 1080px;
+      height: 1080px;
+      background: url('floorplan.png') no-repeat center center;
+      background-size: contain;
+      border: 1px solid #ccc;
+    }
+    #rotate {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
-  <h2>Drag tables → 
-    <button id="save">Save layout</button>
-    <button id="rotate">Rotate Selected Table</button>
-  </h2>
+  <h2>Drag tables where you want → <button id="save">Save layout</button> <button id="rotate">Rotate Table 90°</button></h2>
   <div id="container"></div>
 
   <script>
+    // --- Supabase setup ---
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const stage = new Konva.Stage({ container:'container', width:480, height:480 });
+    const container = document.getElementById('container');
+    const stage = new Konva.Stage({ container: 'container', width: 1080, height: 1080 });
     const layer = new Konva.Layer();
     stage.add(layer);
 
-    const SEAT_COLOR = '#555';
     let tables = [];
     let selectedGroup = null;
+
+    const TABLE_COLOR = '#b7d7a8';
+    const SEAT_COLOR = '#555';
 
     async function loadTables() {
       const { data, error } = await _supa.from('tables').select('*').order('id');
       if(error){ console.error(error); alert('Error loading tables'); return; }
       tables = data;
-      data.forEach(drawTable);
+      tables.forEach(drawTable);
     }
 
-    function drawTable(t){
-      const group = new Konva.Group({ x:t.x, y:t.y, draggable:true, id:'g-'+t.id });
+    function drawTable(t) {
+      const group = new Konva.Group({
+        x: t.x,
+        y: t.y,
+        id: 'g-'+t.id,
+        draggable: true
+      });
       layer.add(group);
 
-      const rect = new Konva.Rect({ width:t.w, height:t.h, fill:'#b7d7a8', stroke:'#000', strokeWidth:1 });
-      group.add(rect);
+      // Table rectangle
+      const tableRect = new Konva.Rect({
+        width: t.w,
+        height: t.h,
+        fill: TABLE_COLOR,
+        stroke: '#000',
+        strokeWidth: 1
+      });
+      group.add(tableRect);
 
+      // Draw seats
       drawSeats(t, group);
 
-      group.on('click', () => selectedGroup = group);
-
-      group.on('dragend', () => {
-        const idx = tables.findIndex(tt=>tt.id===t.id);
-        tables[idx].x = Math.round(group.x());
-        tables[idx].y = Math.round(group.y());
+      group.on('click', () => {
+        if(selectedGroup) selectedGroup.findOne('Rect').stroke('#000');
+        selectedGroup = group;
+        tableRect.stroke('#ffeb3b'); // highlight
+        layer.draw();
       });
     }
 
-    function drawSeats(table, group){
-      const seatW = 20;
-      const seatH = 10;
+    function drawSeats(table, group) {
+      const seatWidth = 20;
+      const seatHeight = 10;
       const seats = [];
 
       if(table.capacity===2){
-        seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:0, y:table.h/2 - seatH/2 }));
-        seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:table.w - seatW, y:table.h/2 - seatH/2 }));
+        // two seats opposite each other
+        seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: 0, y: table.h/2 - seatHeight/2 }));
+        seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: table.w - seatWidth, y: table.h/2 - seatHeight/2 }));
       } else if(table.capacity===4){
-        seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:table.w*0.2, y:-seatH/2 }));
-        seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:table.w*0.6, y:-seatH/2 }));
-        seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:table.w*0.2, y:table.h - seatH/2 }));
-        seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:table.w*0.6, y:table.h - seatH/2 }));
+        // 4 seats, 2 each side
+        seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: table.w*0.2, y: -seatHeight/2 }));
+        seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: table.w*0.6, y: -seatHeight/2 }));
+        seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: table.w*0.2, y: table.h - seatHeight/2 }));
+        seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: table.w*0.6, y: table.h - seatHeight/2 }));
       } else if(table.capacity===6){
-        const spacing = (table.w - 3*seatW)/2;
-        for(let i=0;i<3;i++){
-          seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y:-seatH/2 }));
-          seats.push(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y:table.h - seatH/2 }));
+        // 6 seats, 3 each side
+        const spacing = (table.w - 3*seatWidth)/2;
+        for(let i=0; i<3; i++){
+          seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: i*(seatWidth+spacing), y: -seatHeight/2 }));
+          seats.push(new Konva.Rect({ width: seatWidth, height: seatHeight, fill: SEAT_COLOR, x: i*(seatWidth+spacing), y: table.h - seatHeight/2 }));
         }
       }
 
       seats.forEach(s => group.add(s));
-      group.findOne('Rect').moveToTop();
+      group.findOne('Rect').moveToTop(); // table stays above seats
     }
 
-    // Rotate button
+    // Rotate selected table
     document.getElementById('rotate').onclick = () => {
-      if(!selectedGroup) return alert('Select a table first');
-      const rect = selectedGroup.findOne('Rect');
-      const temp = rect.width();
-      rect.width(rect.height());
-      rect.height(temp);
-
-      // Redraw seats after rotation
-      selectedGroup.destroyChildren();
-      selectedGroup.add(rect);
-      const tableId = parseInt(selectedGroup.id().replace('g-',''));
-      const t = tables.find(tt=>tt.id===tableId);
-      drawSeats(t, selectedGroup);
-      selectedGroup.draw();
+      if(selectedGroup) {
+        selectedGroup.rotation(selectedGroup.rotation() + 90);
+        layer.draw();
+      }
     };
 
-    // Save button
+    // Save layout
     document.getElementById('save').onclick = async () => {
-      const updates = tables.map(t=>({id:t.id, x:t.x, y:t.y}));
+      const updates = tables.map(t => {
+        const g = layer.findOne('#g-'+t.id);
+        return { id: t.id, x: g.x(), y: g.y() };
+      });
       const { error } = await _supa.from('tables').upsert(updates);
-      if(error) alert('Save failed'); else alert('Layout saved!');
+      if(error) alert('Save failed: '+error.message);
+      else alert('Layout saved!');
     };
 
     loadTables();
