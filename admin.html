@@ -240,8 +240,10 @@
           // Use end_time from DB if available, otherwise assume 90 min turn
           const slotEndMinutes = slot.end_time ? timeToMinutes(slot.end_time) : slotStartMinutes + TURN_DURATION_MINUTES;
           
-          // Check for overlap: slot starts before view time ends AND slot ends after view time starts
-          return slotStartMinutes < selectedMinutes + TURN_DURATION_MINUTES && slotEndMinutes > selectedMinutes;
+          // FIX: Simplify Overlap Check: Slot must end AFTER view starts AND Slot must start BEFORE view ends (90 mins later)
+          const viewEndMinutes = selectedMinutes + TURN_DURATION_MINUTES;
+          
+          return slotEndMinutes > selectedMinutes && slotStartMinutes < viewEndMinutes;
         })
         .map(b => b.table_id);
       
@@ -282,6 +284,7 @@
         
         // Reset UI and refresh map
         document.getElementById('block-input-area').style.display = 'none';
+        selectedGroup.findOne('.main-table').stroke('#000'); // Un-highlight table
         selectedGroup = null; // Clear selected group
 
         loadTables(); 
@@ -355,7 +358,7 @@
 
       // Click/Tap to select table and open the block input area
       group.on('mousedown touchstart', () => {
-        // FIX: Check if selectedGroup exists before trying to access its children
+        // Highlight logic
         if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
         selectedGroup = group;
         tableRect.stroke('#ffeb3b');
