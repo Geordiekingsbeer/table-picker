@@ -30,7 +30,7 @@
       margin-bottom: 25px;
       flex-wrap: wrap;
       gap: 10px;
-      width: 100%; /* Ensure centering works */
+      width: 100%;
     }
 
     h2 .arrow {
@@ -68,7 +68,7 @@
     /* Schedule Controls Styling (Integrated) */
     #schedule-controls {
       margin-bottom: 15px;
-      padding: 10px 20px; /* Increased padding to match aesthetic */
+      padding: 10px 20px; 
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
@@ -88,7 +88,7 @@
       border-radius: 4px;
     }
     #schedule-controls button {
-      background: #1976d2; /* Use blue for action */
+      background: #1976d2; 
       color: #fff;
       padding: 8px 15px;
       font-weight: 600;
@@ -109,10 +109,6 @@
       width: 450px;
       box-sizing: border-box;
     }
-    #block-input-area p {
-        font-weight: 600;
-        color: #d32f2f;
-    }
     #block-input-area input {
       margin-bottom: 10px;
       width: 100%;
@@ -221,7 +217,6 @@
         select.appendChild(option);
       });
 
-      // Set default date to today and default time to the first slot
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('booking-date').value = today;
       select.value = slots[2]; // Default to 6:00 PM
@@ -260,8 +255,7 @@
       const startTime = document.getElementById('block-start-time').value;
       const endTime = document.getElementById('block-end-time').value;
       const notes = document.getElementById('host-notes').value;
-      
-      // Get the currently selected table's ID
+
       const selectedTableGroup = selectedGroup; 
 
       if (!selectedTableId || !startTime || !endTime || !notes || !selectedTableGroup) {
@@ -269,7 +263,6 @@
         return;
       }
       
-      // Convert table ID string ('g-1') to number (1)
       const tableIdNum = parseInt(selectedTableId.replace('g-', ''), 10);
 
       const { error } = await _supa.from('premium_slots').insert([
@@ -290,8 +283,8 @@
         
         // Reset UI and refresh map
         document.getElementById('block-input-area').style.display = 'none';
-        selectedTableId = null; // Clear selected ID
-        selectedGroup = null; // Clear selected group
+        selectedTableId = null; 
+        selectedGroup = null; 
 
         loadTables(); 
       }
