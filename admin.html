@@ -21,10 +21,6 @@
     }
 
     h2 {
-        font-size: 24px;
-        /* FIX: Ensure font weight matches button text for consistency */
-        font-weight: 600; 
-        color: #333;
         text-align: center; 
         margin-bottom: 20px;
         width: 100%;
@@ -40,42 +36,31 @@
       width:480px;
       height:480px;
       border:1px solid #ccc;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Container Shadow */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       background:#fff;
     }
-
-    button{
-        padding:8px 16px;
-        font-size:14px;
-        margin:0 5px;
-        cursor:pointer;
-        border: none;
-        border-radius: 4px;
-        transition: background-color 0.2s, box-shadow 0.2s;
-        /* Button Aesthetics */
-        font-weight: 600; /* Matching the font-weight set for h2 */
-        color: #fff !important; 
-        box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-    }
-
-    button:hover {
-        box-shadow: 0 5px 10px rgba(0,0,0,0.4);
-        opacity: 0.9;
-    }
-
-    #save{background:#388e3c;}
-    #rotate{background:#1976d2;}
   </style>
 </head>
 <body>
-  <h2>Drag tables → <button id="save">Save layout</button> <button id="rotate">Rotate Table 90°</button></h2>
+    <h2 style="font-size: 24px; font-weight: 600; color: #333; text-align: center;">
+        Drag tables → 
+        <button id="save" 
+            style="background:#388e3c; color:white; padding:8px 16px; font-size:14px; margin:0 5px; cursor:pointer; border: none; border-radius: 4px; font-weight: 600; box-shadow: 0 3px 6px rgba(0,0,0,0.3);">
+            Save layout
+        </button>
+        <button id="rotate" 
+            style="background:#1976d2; color:white; padding:8px 16px; font-size:14px; margin:0 5px; cursor:pointer; border: none; border-radius: 4px; font-weight: 600; box-shadow: 0 3px 6px rgba(0,0,0,0.3);">
+            Rotate Table 90°
+        </button>
+    </h2>
   <div id="container-wrapper">
       <div id="container"></div>
   </div>
 
   <script>
-    // --- Supabase setup (PLEASE PASTE YOUR VALID KEY HERE) ---
+    // --- Supabase setup (PLEASE CHECK AND PASTE YOUR VALID KEY HERE) ---
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+    // YOUR SUPABASE ANON KEY IS INVALID IN THE SCREENSHOTS! MUST BE FIXED HERE.
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K55jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
