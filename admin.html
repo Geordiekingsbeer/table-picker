@@ -12,14 +12,14 @@
         background:#f7f7f7;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        align-items: center; /* Centers all blocks horizontally */
+        justify-content: center; /* Centers blocks vertically */
         min-height: 100vh;
         margin: 0; 
         padding: 20px 0;
     }
 
-    /* Header container */
+    /* Header container (Restoring original style) */
     h2 {
       display: flex;
       align-items: center;
@@ -30,6 +30,7 @@
       margin-bottom: 25px;
       flex-wrap: wrap;
       gap: 10px;
+      width: 100%; /* Ensure centering works */
     }
 
     h2 .arrow {
@@ -39,7 +40,7 @@
       color: #1976d2;
     }
 
-    /* Buttons in header */
+    /* Buttons in header (Restoring original style) */
     h2 button {
       padding: 10px 20px;
       font-size: 15px;
@@ -64,12 +65,12 @@
       opacity: 0.95;
     }
 
-    /* Schedule Controls Styling (NEW) */
+    /* Schedule Controls Styling (Integrated) */
     #schedule-controls {
       margin-bottom: 15px;
-      padding: 10px;
+      padding: 10px 20px; /* Increased padding to match aesthetic */
       background: #fff;
-      border-radius: 6px;
+      border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       display: flex;
       align-items: center;
@@ -87,14 +88,14 @@
       border-radius: 4px;
     }
     #schedule-controls button {
-      background: #555;
+      background: #1976d2; /* Use blue for action */
       color: #fff;
       padding: 8px 15px;
       font-weight: 600;
-      box-shadow: none;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
-
-    /* Manual Block Input Styling (NEW) */
+    
+    /* Manual Block Input Styling */
     #block-input-area {
       margin-top: 10px;
       margin-bottom: 20px;
@@ -108,6 +109,10 @@
       width: 450px;
       box-sizing: border-box;
     }
+    #block-input-area p {
+        font-weight: 600;
+        color: #d32f2f;
+    }
     #block-input-area input {
       margin-bottom: 10px;
       width: 100%;
@@ -158,7 +163,7 @@
   </div>
 
     <div id="block-input-area">
-    <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700;"></span>**</p>
+    <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700; color: #d32f2f;"></span>**</p>
     <label for="block-start-time">Start Time (e.g., 18:00):</label>
     <input type="time" id="block-start-time" required>
     <label for="block-end-time">End Time (e.g., 19:30):</label>
@@ -255,12 +260,16 @@
       const startTime = document.getElementById('block-start-time').value;
       const endTime = document.getElementById('block-end-time').value;
       const notes = document.getElementById('host-notes').value;
+      
+      // Get the currently selected table's ID
+      const selectedTableGroup = selectedGroup; 
 
-      if (!selectedTableId || !startTime || !endTime || !notes) {
-        alert('Please select a table and fill all time/note fields.');
+      if (!selectedTableId || !startTime || !endTime || !notes || !selectedTableGroup) {
+        alert('Please select a table and fill all required fields (Start/End Time, Notes).');
         return;
       }
       
+      // Convert table ID string ('g-1') to number (1)
       const tableIdNum = parseInt(selectedTableId.replace('g-', ''), 10);
 
       const { error } = await _supa.from('premium_slots').insert([
@@ -281,6 +290,9 @@
         
         // Reset UI and refresh map
         document.getElementById('block-input-area').style.display = 'none';
+        selectedTableId = null; // Clear selected ID
+        selectedGroup = null; // Clear selected group
+
         loadTables(); 
       }
     };
@@ -352,6 +364,7 @@
 
       // Click/Tap to select table and open the block input area
       group.on('mousedown touchstart', () => {
+        // Highlight logic
         if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
         selectedGroup = group;
         tableRect.stroke('#ffeb3b');
