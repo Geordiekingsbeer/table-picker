@@ -37,7 +37,7 @@
   <script>
     // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJip3.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
@@ -62,13 +62,19 @@
         
         const tableRect = group.findOne('.main-table');
         
-        // This MUST be set for rotation to work around the center
+        // 1. Set offset to center for correct rotation pivot
         group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
 
-        // Apply saved rotation (default 0 if null)
+        // 2. Correct initial position: The DB saves the top-left corner (t.x, t.y).
+        // Since we set the offset, we must move the group to (t.x + W/2, t.y + H/2)
+        // so the top-left of the visual shape lands at the intended t.x, t.y.
+        group.x(t.x + tableRect.width()/2);
+        group.y(t.y + tableRect.height()/2);
+        
+        // 3. Apply saved rotation
         group.rotation(t.rotation || 0); 
         
-        if (t.is_taken) { 
+        if (t.is_taken) { // Assumes 'is_taken' column exists or similar logic
             greyOut(t.id);
         }
       });
@@ -76,6 +82,7 @@
     }
     
     function drawTable(t) {
+      // NOTE: Initial x and y are temporary until the loadTables function adjusts them.
       const group = new Konva.Group({ 
         x: t.x, 
         y: t.y, 
@@ -97,7 +104,7 @@
       // Add click handler to the group
       group.on('click', () => selectTable(t.id));
 
-      // 2. Draw seats 
+      // 2. Draw seats (using finalized, flush logic)
       const baseSeatSize = 12; 
       const seatHalf = baseSeatSize / 2; 
 
