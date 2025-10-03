@@ -57,41 +57,53 @@
       group.add(tableRect);
 
       // 2. Draw seats with 'cut in half' appearance
-      const seatW = 12; // Seat width remains 12
-      const seatH = 6;  // FIX: Seat height is halved to 6
-      const seatOffset = seatH / 2; // Offset for positioning half on/half off the table
+      const baseSeatSize = 12;
+      const seatHalf = baseSeatSize / 2;
+      const seatOffset = seatHalf; // Used to position seat halfway over the edge
 
-      function makeSeat(x, y) {
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:x, y:y }));
+      function makeSeat(x, y, w, h) {
+        group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
       }
       
-      // -- Applying working CSS logic for different table sizes with new seat dimensions --
+      // -- Applying corrected seat logic based on table dimensions --
 
       if (t.w === 30 && t.h === 30) {
-        // 4 seats (top, bottom, left, right)
-        makeSeat(t.w/2 - seatW/2, -seatOffset);                    // top
-        makeSeat(t.w/2 - seatW/2, t.h - seatOffset);               // bottom
-        makeSeat(-seatOffset, t.h/2 - seatH/2);                    // left (x is half off, y centered)
-        makeSeat(t.w - seatOffset, t.h/2 - seatH/2);               // right (x is half off, y centered)
+        // FIX: 2 seats (top, bottom only)
+        const seatW = baseSeatSize; // Horizontal seat width
+        const seatH = seatHalf;     // Horizontal seat height
+
+        makeSeat(t.w/2 - seatW/2, -seatOffset, seatW, seatH);           // top
+        makeSeat(t.w/2 - seatW/2, t.h - seatOffset, seatW, seatH);      // bottom
+        
       } else if (t.w === 30 && t.h === 50) {
-        // Vertical rectangle, 4 seats (2 left, 2 right)
-        const v_spacing = (t.h - 2 * seatH) / 3; // Vertical space between seats
+        // FIX: 4 seats (2 left, 2 right) rotated 90 degrees (vertical rectangles)
+        const seatW = seatHalf;     // Vertical seat width
+        const seatH = baseSeatSize; // Vertical seat height
+        
+        // Vertical spacing logic for 2 seats on the long side (50px)
+        const v_spacing = (t.h - 2 * seatH) / 3; 
         
         // Left Seats: half off x-axis, correct y-axis
-        makeSeat(-seatOffset, v_spacing);
-        makeSeat(-seatOffset, v_spacing * 2 + seatH);
+        makeSeat(-seatOffset, v_spacing, seatW, seatH);
+        makeSeat(-seatOffset, v_spacing * 2 + seatH, seatW, seatH);
         
         // Right Seats: half off x-axis, correct y-axis
-        makeSeat(t.w - seatOffset, v_spacing);
-        makeSeat(t.w - seatOffset, v_spacing * 2 + seatH);
+        makeSeat(t.w - seatOffset, v_spacing, seatW, seatH);
+        makeSeat(t.w - seatOffset, v_spacing * 2 + seatH, seatW, seatH);
+        
       } else if (t.w === 90 && t.h === 30) {
-        // Horizontal rectangle, 8 seats (4 top, 4 bottom)
-        const h_spacing = (t.w - 4*seatW)/5; // Horizontal space between seats
-        for(let i=0; i<4; i++){
+        // FIX: 6 seats (3 top, 3 bottom)
+        const seatW = baseSeatSize; // Horizontal seat width
+        const seatH = seatHalf;     // Horizontal seat height
+
+        const h_spacing = t.w / 4; // Use 4 sections for 3 seats (e.g., space-seat-space-seat-space-seat-space)
+        
+        for(let i=0; i<3; i++){
+            const x_pos = h_spacing * (i+1) - seatW/2;
             // Top Seats
-            makeSeat(h_spacing * (i+1) + seatW * i, -seatOffset);
+            makeSeat(x_pos, -seatOffset, seatW, seatH);
             // Bottom Seats
-            makeSeat(h_spacing * (i+1) + seatW * i, t.h - seatOffset);
+            makeSeat(x_pos, t.h - seatOffset, seatW, seatH);
         }
       }
       
