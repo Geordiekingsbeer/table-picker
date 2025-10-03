@@ -5,33 +5,70 @@
   <title>Pick Your Table</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;text-align:center}
-    #container{
-      background:url('floorplan.png') no-repeat center center;
-      background-size:contain;
-      border:1px solid #ccc;
-      margin:20px auto;
-      width:480px;
-      height:480px;
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 20px 0;
     }
-    #payBtn{
-      margin-top:15px;
-      padding:12px 24px;
-      font-size:16px;
-      background:#1976d2;
-      color:#fff;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
+
+    h2 {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 20px;
     }
-    #payBtn:disabled{background:#bbb}
+
+    #room {
+      background: url('floorplan.png') no-repeat center center;
+      background-size: contain;
+      border: 1px solid #ccc;
+      margin: 0 auto 20px;
+      position: relative;
+      width: 480px;
+      height: 480px;
+    }
+
+    .table {
+      position: absolute;
+      border-radius: 0px;
+      cursor: pointer;
+      background: #b7d7a8;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      transition: background 0.2s;
+      border: 1px solid #000; /* Thin black border */
+    }
+
+    .taken {
+      background: #9e9e9e !important;
+      cursor: not-allowed;
+    }
+
+    #payBtn {
+      margin-top: 15px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #payBtn:disabled {
+      background: #bbb;
+    }
   </style>
 </head>
 <body>
   <h2>Tap the table you want</h2>
-  <div id="container"></div>
+  <div id="room"></div>
   <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
   <script>
@@ -40,170 +77,67 @@
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
-    const layer = new Konva.Layer();
-    stage.add(layer);
-    
+    const room = document.getElementById('room');
     const payBtn = document.getElementById('payBtn');
-    let selectedTableId = null; 
-    let selectedGroup = null; 
 
-    const TABLE_COLOR = '#b7d7a8'; 
-    const SEAT_COLOR = '#555';     
-    const TAKEN_COLOR = '#9e9e9e'; 
+    let selectedTable = null;
 
     async function loadTables() {
-      // Ensure 'rotation' is selected from the database
-      const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
+      const { data, error } = await _supa.from('tables').select('*').order('id');
       if (error) { console.error(error); return; }
-      
-      data.forEach(t => {
-        const group = drawTable(t);
-        
-        const tableRect = group.findOne('.main-table');
-        
-        // 1. Set offset to center for correct rotation pivot
-        group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
-
-        // 2. Correct initial position: The DB saves the top-left corner (t.x, t.y).
-        // Since we set the offset, we must move the group to (t.x + W/2, t.y + H/2)
-        // so the top-left of the visual shape lands at the intended t.x, t.y.
-        group.x(t.x + tableRect.width()/2);
-        group.y(t.y + tableRect.height()/2);
-        
-        // 3. Apply saved rotation
-        group.rotation(t.rotation || 0); 
-        
-        if (t.is_taken) { // Assumes 'is_taken' column exists or similar logic
-            greyOut(t.id);
-        }
-      });
-      layer.draw();
+      data.forEach(drawTable);
     }
-    
+
     function drawTable(t) {
-      // NOTE: Initial x and y are temporary until the loadTables function adjusts them.
-      const group = new Konva.Group({ 
-        x: t.x, 
-        y: t.y, 
-        id: 'g-' + t.id,
-      });
-      layer.add(group);
-
-      // 1. Add the table rectangle 
-      const tableRect = new Konva.Rect({ 
-        width: t.w, 
-        height: t.h, 
-        fill: TABLE_COLOR, 
-        stroke: '#000', 
-        strokeWidth: 1,
-        name: 'main-table' 
-      });
-      group.add(tableRect);
-
-      // Add click handler to the group
-      group.on('click', () => selectTable(t.id));
-
-      // 2. Draw seats (using finalized, flush logic)
-      const baseSeatSize = 12; 
-      const seatHalf = baseSeatSize / 2; 
-
-      function makeSeat(x, y, w, h) {
-        group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
-      }
-      
-      if (t.w === 30 && t.h === 30) {
-        const seatW = baseSeatSize; 
-        const seatH = seatHalf;     
-        
-        makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);           
-        makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);              
-        
-      } else if (t.w === 30 && t.h === 50) {
-        const seatW = seatHalf;     
-        const seatH = baseSeatSize; 
-        
-        const v_spacing = (t.h - 2 * seatH) / 3; 
-        
-        makeSeat(-seatW, v_spacing, seatW, seatH);                  
-        makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);       
-        
-        makeSeat(t.w, v_spacing, seatW, seatH);                     
-        makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);          
-        
-      } else if (t.w === 90 && t.h === 30) {
-        const seatW = baseSeatSize; 
-        const seatH = seatHalf;     
-        
-        const h_spacing = t.w / 4; 
-        
-        for(let i=0; i<3; i++){
-            const x_pos = h_spacing * (i+1) - seatW/2;
-            makeSeat(x_pos, -seatH, seatW, seatH);                  
-            makeSeat(x_pos, t.h, seatW, seatH);                     
-        }
-      }
-      return group;
+      const d = document.createElement('div');
+      d.className = 'table';
+      d.id = 't-' + t.id;
+      d.style.left = t.x + 'px';
+      d.style.top = t.y + 'px';
+      d.style.width = t.w + 'px';
+      d.style.height = t.h + 'px';
+      // Mobile + desktop support
+      d.addEventListener('click', () => selectTable(t.id));
+      d.addEventListener('touchstart', () => selectTable(t.id));
+      room.appendChild(d);
     }
 
     function selectTable(id) {
-      const group = layer.findOne('#g-' + id);
-      const tableRect = group.findOne('.main-table');
-
-      if (tableRect.fill() === TAKEN_COLOR) return;
-
-      if (selectedGroup) {
-        selectedGroup.findOne('.main-table').stroke('#000');
-      }
-
-      selectedGroup = group;
-      selectedTableId = id;
-      tableRect.stroke('#ffeb3b'); // Highlight selected table
+      const el = document.getElementById('t-' + id);
+      if (el.classList.contains('taken')) return;
+      document.querySelectorAll('.table').forEach(el => el.style.border = '1px solid #000');
+      el.style.border = '3px solid #ffeb3b';
+      selectedTable = id;
       payBtn.disabled = false;
-      layer.draw();
-    }
-
-    function greyOut(id) {
-      const group = layer.findOne('#g-' + id);
-      if (group) {
-        const tableRect = group.findOne('.main-table');
-        tableRect.fill(TAKEN_COLOR);
-        tableRect.stroke('#000'); 
-        layer.draw();
-        
-        if (selectedTableId === id) {
-            selectedTableId = null;
-            selectedGroup = null;
-            payBtn.disabled = true;
-        }
-      }
     }
 
     _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
       if (payload.new.paid) greyOut(payload.new.table_id);
     }).subscribe();
 
+    function greyOut(id) {
+      const el = document.getElementById('t-' + id);
+      if (el) el.classList.add('taken');
+    }
+
     /* Stripe Checkout via Vercel */
     payBtn.onclick = async () => {
-      if (!selectedTableId) return;
+      if (!selectedTable) return;
       const email = prompt('Enter your email for confirmation:');
       if (!email) return alert('Email is required');
+
       try {
         const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_id: selectedTableId, email: email })
+          body: JSON.stringify({ table_id: selectedTable, email: email })
         });
         const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;    
-        } else {
-          console.error(data);
-          alert('Checkout creation failed. See console for details.');
-        }
+        if (data.url) window.location.href = data.url;
+        else { console.error(data); alert('Checkout creation failed.'); }
       } catch (err) {
         console.error(err);
-        alert('Checkout creation failed. See console for details.');
+        alert('Checkout creation failed.');
       }
     };
 
