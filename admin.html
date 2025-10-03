@@ -62,26 +62,32 @@
       const seatOffset = 5; // Space between table and seat
 
       if(t.capacity === 2){
-        // Left Seat: Use negative X
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: -seatW - seatOffset, y:t.h/2 - seatH/2 }));
-        // Right Seat: Use X > t.w
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: t.w + seatOffset, y:t.h/2 - seatH/2 }));
+        // FIX: For your 30x30 tables, put the two seats on top and bottom
+        // Top Seat
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w/2 - seatW/2, y: -seatH - seatOffset }));
+        // Bottom Seat
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w/2 - seatW/2, y: t.h + seatOffset }));
       }
       else if(t.capacity === 4){
-        // Top Seats: Use negative Y
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.2, y: -seatH - seatOffset }));
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.6, y: -seatH - seatOffset }));
-        // Bottom Seats: Use Y > t.h
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.2, y: t.h + seatOffset }));
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.6, y: t.h + seatOffset }));
+        // FIX: For your 30x50 tables, put the four seats on the left and right (the long sides)
+        const v_spacing = (t.h - 2 * seatW) / 3; // Vertical space between two seats
+
+        // Left Seats: Use negative X
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: -seatW - seatOffset, y:v_spacing - seatH/2 }));
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: -seatW - seatOffset, y:v_spacing * 2 + seatW - seatH/2 }));
+        
+        // Right Seats: Use X > t.w
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: t.w + seatOffset, y:v_spacing - seatH/2 }));
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: t.w + seatOffset, y:v_spacing * 2 + seatW - seatH/2 }));
       }
       else if(t.capacity === 6){
-        const spacing = (t.w - 3*seatW)/2;
+        // Logic for 90x30 tables remains good (3 seats top, 3 bottom)
+        const spacing = (t.w - 3*seatW)/4;
         for(let i=0;i<3;i++){
           // Top Seats
-          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y: -seatH - seatOffset }));
+          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:spacing * (i+1) + seatW * i, y: -seatH - seatOffset }));
           // Bottom Seats
-          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y: t.h + seatOffset }));
+          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:spacing * (i+1) + seatW * i, y: t.h + seatOffset }));
         }
       }
 
