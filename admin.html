@@ -7,12 +7,23 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;text-align:center;background:#f7f7f7;}
+    body{
+        font-family:Arial,Helvetica,sans-serif;
+        text-align:center;
+        background:#f7f7f7;
+        /* FIX: Apply Flexbox for vertical centering */
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center content horizontally */
+        justify-content: center; /* Center content vertically */
+        min-height: 100vh; /* Ensure body takes up full viewport height */
+        margin: 0; /* Remove default body margin */
+    }
     #container{
-      margin:20px auto; /* Centers horizontally */
+      /* margin:20px auto; (Removed auto margin as flex centers it) */
+        margin-top: 20px; /* Re-add some top margin for spacing */
       width:480px;
       height:480px;
-      /* REMOVED HTML BACKGROUND STYLING */
       border:1px solid #ccc;
     }
     button{padding:8px 16px;font-size:14px;margin:0 5px;cursor:pointer;}
@@ -35,11 +46,10 @@
 
     const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
     
-    // Create two layers: one for the background, one for tables
     const backgroundLayer = new Konva.Layer();
     stage.add(backgroundLayer);
     
-    const layer = new Konva.Layer(); // This is the layer for tables
+    const layer = new Konva.Layer(); 
     stage.add(layer);
 
     let tables = [];
@@ -47,7 +57,6 @@
     const TABLE_COLOR = '#b7d7a8';
     const SEAT_COLOR = '#555';
 
-    // --- NEW: Function to load the background image into Konva ---
     function loadBackground(callback) {
       const imageObj = new Image();
       imageObj.onload = function() {
@@ -64,7 +73,6 @@
       };
       imageObj.src = 'floorplan.png'; // Make sure this path is correct
     }
-    // -----------------------------------------------------------------
 
     async function loadTables() {
       const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
@@ -97,7 +105,6 @@
       });
       group.add(tableRect);
 
-      // 2. Draw seats 
       const baseSeatSize = 12; 
       const seatHalf = baseSeatSize / 2; 
 
@@ -180,7 +187,6 @@
       }
     };
 
-    // Load the background image first, then load the tables
     loadBackground(loadTables);
   </script>
 </body>
