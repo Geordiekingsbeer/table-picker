@@ -153,9 +153,10 @@
     async function loadBookings(date, time) {
       const selectedMinutes = timeToMinutes(time);
       
+      // FIX: Add .eq('date', date) directly to the fetch query for robust filtering
       const { data, error } = await _supa.from('premium_slots')
         .select('table_id,start_time,end_time')
-        .eq('date', date);
+        .eq('date', date); // <-- Ensures we only get data for the selected date
       
       if(error){ console.error('Error fetching bookings:', error); return []; }
       
@@ -216,15 +217,15 @@
       const tableRect = new Konva.Rect({ width:t.w, height:t.h, fill: isBlocked ? TAKEN_COLOR : TABLE_COLOR, stroke:'#000', strokeWidth:1, name:'main-table' });
       group.add(tableRect);
 
-      // --- Full Seat Drawing Logic Restored ---
+      // --- Full Seat Drawing Logic ---
       const baseSeatSize = 12; 
       const seatHalf = baseSeatSize / 2; 
       function makeSeat(x, y, w, h) { group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y })); }
 
-      if (t.w === 30 && t.h === 30) { const seatW = baseSeatSize, seatH = seatHalf; makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH); makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH); } 
-      else if (t.w === 30 && t.h === 50) { const seatW = seatHalf, seatH = baseSeatSize; const v_spacing = (t.h - 2*seatH)/3; makeSeat(-seatW, v_spacing, seatW, seatH); makeSeat(-seatW, v_spacing*2 + seatH, seatW, seatH); makeSeat(t.w, v_spacing, seatW, seatH); makeSeat(t.w, v_spacing*2 + seatH, seatW, seatH); } 
+      if (t.w === 30 && t.h === 30) { const seatW = baseSeatSize, seatH = seatHalf; makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH); makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH); } 
+      else if (t.w === 30 && t.h === 50) { const seatW = seatHalf, seatH = baseSeatSize; const v_spacing = (t.h - 2*seatH)/3; makeSeat(-seatW, v_spacing, seatW, seatH); makeSeat(-seatW, v_spacing*2 + seatH, seatW, seatH); makeSeat(t.w, v_spacing, seatW, seatH); makeSeat(t.w, v_spacing*2 + seatH, seatW, seatH); } 
       else if (t.w === 90 && t.h === 30) { const seatW = baseSeatSize, seatH = seatHalf; const h_spacing = t.w / 4; for(let i=0; i<3; i++){ const x_pos = h_spacing*(i+1) - seatW/2; makeSeat(x_pos, -seatH, seatW, seatH); makeSeat(x_pos, t.h, seatW, seatH); } }
-      // -----------------------------------------
+      // ---------------------------------
 
       group.on('mousedown touchstart', ()=>{
         // Deselect old group
@@ -260,8 +261,7 @@ document.getElementById('block-slot-button').onclick=async()=>{
 
   // Hide input and refresh (this will trigger loadTables again and fetch the new blocked status)
   document.getElementById('block-input-area').style.display='none';
-  // We MUST NOT clear selectedGroup here, or the following lines will fail! 
-  // We rely on loadTables to clear it later.
+  // We rely on loadTables to clear selectedGroup and selectedTableId by reloading
   
   await loadTables();
 };
