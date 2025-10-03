@@ -196,7 +196,7 @@
 
     // Globals for the scheduling feature
     const TURN_DURATION_MINUTES = 90; 
-    let selectedTableId = null; // Stores the ID of the table clicked for blocking
+    let selectedTableId = null; // Stores the STRING ID of the table clicked for blocking ('g-1')
 
     // Helper function to convert time string (e.g., "18:00") to minutes for comparison
     const timeToMinutes = (time) => {
@@ -256,12 +256,13 @@
       const endTime = document.getElementById('block-end-time').value;
       const notes = document.getElementById('host-notes').value;
 
-      if (!selectedTableId || !startTime || !endTime || !notes) {
+      if (!selectedGroup || !startTime || !endTime || !notes) {
         alert('Please select a table and fill all required fields (Start/End Time, Notes).');
         return;
       }
       
-      const tableIdNum = parseInt(selectedTableId.replace('g-', ''), 10);
+      // FIX: Get table ID safely from the group object
+      const tableIdNum = parseInt(selectedGroup.id().replace('g-', ''), 10);
 
       const { error } = await _supa.from('premium_slots').insert([
         { 
@@ -362,7 +363,7 @@
         layer.draw();
         
         // Open the blocking interface
-        selectedTableId = group.id;
+        selectedTableId = group.id();
         document.getElementById('block-table-id').textContent = selectedTableId.replace('g-', '');
         document.getElementById('block-input-area').style.display = 'flex';
       });
