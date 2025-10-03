@@ -218,9 +218,10 @@ async function drawTables(){
   const time = document.getElementById('booking-time').value;
   blockedIds  = await fetchBlockedTableIds(date, time);
 
+  /*  ALWAYS grab the newest layout from the DB  */
   const {data, error} = await _supa.from('tables').select('*').order('id');
   if(error){ alert('Error loading tables: '+error.message); return; }
-  tablesJSON = data;
+  tablesJSON = data;          // <-- cache the fresh rows
 
   tablesJSON.forEach(t => {
     const isBlocked = blockedIds.has(t.id);
@@ -287,6 +288,9 @@ document.getElementById('block-slot-button').onclick = async () => {
 
   // add to local Set so later refreshes are consistent
   blockedIds.add(tableId);
+
+  /*  NEW:  keep selector on the slot we just blocked  */
+  document.getElementById('booking-time').value = start;
 
   // reset UI
   document.getElementById('block-input-area').style.display = 'none';
