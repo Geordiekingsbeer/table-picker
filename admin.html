@@ -11,24 +11,43 @@
         font-family:Arial,Helvetica,sans-serif;
         text-align:center;
         background:#f7f7f7;
-        /* FIX: Apply Flexbox for vertical centering */
+        /* Vertical Centering: Use Flexbox on the body */
         display: flex;
         flex-direction: column;
-        align-items: center; /* Center content horizontally */
-        justify-content: center; /* Center content vertically */
-        min-height: 100vh; /* Ensure body takes up full viewport height */
-        margin: 0; /* Remove default body margin */
+        align-items: center; 
+        justify-content: center; 
+        min-height: 100vh; 
+        margin: 0; 
+    }
+    h2 {
+        /* This prevents the h2 from taking up full width and makes the centering look cleaner */
+        width: 100%;
+        margin: 0;
+        padding-top: 20px;
     }
     #container{
-      /* margin:20px auto; (Removed auto margin as flex centers it) */
-        margin-top: 20px; /* Re-add some top margin for spacing */
+      margin-top:20px; /* Spacing from the header */
+      margin-bottom: 20px;
       width:480px;
       height:480px;
       border:1px solid #ccc;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Added box shadow for a nicer lift */
     }
-    button{padding:8px 16px;font-size:14px;margin:0 5px;cursor:pointer;}
-    #save{background:#388e3c;color:#fff;border:none;border-radius:4px;}
-    #rotate{background:#1976d2;color:#fff;border:none;border-radius:4px;}
+    button{
+        padding:8px 16px;
+        font-size:14px;
+        margin:0 5px;
+        cursor:pointer;
+        border: none;
+        border-radius: 4px;
+        transition: background-color 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Added button shadow */
+    }
+    button:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    #save{background:#388e3c;color:#fff;}
+    #rotate{background:#1976d2;color:#fff;}
   </style>
 </head>
 <body>
