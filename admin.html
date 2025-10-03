@@ -2,12 +2,14 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Admin – Table Layout</title>
+  <title>Admin – Arrange Tables</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; text-align: center; }
-    h2 { margin-top: 10px; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+    }
     #room {
       background: url('floorplan.png') no-repeat center center;
       background-size: contain;
@@ -19,34 +21,32 @@
     }
     .table {
       position: absolute;
-      background: #A8E6CF;
-      color: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: bold;
+      background: #b7d7a8;
       border: 1px solid #000;
+      box-sizing: border-box;
       cursor: move;
-      user-select: none;
-      transform-origin: center center;
+      z-index: 2; /* always above seats */
     }
-    .rotateBtn {
+    .seat {
       position: absolute;
-      bottom: -18px;
+      width: 12px;
+      height: 12px;
+      background: #444;
+      border: 1px solid #000;
+      z-index: 1; /* below table */
+    }
+    .rotate-btn {
+      position: absolute;
+      bottom: -22px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 10px;
-      padding: 2px 5px;
+      font-size: 12px;
+      padding: 2px 6px;
       cursor: pointer;
-      background: #1976d2;
-      color: white;
-      border: none;
-      border-radius: 3px;
     }
     #saveBtn {
       margin-top: 15px;
-      padding: 12px 24px;
+      padding: 10px 20px;
       font-size: 16px;
       background: #1976d2;
       color: #fff;
@@ -57,85 +57,143 @@
   </style>
 </head>
 <body>
-  <h2>Drag tables where you want → Rotate → Save layout</h2>
+  <h2>Drag tables where you want → Save layout</h2>
   <div id="room"></div>
   <button id="saveBtn">Save Layout</button>
 
   <script>
-    // ✅ Supabase setup
+    // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';  // <-- replace with your real anon key
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const room = document.getElementById('room');
     const saveBtn = document.getElementById('saveBtn');
 
+    let tables = [];
+
     async function loadTables() {
       const { data, error } = await _supa.from('tables').select('*').order('id');
       if (error) { console.error(error); return; }
+      tables = data;
       data.forEach(drawTable);
     }
 
     function drawTable(t) {
-      const d = document.createElement('div');
-      d.className = 'table';
-      d.id = 't-' + t.id;
-      d.style.left = t.x + 'px';
-      d.style.top = t.y + 'px';
-      d.style.width = t.w + 'px';
-      d.style.height = t.h + 'px';
-      d.style.transform = `rotate(${t.rotation || 0}deg)`;
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = t.x + 'px';
+      container.style.top = t.y + 'px';
+      container.style.width = t.w + 'px';
+      container.style.height = t.h + 'px';
+      container.style.transform = `rotate(${t.rotation || 0}deg)`;
+      container.id = 'wrap-' + t.id;
 
-      // rotate button
+      // Table itself
+      const table = document.createElement('div');
+      table.className = 'table';
+      table.id = 't-' + t.id;
+      table.style.width = t.w + 'px';
+      table.style.height = t.h + 'px';
+      table.onmousedown = dragMouseDown;
+
+      // Rotate button
       const rotateBtn = document.createElement('button');
+      rotateBtn.className = 'rotate-btn';
       rotateBtn.textContent = '⟳';
-      rotateBtn.className = 'rotateBtn';
       rotateBtn.onclick = (e) => {
         e.stopPropagation();
-        let current = parseInt(d.dataset.rotation || t.rotation || 0);
-        current = (current + 90) % 360;
-        d.dataset.rotation = current;
-        d.style.transform = `rotate(${current}deg)`;
+        t.rotation = ((t.rotation || 0) + 90) % 360;
+        container.style.transform = `rotate(${t.rotation}deg)`;
       };
+      table.appendChild(rotateBtn);
 
-      d.appendChild(rotateBtn);
+      // Add chairs (beneath)
+      addSeats(container, t.w, t.h);
 
-      // drag behaviour
-      let offsetX, offsetY;
-      d.onmousedown = (e) => {
-        if (e.target.tagName === 'BUTTON') return; // ignore clicks on rotate button
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
-        function move(ev) {
-          d.style.left = (ev.pageX - room.offsetLeft - offsetX) + 'px';
-          d.style.top = (ev.pageY - room.offsetTop - offsetY) + 'px';
-        }
-        document.addEventListener('mousemove', move);
-        document.onmouseup = () => {
-          document.removeEventListener('mousemove', move);
-          document.onmouseup = null;
-        };
-      };
-
-      room.appendChild(d);
+      container.appendChild(table);
+      room.appendChild(container);
     }
 
+    function addSeats(container, w, h) {
+      const seatSize = 12;
+      function makeSeat(x, y) {
+        const seat = document.createElement('div');
+        seat.className = 'seat';
+        seat.style.left = x + 'px';
+        seat.style.top = y + 'px';
+        container.appendChild(seat);
+      }
+
+      if (w === 30 && h === 30) {
+        makeSeat(w/2 - seatSize/2, -seatSize/2);
+        makeSeat(w/2 - seatSize/2, h - seatSize/2);
+        makeSeat(-seatSize/2, h/2 - seatSize/2);
+        makeSeat(w - seatSize/2, h/2 - seatSize/2);
+      } else if (w === 30 && h === 60) {
+        makeSeat(w/2 - seatSize/2, -seatSize/2);
+        makeSeat(w/2 - seatSize/2, h - seatSize/2);
+        makeSeat(-seatSize/2, h/4 - seatSize/2);
+        makeSeat(-seatSize/2, 3*h/4 - seatSize/2);
+        makeSeat(w - seatSize/2, h/4 - seatSize/2);
+        makeSeat(w - seatSize/2, 3*h/4 - seatSize/2);
+      } else if (w === 60 && h === 30) {
+        makeSeat(w/4 - seatSize/2, -seatSize/2);
+        makeSeat(3*w/4 - seatSize/2, -seatSize/2);
+        makeSeat(w/4 - seatSize/2, h - seatSize/2);
+        makeSeat(3*w/4 - seatSize/2, h - seatSize/2);
+        makeSeat(-seatSize/2, h/2 - seatSize/2);
+        makeSeat(w - seatSize/2, h/2 - seatSize/2);
+      } else if (w === 90 && h === 30) {
+        makeSeat(w/5 - seatSize/2, -seatSize/2);
+        makeSeat(2*w/5 - seatSize/2, -seatSize/2);
+        makeSeat(3*w/5 - seatSize/2, -seatSize/2);
+        makeSeat(4*w/5 - seatSize/2, -seatSize/2);
+        makeSeat(w/5 - seatSize/2, h - seatSize/2);
+        makeSeat(2*w/5 - seatSize/2, h - seatSize/2);
+        makeSeat(3*w/5 - seatSize/2, h - seatSize/2);
+        makeSeat(4*w/5 - seatSize/2, h - seatSize/2);
+      }
+    }
+
+    // Dragging logic
+    let dragItem = null, offsetX = 0, offsetY = 0;
+    function dragMouseDown(e) {
+      dragItem = e.target.closest('.table').parentElement;
+      offsetX = e.clientX - dragItem.offsetLeft;
+      offsetY = e.clientY - dragItem.offsetTop;
+      document.onmousemove = elementDrag;
+      document.onmouseup = closeDrag;
+    }
+    function elementDrag(e) {
+      if (!dragItem) return;
+      dragItem.style.left = (e.clientX - offsetX) + 'px';
+      dragItem.style.top = (e.clientY - offsetY) + 'px';
+    }
+    function closeDrag() {
+      document.onmousemove = null;
+      document.onmouseup = null;
+      dragItem = null;
+    }
+
+    // Save button
     saveBtn.onclick = async () => {
       const updates = [];
-      document.querySelectorAll('.table').forEach(el => {
-        const id = el.id.replace('t-', '');
+      tables.forEach(t => {
+        const wrap = document.getElementById('wrap-' + t.id);
+        const rect = wrap.getBoundingClientRect();
+        const roomRect = room.getBoundingClientRect();
         updates.push({
-          id: parseInt(id),
-          x: parseInt(el.style.left),
-          y: parseInt(el.style.top),
-          w: parseInt(el.style.width),
-          h: parseInt(el.style.height),
-          rotation: parseInt(el.dataset.rotation || 0)
+          id: t.id,
+          x: wrap.offsetLeft,
+          y: wrap.offsetTop,
+          rotation: t.rotation || 0
         });
       });
-      for (let row of updates) {
-        const { error } = await _supa.from('tables').update(row).eq('id', row.id);
-        if (error) console.error(error);
+      for (let u of updates) {
+        await _supa.from('tables').update({
+          x: u.x, y: u.y, rotation: u.rotation
+        }).eq('id', u.id);
       }
       alert('Layout saved!');
     };
