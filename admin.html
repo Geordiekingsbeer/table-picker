@@ -56,9 +56,9 @@
       });
       group.add(tableRect);
 
-      // 2. Draw seats with 'cut in half' appearance
+      // 2. Draw seats with 'flush with table edge' appearance
       const baseSeatSize = 12; // Base dimension (W or H)
-      const seatHalf = baseSeatSize / 2; // Fixed half dimension (6)
+      const seatHalf = baseSeatSize / 2; // 6px
 
       function makeSeat(x, y, w, h) {
         group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
@@ -70,42 +70,41 @@
         // 2 seats (top, bottom only) - Horizontal (12x6)
         const seatW = baseSeatSize; 
         const seatH = seatHalf;     
-        const seatOffset = seatH / 2; // FIX: Offset for top/bottom is 3px (half of seatH)
-
-        makeSeat(t.w/2 - seatW/2, -seatOffset, seatW, seatH);           // top
-        makeSeat(t.w/2 - seatW/2, t.h - seatOffset, seatW, seatH);      // bottom
+        
+        // FIX: Positions are offset by the FULL protruding dimension (seatH=6)
+        makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);           // top (Y= -6)
+        makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);              // bottom (Y= t.h)
         
       } else if (t.w === 30 && t.h === 50) {
         // 4 seats (2 left, 2 right) - Vertical (6x12)
         const seatW = seatHalf;     
         const seatH = baseSeatSize; 
-        const seatOffset = seatW / 2; // FIX: Offset for left/right is 3px (half of seatW)
         
         // Vertical spacing logic for 2 seats on the long side (50px)
         const v_spacing = (t.h - 2 * seatH) / 3; 
         
-        // Left Seats: half off x-axis, correct y-axis
-        makeSeat(-seatOffset, v_spacing, seatW, seatH);
-        makeSeat(-seatOffset, v_spacing * 2 + seatH, seatW, seatH);
+        // FIX: Positions are offset by the FULL protruding dimension (seatW=6)
+        // Left Seats
+        makeSeat(-seatW, v_spacing, seatW, seatH);                  // Left X= -6
+        makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);       // Left X= -6
         
-        // Right Seats: half off x-axis, correct y-axis
-        makeSeat(t.w - seatOffset, v_spacing, seatW, seatH);
-        makeSeat(t.w - seatOffset, v_spacing * 2 + seatH, seatW, seatH);
+        // Right Seats
+        makeSeat(t.w, v_spacing, seatW, seatH);                     // Right X= t.w
+        makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);          // Right X= t.w
         
       } else if (t.w === 90 && t.h === 30) {
         // 6 seats (3 top, 3 bottom) - Horizontal (12x6)
         const seatW = baseSeatSize; 
         const seatH = seatHalf;     
-        const seatOffset = seatH / 2; // FIX: Offset for top/bottom is 3px (half of seatH)
-
+        
         const h_spacing = t.w / 4; 
         
         for(let i=0; i<3; i++){
             const x_pos = h_spacing * (i+1) - seatW/2;
             // Top Seats
-            makeSeat(x_pos, -seatOffset, seatW, seatH);
+            makeSeat(x_pos, -seatH, seatW, seatH);                  // Top Y= -6
             // Bottom Seats
-            makeSeat(x_pos, t.h - seatOffset, seatW, seatH);
+            makeSeat(x_pos, t.h, seatW, seatH);                     // Bottom Y= t.h
         }
       }
       
