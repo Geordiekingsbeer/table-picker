@@ -5,167 +5,103 @@
   <title>Pick Your Table</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;text-align:center}
-    #room{
-      background:url('floorplan.png') no-repeat center center;
-      background-size:contain;
-      border:1px solid #ccc;
-      margin:20px auto;
-      position:relative;
-      width:480px;
-      height:480px;
-    }
-    .table{
-      position:absolute;
-      cursor:pointer;
-      background:#A8E6CF;
-      border:1px solid #000;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:bold;
-      transition:background .2s;
-    }
-    .taken{background:#9e9e9e!important;cursor:not-allowed}
-    .seat{
-      position:absolute;
-      width:12px;
-      height:12px;
-      background:#666;
-      border:1px solid #000;
-      box-sizing:border-box;
-    }
-    #payBtn{
-      margin-top:15px;
-      padding:12px 24px;
-      font-size:16px;
-      background:#1976d2;
-      color:#fff;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
-    }
+    body{font-family:Arial,Helvetica,sans-serif;text-align:center;background:#f7f7f7;}
+    #container{margin:20px auto;width:480px;height:480px;background:url('floorplan.png') no-repeat center center;background-size:contain;position:relative;}
+    #payBtn{margin-top:15px;padding:12px 24px;font-size:16px;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer}
     #payBtn:disabled{background:#bbb}
   </style>
 </head>
 <body>
   <h2>Tap the table you want</h2>
-  <div id="room"></div>
+  <div id="container"></div>
   <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
   <script>
-    // Supabase setup
+    // --- Supabase setup ---
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const room = document.getElementById('room');
+    const container = document.getElementById('container');
     const payBtn = document.getElementById('payBtn');
-    let selectedTable = null;
+    let selectedGroup = null;
+
+    const stage = new Konva.Stage({ container: 'container', width:480, height:480 });
+    const layer = new Konva.Layer();
+    stage.add(layer);
+
+    const SEAT_COLOR = '#555';
+    let tables = [];
 
     async function loadTables() {
       const { data, error } = await _supa.from('tables').select('*').order('id');
-      if (error) { console.error(error); return; }
+      if(error){ console.error(error); alert('Error loading tables'); return; }
+      tables = data;
       data.forEach(drawTable);
     }
 
-    function drawTable(t) {
-      const d = document.createElement('div');
-      d.className = 'table';
-      d.id = 't-' + t.id;
-      d.style.left = t.x + 'px';
-      d.style.top = t.y + 'px';
-      d.style.width = t.w + 'px';
-      d.style.height = t.h + 'px';
-      d.onclick = () => selectTable(t.id);
+    function drawTable(t){
+      const group = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id });
+      layer.add(group);
 
-      // add seats based on table size
-      const seatSize = 12;
+      const rect = new Konva.Rect({ width:t.w, height:t.h, fill:'#b7d7a8', stroke:'#000', strokeWidth:1 });
+      group.add(rect);
 
-      function makeSeat(x, y) {
-        const seat = document.createElement('div');
-        seat.className = 'seat';
-        seat.style.left = x + 'px';
-        seat.style.top = y + 'px';
-        d.appendChild(seat);
+      drawSeats(t, group);
+
+      group.on('click', () => {
+        if(selectedGroup) selectedGroup.findOne('Rect').stroke('#000'); // reset previous
+        selectedGroup = group;
+        rect.stroke('#ffeb3b'); // highlight selected
+        layer.draw();
+      });
+    }
+
+    function drawSeats(table, group){
+      const seatWidth = 20;
+      const seatHeight = 10;
+      const seats = [];
+
+      if(table.capacity===2){
+        seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:0, y:table.h/2 - seatHeight/2 }));
+        seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:table.w - seatWidth, y:table.h/2 - seatHeight/2 }));
+      } else if(table.capacity===4){
+        seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:table.w*0.2, y:-seatHeight/2 }));
+        seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:table.w*0.6, y:-seatHeight/2 }));
+        seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:table.w*0.2, y:table.h - seatHeight/2 }));
+        seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:table.w*0.6, y:table.h - seatHeight/2 }));
+      } else if(table.capacity===6){
+        const spacing = (table.w - 3*seatWidth)/2;
+        for(let i=0;i<3;i++){
+          seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:i*(seatWidth+spacing), y:-seatHeight/2 }));
+          seats.push(new Konva.Rect({ width:seatWidth, height:seatHeight, fill:SEAT_COLOR, x:i*(seatWidth+spacing), y:table.h - seatHeight/2 }));
+        }
       }
 
-      if (t.w === 30 && t.h === 30) {
-        // 4 seats
-        makeSeat(t.w/2 - seatSize/2, -seatSize/2);           // top
-        makeSeat(t.w/2 - seatSize/2, t.h - seatSize/2);      // bottom
-        makeSeat(-seatSize/2, t.h/2 - seatSize/2);           // left
-        makeSeat(t.w - seatSize/2, t.h/2 - seatSize/2);      // right
-      } else if (t.w === 30 && t.h === 60) {
-        // vertical rectangle, 6 seats
-        makeSeat(t.w/2 - seatSize/2, -seatSize/2);           // top
-        makeSeat(t.w/2 - seatSize/2, t.h - seatSize/2);      // bottom
-        makeSeat(-seatSize/2, t.h/4 - seatSize/2);           // left top
-        makeSeat(-seatSize/2, 3*t.h/4 - seatSize/2);         // left bottom
-        makeSeat(t.w - seatSize/2, t.h/4 - seatSize/2);      // right top
-        makeSeat(t.w - seatSize/2, 3*t.h/4 - seatSize/2);    // right bottom
-      } else if (t.w === 60 && t.h === 30) {
-        // horizontal rectangle, 6 seats
-        makeSeat(t.w/4 - seatSize/2, -seatSize/2);           // top left
-        makeSeat(3*t.w/4 - seatSize/2, -seatSize/2);         // top right
-        makeSeat(t.w/4 - seatSize/2, t.h - seatSize/2);      // bottom left
-        makeSeat(3*t.w/4 - seatSize/2, t.h - seatSize/2);    // bottom right
-        makeSeat(-seatSize/2, t.h/2 - seatSize/2);           // left
-        makeSeat(t.w - seatSize/2, t.h/2 - seatSize/2);      // right
-      } else if (t.w === 90 && t.h === 30) {
-        // long rectangle, 8 seats
-        makeSeat(t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(2*t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(3*t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(4*t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(t.w/5 - seatSize/2, t.h - seatSize/2);
-        makeSeat(2*t.w/5 - seatSize/2, t.h - seatSize/2);
-        makeSeat(3*t.w/5 - seatSize/2, t.h - seatSize/2);
-        makeSeat(4*t.w/5 - seatSize/2, t.h - seatSize/2);
-      }
-
-      room.appendChild(d);
+      seats.forEach(s => group.add(s));
+      group.findOne('Rect').moveToTop(); // table on top of seats
     }
 
-    function selectTable(id) {
-      if (document.getElementById('t-' + id).classList.contains('taken')) return;
-      document.querySelectorAll('.table').forEach(el => el.style.border = '');
-      document.getElementById('t-' + id).style.border = '3px solid #ffeb3b';
-      selectedTable = id;
-      payBtn.disabled = false;
-    }
-
-    _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
-      if (payload.new.paid) greyOut(payload.new.table_id);
-    }).subscribe();
-
-    function greyOut(id) {
-      const el = document.getElementById('t-' + id);
-      if (el) el.classList.add('taken');
-    }
-
-    /* Stripe Checkout via Vercel */
+    // Stripe Checkout
     payBtn.onclick = async () => {
-      if (!selectedTable) return;
+      if(!selectedGroup) return alert('Select a table first');
+      const tableId = parseInt(selectedGroup.id().replace('g-',''));
       const email = prompt('Enter your email for confirmation:');
-      if (!email) return alert('Email is required');
+      if(!email) return alert('Email required');
+
       try {
         const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_id: selectedTable, email: email })
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ table_id:tableId, email:email })
         });
         const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;   // go to Stripe
-        } else {
-          console.error(data);
-          alert('Checkout creation failed. See console for details.');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Checkout creation failed. See console for details.');
+        if(data.url) window.location.href = data.url;
+        else{ console.error(data); alert('Checkout creation failed'); }
+      } catch(err){
+        console.error(err); alert('Checkout creation failed');
       }
     };
 
