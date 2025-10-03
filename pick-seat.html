@@ -1,175 +1,184 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <title>Pick Your Table</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    body{font-family:Arial,Helvetica,sans-serif;text-align:center}
-    #room{
-      background:url('floorplan.png') no-repeat center center;
-      background-size:contain;
-      border:1px solid #ccc;
-      margin:20px auto;
-      position:relative;
-      width:480px;
-      height:480px;
-    }
-    .table{
-      position:absolute;
-      cursor:pointer;
-      background:#A8E6CF;
-      border:1px solid #000;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:bold;
-      transition:background .2s;
-    }
-    .taken{background:#9e9e9e!important;cursor:not-allowed}
-    .seat{
-      position:absolute;
-      width:12px;
-      height:12px;
-      background:#666;
-      border:1px solid #000;
-      box-sizing:border-box;
-    }
-    #payBtn{
-      margin-top:15px;
-      padding:12px 24px;
-      font-size:16px;
-      background:#1976d2;
-      color:#fff;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
-    }
-    #payBtn:disabled{background:#bbb}
-  </style>
+  <meta charset="utf-8"/>
+  <title>Pick Your Table</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;text-align:center}
+    #room{
+      background:url('floorplan.png') no-repeat center center;
+      background-size:contain;
+      border:1px solid #ccc;
+      margin:20px auto;
+      position:relative;
+      width:480px;
+      height:480px;
+    }
+    .table{
+      position:absolute;
+      cursor:pointer;
+      background:#A8E6CF; /* Table Color */
+      border:1px solid #000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:bold;
+      transition:background .2s;
+    }
+    .taken{background:#9e9e9e!important;cursor:not-allowed}
+    .seat{
+      position:absolute;
+      background:#555; /* Seat Color */
+      border:1px solid #000;
+      box-sizing:border-box;
+    }
+    #payBtn{
+      margin-top:15px;
+      padding:12px 24px;
+      font-size:16px;
+      background:#1976d2;
+      color:#fff;
+      border:none;
+      border-radius:4px;
+      cursor:pointer;
+    }
+    #payBtn:disabled{background:#bbb}
+  </style>
 </head>
 <body>
-  <h2>Tap the table you want</h2>
-  <div id="room"></div>
-  <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
+  <h2>Tap the table you want</h2>
+  <div id="room"></div>
+  <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
-  <script>
-    // Supabase setup
-    const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+  <script>
+    // Supabase setup
+    const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const room = document.getElementById('room');
-    const payBtn = document.getElementById('payBtn');
-    let selectedTable = null;
+    const room = document.getElementById('room');
+    const payBtn = document.getElementById('payBtn');
+    let selectedTable = null;
 
-    async function loadTables() {
-      const { data, error } = await _supa.from('tables').select('*').order('id');
-      if (error) { console.error(error); return; }
-      data.forEach(drawTable);
-    }
+    async function loadTables() {
+      const { data, error } = await _supa.from('tables').select('*').order('id');
+      if (error) { console.error(error); return; }
+      data.forEach(drawTable);
+    }
 
-    function drawTable(t) {
-      const d = document.createElement('div');
-      d.className = 'table';
-      d.id = 't-' + t.id;
-      d.style.left = t.x + 'px';
-      d.style.top = t.y + 'px';
-      d.style.width = t.w + 'px';
-      d.style.height = t.h + 'px';
-      d.onclick = () => selectTable(t.id);
+    function drawTable(t) {
+      const d = document.createElement('div');
+      d.className = 'table';
+      d.id = 't-' + t.id;
+      d.style.left = t.x + 'px';
+      d.style.top = t.y + 'px';
+      d.style.width = t.w + 'px';
+      d.style.height = t.h + 'px';
+      d.onclick = () => selectTable(t.id);
 
-      // add seats based on table size
-      const seatSize = 12;
+      // Seat dimensions and logic from the final Admin page
+      const baseSeatSize = 12; // Base dimension (W or H)
+      const seatHalf = baseSeatSize / 2; // 6px
 
-      function makeSeat(x, y) {
-        const seat = document.createElement('div');
-        seat.className = 'seat';
-        seat.style.left = x + 'px';
-        seat.style.top = y + 'px';
-        d.appendChild(seat);
-      }
+      function makeSeat(x, y, w, h) {
+        const seat = document.createElement('div');
+        seat.className = 'seat';
+        seat.style.width = w + 'px';
+        seat.style.height = h + 'px';
+        seat.style.left = x + 'px';
+        seat.style.top = y + 'px';
+        d.appendChild(seat);
+      }
 
-      if (t.w === 30 && t.h === 30) {
-        // 4 seats
-        makeSeat(t.w/2 - seatSize/2, -seatSize/2);           // top
-        makeSeat(t.w/2 - seatSize/2, t.h - seatSize/2);      // bottom
-        makeSeat(-seatSize/2, t.h/2 - seatSize/2);           // left
-        makeSeat(t.w - seatSize/2, t.h/2 - seatSize/2);      // right
-      } else if (t.w === 30 && t.h === 60) {
-        // vertical rectangle, 6 seats
-        makeSeat(t.w/2 - seatSize/2, -seatSize/2);           // top
-        makeSeat(t.w/2 - seatSize/2, t.h - seatSize/2);      // bottom
-        makeSeat(-seatSize/2, t.h/4 - seatSize/2);           // left top
-        makeSeat(-seatSize/2, 3*t.h/4 - seatSize/2);         // left bottom
-        makeSeat(t.w - seatSize/2, t.h/4 - seatSize/2);      // right top
-        makeSeat(t.w - seatSize/2, 3*t.h/4 - seatSize/2);    // right bottom
-      } else if (t.w === 60 && t.h === 30) {
-        // horizontal rectangle, 6 seats
-        makeSeat(t.w/4 - seatSize/2, -seatSize/2);           // top left
-        makeSeat(3*t.w/4 - seatSize/2, -seatSize/2);         // top right
-        makeSeat(t.w/4 - seatSize/2, t.h - seatSize/2);      // bottom left
-        makeSeat(3*t.w/4 - seatSize/2, t.h - seatSize/2);    // bottom right
-        makeSeat(-seatSize/2, t.h/2 - seatSize/2);           // left
-        makeSeat(t.w - seatSize/2, t.h/2 - seatSize/2);      // right
-      } else if (t.w === 90 && t.h === 30) {
-        // long rectangle, 8 seats
-        makeSeat(t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(2*t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(3*t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(4*t.w/5 - seatSize/2, -seatSize/2);
-        makeSeat(t.w/5 - seatSize/2, t.h - seatSize/2);
-        makeSeat(2*t.w/5 - seatSize/2, t.h - seatSize/2);
-        makeSeat(3*t.w/5 - seatSize/2, t.h - seatSize/2);
-        makeSeat(4*t.w/5 - seatSize/2, t.h - seatSize/2);
-      }
+      if (t.w === 30 && t.h === 30) {
+        // 2 seats (top, bottom only) - Horizontal (12x6)
+        const seatW = baseSeatSize; 
+        const seatH = seatHalf;     
+        
+        // Positioning uses FULL seat height (6px) to be flush with the edge
+        makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);           // top (Y= -6)
+        makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);              // bottom (Y= t.h)
+        
+      } else if (t.w === 30 && t.h === 50) {
+        // 4 seats (2 left, 2 right) - Vertical (6x12)
+        const seatW = seatHalf;     
+        const seatH = baseSeatSize; 
+        
+        const v_spacing = (t.h - 2 * seatH) / 3; 
+        
+        // Positioning uses FULL seat width (6px) to be flush with the edge
+        // Left Seats
+        makeSeat(-seatW, v_spacing, seatW, seatH);                  // Left X= -6
+        makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);       // Left X= -6
+        
+        // Right Seats
+        makeSeat(t.w, v_spacing, seatW, seatH);                     // Right X= t.w
+        makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);          // Right X= t.w
+        
+      } else if (t.w === 90 && t.h === 30) {
+        // 6 seats (3 top, 3 bottom) - Horizontal (12x6)
+        const seatW = baseSeatSize; 
+        const seatH = seatHalf;     
+        
+        const h_spacing = t.w / 4; 
+        
+        for(let i=0; i<3; i++){
+            const x_pos = h_spacing * (i+1) - seatW/2;
+            // Top Seats
+            makeSeat(x_pos, -seatH, seatW, seatH);                  // Top Y= -6
+            // Bottom Seats
+            makeSeat(x_pos, t.h, seatW, seatH);                     // Bottom Y= t.h
+        }
+      }
+      // NOTE: Tables with 60x30 or 30x60 dimensions will use the old default logic here if they exist.
 
-      room.appendChild(d);
-    }
+      room.appendChild(d);
+    }
 
-    function selectTable(id) {
-      if (document.getElementById('t-' + id).classList.contains('taken')) return;
-      document.querySelectorAll('.table').forEach(el => el.style.border = '');
-      document.getElementById('t-' + id).style.border = '3px solid #ffeb3b';
-      selectedTable = id;
-      payBtn.disabled = false;
-    }
+    function selectTable(id) {
+      if (document.getElementById('t-' + id).classList.contains('taken')) return;
+      document.querySelectorAll('.table').forEach(el => el.style.border = '');
+      document.getElementById('t-' + id).style.border = '3px solid #ffeb3b';
+      selectedTable = id;
+      payBtn.disabled = false;
+    }
 
-    _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
-      if (payload.new.paid) greyOut(payload.new.table_id);
-    }).subscribe();
+    _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
+      if (payload.new.paid) greyOut(payload.new.table_id);
+    }).subscribe();
 
-    function greyOut(id) {
-      const el = document.getElementById('t-' + id);
-      if (el) el.classList.add('taken');
-    }
+    function greyOut(id) {
+      const el = document.getElementById('t-' + id);
+      if (el) el.classList.add('taken');
+    }
 
-    /* Stripe Checkout via Vercel */
-    payBtn.onclick = async () => {
-      if (!selectedTable) return;
-      const email = prompt('Enter your email for confirmation:');
-      if (!email) return alert('Email is required');
-      try {
-        const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_id: selectedTable, email: email })
-        });
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;   // go to Stripe
-        } else {
-          console.error(data);
-          alert('Checkout creation failed. See console for details.');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Checkout creation failed. See console for details.');
-      }
-    };
+    /* Stripe Checkout via Vercel */
+    payBtn.onclick = async () => {
+      if (!selectedTable) return;
+      const email = prompt('Enter your email for confirmation:');
+      if (!email) return alert('Email is required');
+      try {
+        const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table_id: selectedTable, email: email })
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;   // go to Stripe
+        } else {
+          console.error(data);
+          alert('Checkout creation failed. See console for details.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Checkout creation failed. See console for details.');
+      }
+    };
 
-    loadTables();
-  </script>
+    loadTables();
+  </script>
 </body>
 </html>
