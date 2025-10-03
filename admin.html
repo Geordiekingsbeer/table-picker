@@ -196,7 +196,7 @@
 
     // Globals for the scheduling feature
     const TURN_DURATION_MINUTES = 90; 
-    let selectedTableId = null; // Stores the ID of the table clicked for blocking
+    let selectedTableId = null; 
 
     // Helper function to convert time string (e.g., "18:00") to minutes for comparison
     const timeToMinutes = (time) => {
@@ -355,7 +355,7 @@
 
       // Click/Tap to select table and open the block input area
       group.on('mousedown touchstart', () => {
-        // Highlight logic
+        // FIX: Check if selectedGroup exists before trying to access its children
         if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
         selectedGroup = group;
         tableRect.stroke('#ffeb3b');
