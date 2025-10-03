@@ -68,11 +68,11 @@ function drawTable(t){
   group.on('click', () => { selectedGroup = group; });
 }
 
-// Seat placement
+// Seat placement – all seats are rectangles (6x12)
 function addSeats(group, w, h){
-  const seatWidth = 6;   // rectangle width
-  const seatHeight = 12; // rectangle height (sticks out half)
-  
+  const seatWidth = 6;   
+  const seatHeight = 12;
+
   function makeSeat(x,y){ 
     const seat = new Konva.Rect({
       x:x, y:y,
@@ -82,25 +82,26 @@ function addSeats(group, w, h){
     group.add(seat);
   }
 
-  if (w===30 && h===30){ // 2-seater
+  if(w===30 && h===30){ // 2-seater
     makeSeat(w/2 - seatWidth/2, -seatHeight/2);  // top
     makeSeat(w/2 - seatWidth/2, h - seatHeight/2); // bottom
   } else if ((w===30 && h===60) || (w===60 && h===30)){ // 4-seater
+    // 2 on each side
     if(h>w){ // vertical
-      makeSeat(-seatWidth/2, h/4 - seatHeight/2);   // left top
+      makeSeat(-seatWidth/2, h/4 - seatHeight/2); // left top
       makeSeat(-seatWidth/2, 3*h/4 - seatHeight/2); // left bottom
-      makeSeat(w - seatWidth/2, h/4 - seatHeight/2);   // right top
+      makeSeat(w - seatWidth/2, h/4 - seatHeight/2); // right top
       makeSeat(w - seatWidth/2, 3*h/4 - seatHeight/2); // right bottom
     } else { // horizontal
-      makeSeat(w/4 - seatWidth/2, -seatHeight/2);      // top left
-      makeSeat(3*w/4 - seatWidth/2, -seatHeight/2);    // top right
-      makeSeat(w/4 - seatWidth/2, h - seatHeight/2);   // bottom left
+      makeSeat(w/4 - seatWidth/2, -seatHeight/2); // top left
+      makeSeat(3*w/4 - seatWidth/2, -seatHeight/2); // top right
+      makeSeat(w/4 - seatWidth/2, h - seatHeight/2); // bottom left
       makeSeat(3*w/4 - seatWidth/2, h - seatHeight/2); // bottom right
     }
   } else if (w===90 && h===30){ // 6-seater
     for(let i=1;i<=3;i++){
-      makeSeat(i*(w/4) - seatWidth/2, -seatHeight/2);    // top row 3
-      makeSeat(i*(w/4) - seatWidth/2, h - seatHeight/2); // bottom row 3
+      makeSeat(i*(w/4) - seatWidth/2, -seatHeight/2);    // top 3
+      makeSeat(i*(w/4) - seatWidth/2, h - seatHeight/2); // bottom 3
     }
   }
 }
