@@ -8,8 +8,9 @@
   <style>
     body{font-family:Arial,Helvetica,sans-serif;text-align:center}
     #room{background:url('floorplan.png') no-repeat center center;background-size:contain;border:1px solid #ccc;margin:20px auto;position:relative;width:480px;height:480px}
-    .table{position:absolute;border-radius:0px;cursor:pointer;background:#b7d7a8;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;transition:background .2s;border:1px solid #000}   /* THIN BLACK BORDER */
+    .table{position:absolute;cursor:pointer;background:#A8E6CF;display:flex;align-items:center;justify-content:center;transition:background .2s;border:1px solid #000}
     .taken{background:#9e9e9e!important;cursor:not-allowed}
+    .seat{width:8px;height:8px;border-radius:50%;background:#444;position:absolute}
     #payBtn{margin-top:15px;padding:12px 24px;font-size:16px;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer}
     #payBtn:disabled{background:#bbb}
   </style>
@@ -20,13 +21,11 @@
   <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
 
   <script>
-    // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg'; // your anon key
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
     const room = document.getElementById('room');
     const payBtn = document.getElementById('payBtn');
-
     let selectedTable = null;
 
     async function loadTables() {
@@ -39,18 +38,38 @@
       const d = document.createElement('div');
       d.className = 'table';
       d.id = 't-' + t.id;
-      // **NO customer-visible text** – they just see the shape
       d.style.left = t.x + 'px';
       d.style.top = t.y + 'px';
       d.style.width = t.w + 'px';
       d.style.height = t.h + 'px';
       d.onclick = () => selectTable(t.id);
       room.appendChild(d);
+
+      // Seats
+      const seatCount = getSeatCount(t.w, t.h);
+      for (let i = 0; i < seatCount; i++) {
+        const seat = document.createElement('div');
+        seat.className = 'seat';
+        const angle = (i / seatCount) * (2 * Math.PI);
+        const x = (t.w / 2) + (t.w / 2 + 6) * Math.cos(angle) - 4;
+        const y = (t.h / 2) + (t.h / 2 + 6) * Math.sin(angle) - 4;
+        seat.style.left = x + 'px';
+        seat.style.top = y + 'px';
+        d.appendChild(seat);
+      }
+    }
+
+    function getSeatCount(w, h) {
+      if (w === 30 && h === 30) return 2;
+      if (w === 30 && h === 60) return 4;
+      if (w === 60 && h === 30) return 4;
+      if (w === 90 && h === 30) return 6;
+      return 4;
     }
 
     function selectTable(id) {
       if (document.getElementById('t-' + id).classList.contains('taken')) return;
-      document.querySelectorAll('.table').forEach(el => el.style.border = '');
+      document.querySelectorAll('.table').forEach(el => el.style.border = '1px solid #000');
       document.getElementById('t-' + id).style.border = '3px solid #ffeb3b';
       selectedTable = id;
       payBtn.disabled = false;
@@ -65,7 +84,6 @@
       if (el) el.classList.add('taken');
     }
 
-    /* Stripe Checkout via Vercel */
     payBtn.onclick = async () => {
       if (!selectedTable) return;
       const email = prompt('Enter your email for confirmation:');
@@ -78,7 +96,7 @@
         });
         const data = await res.json();
         if (data.url) {
-          window.location.href = data.url;   // go to Stripe
+          window.location.href = data.url;
         } else {
           console.error(data);
           alert('Checkout creation failed. See console for details.');
