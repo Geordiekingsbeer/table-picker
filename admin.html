@@ -56,45 +56,44 @@
       });
       group.add(tableRect);
 
-      // 2. Draw seats using the coordinate logic from your working CSS code
-      const seatSize = 12; // seat width and height (W=H=12)
-      const seatW = seatSize;
-      const seatH = seatSize;
-      const seatOffset = seatSize/2; // This is the value needed to correctly position the seat outside the table
+      // 2. Draw seats with 'cut in half' appearance
+      const seatW = 12; // Seat width remains 12
+      const seatH = 6;  // FIX: Seat height is halved to 6
+      const seatOffset = seatH / 2; // Offset for positioning half on/half off the table
 
       function makeSeat(x, y) {
         group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:x, y:y }));
       }
       
-      // -- Applying working CSS logic for different table sizes --
+      // -- Applying working CSS logic for different table sizes with new seat dimensions --
 
       if (t.w === 30 && t.h === 30) {
         // 4 seats (top, bottom, left, right)
-        makeSeat(t.w/2 - seatOffset, -seatOffset);                    // top
-        makeSeat(t.w/2 - seatOffset, t.h - seatOffset);               // bottom
-        makeSeat(-seatOffset, t.h/2 - seatOffset);                    // left
-        makeSeat(t.w - seatOffset, t.h/2 - seatOffset);               // right
+        makeSeat(t.w/2 - seatW/2, -seatOffset);                    // top
+        makeSeat(t.w/2 - seatW/2, t.h - seatOffset);               // bottom
+        makeSeat(-seatOffset, t.h/2 - seatH/2);                    // left (x is half off, y centered)
+        makeSeat(t.w - seatOffset, t.h/2 - seatH/2);               // right (x is half off, y centered)
       } else if (t.w === 30 && t.h === 50) {
-        // NOTE: Your old code had 30x60 here, but your data shows 30x50. Using 30x50 here.
         // Vertical rectangle, 4 seats (2 left, 2 right)
-        makeSeat(-seatOffset, t.h/4 - seatOffset);                   // left top
-        makeSeat(-seatOffset, 3*t.h/4 - seatOffset);                 // left bottom
-        makeSeat(t.w - seatOffset, t.h/4 - seatOffset);              // right top
-        makeSeat(t.w - seatOffset, 3*t.h/4 - seatOffset);            // right bottom
+        const v_spacing = (t.h - 2 * seatH) / 3; // Vertical space between seats
+        
+        // Left Seats: half off x-axis, correct y-axis
+        makeSeat(-seatOffset, v_spacing);
+        makeSeat(-seatOffset, v_spacing * 2 + seatH);
+        
+        // Right Seats: half off x-axis, correct y-axis
+        makeSeat(t.w - seatOffset, v_spacing);
+        makeSeat(t.w - seatOffset, v_spacing * 2 + seatH);
       } else if (t.w === 90 && t.h === 30) {
         // Horizontal rectangle, 8 seats (4 top, 4 bottom)
-        // Using t.w/5, 2*t.w/5, etc. for spacing, matching your old code's intent
-        makeSeat(t.w/5 - seatOffset, -seatOffset);
-        makeSeat(2*t.w/5 - seatOffset, -seatOffset);
-        makeSeat(3*t.w/5 - seatOffset, -seatOffset);
-        makeSeat(4*t.w/5 - seatOffset, -seatOffset);
-        makeSeat(t.w/5 - seatOffset, t.h - seatOffset);
-        makeSeat(2*t.w/5 - seatOffset, t.h - seatOffset);
-        makeSeat(3*t.w/5 - seatOffset, t.h - seatOffset);
-        makeSeat(4*t.w/5 - seatOffset, t.h - seatOffset);
+        const h_spacing = (t.w - 4*seatW)/5; // Horizontal space between seats
+        for(let i=0; i<4; i++){
+            // Top Seats
+            makeSeat(h_spacing * (i+1) + seatW * i, -seatOffset);
+            // Bottom Seats
+            makeSeat(h_spacing * (i+1) + seatW * i, t.h - seatOffset);
+        }
       }
-      
-      // Note: The original code for 60x30 tables is missing from your data, so it is omitted here.
       
       group.on('click', () => {
         // Un-highlight previous table
