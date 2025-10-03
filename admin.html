@@ -11,22 +11,27 @@
     h2{margin:10px}
     button{padding:8px 16px;font-size:14px;margin:0 5px}
     #save{background:#388e3c;color:#fff;border:none;border-radius:4px;cursor:pointer}
+    #rotate{background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer}
     #container{display:flex;justify-content:center;margin-top:10px}
   </style>
 </head>
 <body>
-  <h2>Drag tables where you want → <button id="save">Save layout</button> <button id="rotate">Rotate 90°</button></h2>
+  <h2>Drag tables where you want → 
+    <button id="save">Save layout</button> 
+    <button id="rotate">Rotate 90°</button>
+  </h2>
   <div id="container"></div>
 
   <script>
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'YOUR_SUPABASE_ANON_KEY';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
     const layer = new Konva.Layer();
     stage.add(layer);
 
+    // Background floorplan
     const bgImage = new Image();
     bgImage.src = 'floorplan.png';
     bgImage.onload = () => {
@@ -50,7 +55,7 @@
       const table = new Konva.Rect({ width:t.w, height:t.h, fill:'#A8E6CF', stroke:'#000', strokeWidth:1, cornerRadius:4 });
       group.add(table);
 
-      addSeats(group, t); // add rectangle seats behind table
+      addSeats(group, t); // rectangle seats behind table
 
       layer.add(group);
       layer.draw();
@@ -65,9 +70,9 @@
     }
 
     function addSeats(group, table){
-      const seatW = 6, seatH = 12;
-      const capacity = table.capacity || 4;
+      const seatW = 6, seatH = 12; // rectangle seat
       const w = table.w, h = table.h;
+      const cap = table.capacity || 4;
 
       function makeSeat(x,y){
         const seat = new Konva.Rect({ x:x, y:y, width:seatW, height:seatH, fill:'#444', stroke:'#000', strokeWidth:1 });
@@ -75,27 +80,20 @@
         seat.moveToBottom(); // behind table
       }
 
-      if(capacity === 2){
-        makeSeat(w/2 - seatW/2, -seatH/2);
-        makeSeat(w/2 - seatW/2, h - seatH/2);
+      if(cap===2){
+        makeSeat(w/2 - seatW/2, -seatH/2); // top
+        makeSeat(w/2 - seatW/2, h - seatH/2); // bottom
       }
-      else if(capacity === 4){
-        if(w >= h){
-          makeSeat(w/4 - seatW/2, -seatH/2);
-          makeSeat(3*w/4 - seatW/2, -seatH/2);
-          makeSeat(w/4 - seatW/2, h - seatH/2);
-          makeSeat(3*w/4 - seatW/2, h - seatH/2);
-        } else {
-          makeSeat(-seatW/2, h/4 - seatH/2);
-          makeSeat(-seatW/2, 3*h/4 - seatH/2);
-          makeSeat(w - seatW/2, h/4 - seatH/2);
-          makeSeat(w - seatW/2, 3*h/4 - seatH/2);
-        }
+      else if(cap===4){
+        makeSeat(w/4 - seatW/2, -seatH/2);
+        makeSeat(3*w/4 - seatW/2, -seatH/2);
+        makeSeat(w/4 - seatW/2, h - seatH/2);
+        makeSeat(3*w/4 - seatW/2, h - seatH/2);
       }
-      else if(capacity === 6){
+      else if(cap===6){
         for(let i=1;i<=3;i++){
-          makeSeat(i*(w/4) - seatW/2, -seatH/2);
-          makeSeat(i*(w/4) - seatW/2, h - seatH/2);
+          makeSeat(i*(w/4) - seatW/2, -seatH/2); // top
+          makeSeat(i*(w/4) - seatW/2, h - seatH/2); // bottom
         }
       }
     }
