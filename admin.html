@@ -12,8 +12,8 @@
         background:#f7f7f7;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        align-items: center; /* Centers all blocks horizontally */
+        justify-content: center; /* Centers blocks vertically */
         min-height: 100vh;
         margin: 0; 
         padding: 20px 0;
@@ -196,7 +196,7 @@
 
     // Globals for the scheduling feature
     const TURN_DURATION_MINUTES = 90; 
-    let selectedTableId = null; // Stores the STRING ID of the table clicked for blocking ('g-1')
+    let selectedTableId = null; // Stores the ID of the table clicked for blocking
 
     // Helper function to convert time string (e.g., "18:00") to minutes for comparison
     const timeToMinutes = (time) => {
@@ -261,7 +261,7 @@
         return;
       }
       
-      // FIX: Get table ID safely from the group object
+      // Get table ID safely from the group object
       const tableIdNum = parseInt(selectedGroup.id().replace('g-', ''), 10);
 
       const { error } = await _supa.from('premium_slots').insert([
@@ -282,8 +282,7 @@
         
         // Reset UI and refresh map
         document.getElementById('block-input-area').style.display = 'none';
-        selectedTableId = null; 
-        selectedGroup = null; 
+        selectedGroup = null; // Clear selected group
 
         loadTables(); 
       }
