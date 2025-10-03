@@ -1,43 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Pick Your Table</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-  <style>
-    body{font-family:Arial,Helvetica,sans-serif;text-align:center}
-    #container{
-      background:url('floorplan.png') no-repeat center center;
-      background-size:contain;
-      border:1px solid #ccc;
-      margin:20px auto;
-      width:480px;
-      height:480px;
-    }
-    #payBtn{
-      margin-top:15px;
-      padding:12px 24px;
-      font-size:16px;
-      background:#1976d2;
-      color:#fff;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
-    }
-    #payBtn:disabled{background:#bbb}
-  </style>
-</head>
-<body>
-  <h2>Tap the table you want</h2>
-  <div id="container"></div>
-  <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
-
+// --- CUSTOMER PAGE ONLY: REPLACE THE ENTIRE <script> BLOCK ---
   <script>
     // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJip3.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
@@ -45,27 +10,32 @@
     stage.add(layer);
     
     const payBtn = document.getElementById('payBtn');
-    let selectedTableId = null; // Changed from selectedTable to selectedTableId for clarity
-    let selectedGroup = null; // Konva Group for the currently selected table
+    let selectedTableId = null; 
+    let selectedGroup = null; 
 
-    const TABLE_COLOR = '#b7d7a8'; // Konva table color
-    const SEAT_COLOR = '#555';     // Konva seat color
-    const TAKEN_COLOR = '#9e9e9e'; // Matches your CSS .taken color
+    const TABLE_COLOR = '#b7d7a8'; 
+    const SEAT_COLOR = '#555';     
+    const TAKEN_COLOR = '#9e9e9e'; 
 
     async function loadTables() {
-      const { data, error } = await _supa.from('tables').select('*').order('id');
+      // Ensure 'rotation' is selected from the database
+      const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
       if (error) { console.error(error); return; }
       
       data.forEach(t => {
         const group = drawTable(t);
-        // Apply rotation from the database
-        if (t.rotation) {
-            const tableRect = group.findOne('.main-table');
-            group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
-            group.rotation(t.rotation);
-        }
-        // Mark tables as taken immediately if necessary
-        if (t.is_taken) { // Assuming your table data has a boolean 'is_taken' column
+        
+        // --- FIX: Apply Rotation and Offset ---
+        const tableRect = group.findOne('.main-table');
+        
+        // This MUST be set for rotation to work around the center
+        group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+
+        // Apply saved rotation (default 0 if null)
+        group.rotation(t.rotation || 0); 
+        // --- END FIX ---
+        
+        if (t.is_taken) { 
             greyOut(t.id);
         }
       });
@@ -73,12 +43,11 @@
     }
     
     function drawTable(t) {
-      // Create Konva Group at its saved position (x, y)
+      // Note: Konva handles the x,y as the top-left corner UNLESS an offset is applied later.
       const group = new Konva.Group({ 
         x: t.x, 
         y: t.y, 
         id: 'g-' + t.id,
-        // Tables are NOT draggable on the customer page
       });
       layer.add(group);
 
@@ -89,7 +58,7 @@
         fill: TABLE_COLOR, 
         stroke: '#000', 
         strokeWidth: 1,
-        name: 'main-table' // Tag for reliable selection
+        name: 'main-table' 
       });
       group.add(tableRect);
 
@@ -105,30 +74,25 @@
       }
       
       if (t.w === 30 && t.h === 30) {
-        // 2 seats (top, bottom only) - Horizontal (12x6)
         const seatW = baseSeatSize; 
         const seatH = seatHalf;     
         
-        makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);           // top 
-        makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);              // bottom 
+        makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);           
+        makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);              
         
       } else if (t.w === 30 && t.h === 50) {
-        // 4 seats (2 left, 2 right) - Vertical (6x12)
         const seatW = seatHalf;     
         const seatH = baseSeatSize; 
         
         const v_spacing = (t.h - 2 * seatH) / 3; 
         
-        // Left Seats
         makeSeat(-seatW, v_spacing, seatW, seatH);                  
         makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);       
         
-        // Right Seats
         makeSeat(t.w, v_spacing, seatW, seatH);                     
         makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);          
         
       } else if (t.w === 90 && t.h === 30) {
-        // 6 seats (3 top, 3 bottom) - Horizontal (12x6)
         const seatW = baseSeatSize; 
         const seatH = seatHalf;     
         
@@ -136,9 +100,7 @@
         
         for(let i=0; i<3; i++){
             const x_pos = h_spacing * (i+1) - seatW/2;
-            // Top Seats
             makeSeat(x_pos, -seatH, seatW, seatH);                  
-            // Bottom Seats
             makeSeat(x_pos, t.h, seatW, seatH);                     
         }
       }
@@ -149,18 +111,15 @@
       const group = layer.findOne('#g-' + id);
       const tableRect = group.findOne('.main-table');
 
-      // Check if table is already taken
       if (tableRect.fill() === TAKEN_COLOR) return;
 
-      // Reset border on previously selected table
       if (selectedGroup) {
         selectedGroup.findOne('.main-table').stroke('#000');
       }
 
-      // Select new table
       selectedGroup = group;
       selectedTableId = id;
-      tableRect.stroke('3px solid #ffeb3b'); // Highlight selected table
+      tableRect.stroke('#ffeb3b'); // Highlight selected table
       payBtn.disabled = false;
       layer.draw();
     }
@@ -170,7 +129,7 @@
       if (group) {
         const tableRect = group.findOne('.main-table');
         tableRect.fill(TAKEN_COLOR);
-        tableRect.stroke('#000'); // Remove selection highlight if taken
+        tableRect.stroke('#000'); 
         layer.draw();
         
         if (selectedTableId === id) {
@@ -182,7 +141,6 @@
     }
 
     _supa.channel('picks').on('postgres_changes', { event: '*', schema: 'public', table: 'picks' }, payload => {
-      // Assuming 'paid' is the trigger for greyOut
       if (payload.new.paid) greyOut(payload.new.table_id);
     }).subscribe();
 
@@ -199,7 +157,7 @@
         });
         const data = await res.json();
         if (data.url) {
-          window.location.href = data.url;    // go to Stripe
+          window.location.href = data.url;    
         } else {
           console.error(data);
           alert('Checkout creation failed. See console for details.');
@@ -212,5 +170,3 @@
 
     loadTables();
   </script>
-</body>
-</html>
