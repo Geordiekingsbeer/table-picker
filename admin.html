@@ -38,52 +38,58 @@
       if(error){ console.error(error); alert('Error loading tables'); return; }
       tables = data;
       tables.forEach(drawTable);
-      layer.draw(); // Make sure to draw the layer after all tables are added
+      layer.draw();
     }
 
     function drawTable(t){
       const group = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, draggable:true });
       layer.add(group);
 
-      // --- FIX: Add the table rectangle FIRST and give it a name/tag ---
+      // 1. Add the table rectangle first and tag it
       const tableRect = new Konva.Rect({ 
         width:t.w, 
         height:t.h, 
         fill:TABLE_COLOR, 
         stroke:'#000', 
         strokeWidth:1,
-        name: 'main-table' // Tag the main table for easy selection later
+        name: 'main-table' // Tag for reliable selection
       });
       group.add(tableRect);
-      // The seats will now be drawn *on top* of this rectangle.
 
-      // Draw seats
+      // 2. Draw seats outside the table boundaries
       const seatW = 20;
       const seatH = 10;
+      const seatOffset = 5; // Space between table and seat
 
       if(t.capacity === 2){
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:0 - seatW*0.75, y:t.h/2 - seatH/2 }));
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w + seatW*0.75 - seatW, y:t.h/2 - seatH/2 }));
+        // Left Seat: Use negative X
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: -seatW - seatOffset, y:t.h/2 - seatH/2 }));
+        // Right Seat: Use X > t.w
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x: t.w + seatOffset, y:t.h/2 - seatH/2 }));
       }
       else if(t.capacity === 4){
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.2, y:-seatH/2 - seatH*0.75 }));
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.6, y:-seatH/2 - seatH*0.75 }));
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.2, y:t.h - seatH/2 + seatH*0.75 }));
-        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.6, y:t.h - seatH/2 + seatH*0.75 }));
+        // Top Seats: Use negative Y
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.2, y: -seatH - seatOffset }));
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.6, y: -seatH - seatOffset }));
+        // Bottom Seats: Use Y > t.h
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.2, y: t.h + seatOffset }));
+        group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:t.w*0.6, y: t.h + seatOffset }));
       }
       else if(t.capacity === 6){
         const spacing = (t.w - 3*seatW)/2;
         for(let i=0;i<3;i++){
-          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y:-seatH/2 - seatH*0.75 }));
-          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y:t.h - seatH/2 + seatH*0.75 }));
+          // Top Seats
+          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y: -seatH - seatOffset }));
+          // Bottom Seats
+          group.add(new Konva.Rect({ width:seatW, height:seatH, fill:SEAT_COLOR, x:i*(seatW+spacing), y: t.h + seatOffset }));
         }
       }
 
-      // --- Removed the faulty group.findOne('Rect').moveToTop(); line. ---
-
       group.on('click', () => {
-        // Use the tag 'main-table' to reliably find the table rectangle
+        // Un-highlight previous table
         if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000'); 
+        
+        // Highlight new table
         selectedGroup = group;
         selectedGroup.findOne('.main-table').stroke('#ffeb3b');
         layer.draw();
@@ -92,9 +98,13 @@
 
     document.getElementById('rotate').onclick = () => {
       if(selectedGroup){
-        // Rotation now centers around the table center
         const tableRect = selectedGroup.findOne('.main-table');
-        selectedGroup.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+        
+        // Adjust pivot point (offset) to the center of the table for rotation
+        if (selectedGroup.offset().x === 0 && selectedGroup.offset().y === 0) {
+           selectedGroup.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+        }
+        
         selectedGroup.rotation(selectedGroup.rotation()+90);
         layer.draw();
       }
@@ -103,11 +113,16 @@
     document.getElementById('save').onclick = async () => {
       const updates = tables.map(t=>{
         const g = layer.findOne('#g-'+t.id);
-        
-        // Account for the offset we added for rotation
         const tableRect = g.findOne('.main-table');
-        const finalX = g.x() - tableRect.width()/2;
-        const finalY = g.y() - tableRect.height()/2;
+        
+        // Calculate the actual top-left corner (x,y) by factoring out the rotation offset
+        let finalX = g.x();
+        let finalY = g.y();
+        
+        if (g.offset().x !== 0 || g.offset().y !== 0) {
+            finalX = g.x() - tableRect.width()/2;
+            finalY = g.y() - tableRect.height()/2;
+        }
 
         return { id:t.id, x:finalX, y:finalY };
       });
