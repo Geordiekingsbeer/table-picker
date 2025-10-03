@@ -30,7 +30,6 @@
     }
 
     #container-wrapper {
-        /* FIX: This wrapper is necessary to keep Konva inside a centered flex item */
         display: flex;
         justify-content: center;
         width: 100%;
@@ -74,9 +73,9 @@
   </div>
 
   <script>
-    // --- Supabase setup ---
+    // --- Supabase setup (PLEASE CHECK AND PASTE YOUR VALID KEY HERE) ---
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K55jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const STAGE_WIDTH = 480;
@@ -118,10 +117,7 @@
         const group = drawTable(t);
         const tableRect = group.findOne('.main-table');
         
-        // Setup for rotation
         group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
-        
-        // Position Correction
         group.x(t.x + tableRect.width()/2);
         group.y(t.y + tableRect.height()/2);
         
