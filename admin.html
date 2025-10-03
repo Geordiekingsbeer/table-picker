@@ -145,6 +145,7 @@ Drag tables <span class="arrow">→</span>
 </div>
 
 <script>
+/* ---------- CONFIG ---------- */
 const supabaseUrl  = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
 const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
 const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
@@ -156,16 +157,20 @@ const TABLE_COLOR = '#b7d7a8';
 const TAKEN_COLOR = '#9e9e9e';
 const SEAT_COLOR  = '#555';
 
+/* ---------- STAGE & LAYERS ---------- */
 const stage = new Konva.Stage({container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT});
-const bgLayer  = new Konva.Layer(); stage.add(bgLayer);
+const bgLayer = new Konva.Layer(); stage.add(bgLayer);
 const tblLayer = new Konva.Layer(); stage.add(tblLayer);
 
+/* ---------- STATE ---------- */
 let tablesJSON = [];
 let blockedIds = new Set();
 let selectedGroup = null;
 
+/* ---------- UTILS ---------- */
 const timeToMinutes = t => { const [h,m] = t.split(':').map(Number); return h*60 + m; };
 
+/* ---------- TIME DROPDOWN ---------- */
 function populateTimeDropdown(){
   const slots = ['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
   const sel = document.getElementById('booking-time');
@@ -174,6 +179,7 @@ function populateTimeDropdown(){
   sel.value = '18:00';
 }
 
+/* ---------- FETCH BLOCKED TABLES ---------- */
 async function fetchBlockedTableIds(date, time){
   const wantedMin = timeToMinutes(time);
   const {data, error} = await _supa
@@ -187,10 +193,10 @@ async function fetchBlockedTableIds(date, time){
       const e = r.end_time ? timeToMinutes(r.end_time) : s + TURN_DURATION_MINUTES;
       return e > wantedMin && s < wantedMin + TURN_DURATION_MINUTES;
   }).map(r => r.table_id);
-
   return new Set(busy);
 }
 
+/* ---------- DRAW BACKGROUND ---------- */
 function drawBackground(cb){
   const img = new Image();
   img.onload = () => {
@@ -202,13 +208,14 @@ function drawBackground(cb){
   img.src = 'floorplan.png';
 }
 
+/* ---------- DRAW TABLES ---------- */
 async function drawTables(){
   tblLayer.destroyChildren();
   selectedGroup = null;
 
   const date = document.getElementById('booking-date').value;
   const time = document.getElementById('booking-time').value;
-  blockedIds = await fetchBlockedTableIds(date, time);
+  blockedIds  = await fetchBlockedTableIds(date, time);
 
   const {data, error} = await _supa.from('tables').select('*').order('id');
   if(error){ alert('Error loading tables: '+error.message); return; }
@@ -226,7 +233,8 @@ async function drawTables(){
     });
     group.add(rect);
 
-    group.add(new Konva.Rect({x:t.w/2-6, y:-6,  width:12, height:6, fill:SEAT_COLOR}));
+    // simple seats
+    group.add(new Konva.Rect({x:t.w/2-6, y:-6, width:12, height:6, fill:SEAT_COLOR}));
     group.add(new Konva.Rect({x:t.w/2-6, y:t.h, width:12, height:6, fill:SEAT_COLOR}));
 
     group.offset({x:t.w/2, y:t.h/2});
@@ -236,9 +244,17 @@ async function drawTables(){
 
     group.on('mousedown touchstart', () => selectTable(group));
   });
+
+  // update colors in case blockedIds changed
+  tblLayer.getChildren().forEach(g => {
+    const rect = g.findOne('.main-table');
+    if(rect) rect.fill(blockedIds.has(Number(g.id().slice(2))) ? TAKEN_COLOR : TABLE_COLOR);
+  });
+
   tblLayer.draw();
 }
 
+/* ---------- SELECT TABLE ---------- */
 function selectTable(group){
   if(selectedGroup){
     const oldRect = selectedGroup.findOne('.main-table');
@@ -254,6 +270,7 @@ function selectTable(group){
   document.getElementById('block-input-area').style.display = 'flex';
 }
 
+/* ---------- MANUAL BLOCK ---------- */
 document.getElementById('block-slot-button').onclick = async () => {
   if(!selectedGroup){ alert('No table selected'); return; }
   const date  = document.getElementById('booking-date').value;
@@ -268,12 +285,10 @@ document.getElementById('block-slot-button').onclick = async () => {
   }]);
   if(error){ alert('Block failed: '+error.message); return; }
 
-  // immediately update colour and blockedIds
+  // update immediately
   blockedIds.add(tableId);
-  tblLayer.getChildren().each(g => {
-      const rect = g.findOne('.main-table');
-      if(rect) rect.fill(blockedIds.has(Number(g.id().slice(2))) ? TAKEN_COLOR : TABLE_COLOR);
-  });
+  const rect = selectedGroup.findOne('.main-table');
+  if(rect) rect.fill(TAKEN_COLOR);
   tblLayer.draw();
 
   // reset UI
@@ -285,10 +300,12 @@ document.getElementById('block-slot-button').onclick = async () => {
   selectedGroup = null;
 };
 
+/* ---------- ROTATE ---------- */
 document.getElementById('rotate').onclick = () => {
   if(selectedGroup){ selectedGroup.rotation(selectedGroup.rotation() + 90); tblLayer.draw(); }
 };
 
+/* ---------- SAVE LAYOUT ---------- */
 document.getElementById('save').onclick = async () => {
   const updates = tablesJSON.map(t => {
     const g = tblLayer.findOne(`#g-${t.id}`);
@@ -302,8 +319,10 @@ document.getElementById('save').onclick = async () => {
   if(error){ alert('Save failed: '+error.message); } else { alert('Layout saved!'); }
 };
 
+/* ---------- REFRESH MAP ---------- */
 document.getElementById('view-schedule').onclick = drawTables;
 
+/* ---------- INIT ---------- */
 populateTimeDropdown();
 drawBackground(drawTables);
 </script>
