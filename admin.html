@@ -1,703 +1,781 @@
-<!DOCTYPE html>
-
 <html>
-
 <head>
-
-  <meta charset="utf-8"/>
-
-  <title>Admin – Drag Tables</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-
-  <style>
-
-    body {
-
-      font-family: Arial, Helvetica, sans-serif;
-
-      background:#f7f7f7;
-
-      display: flex;
-
-      flex-direction: column;
-
-      align-items: center;
-
-      justify-content: center;
-
-      min-height: 100vh;
-
-      margin: 0;
-
-      padding: 20px 0;
-
-    }
-
-    h2 {
-
-      display: flex;
-
-      align-items: center;
-
-      justify-content: center;
-
-      font-size: 22px;
-
-      font-weight: 700;
-
-      color: #333;
-
-      margin-bottom: 25px;
-
-      flex-wrap: wrap;
-
-      gap: 10px;
-
-      width: 100%;
-
-    }
-
-    h2 .arrow { font-weight:700; font-size:24px; margin:0 10px; color:#1976d2; }
-
-    h2 button {
-
-      padding: 10px 20px;
-
-      font-size: 15px;
-
-      font-weight: 600;
-
-      border-radius: 6px;
-
-      border: none;
-
-      cursor: pointer;
-
-      color: #fff;
-
-      transition: all 0.2s ease;
-
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-
-    }
-
-    h2 button#save { background-color: #388e3c; }
-
-    h2 button#rotate { background-color: #1976d2; }
-
-    h2 button:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); opacity:0.95; }
-
-
-
-    #schedule-controls {
-
-      margin-bottom: 15px;
-
-      padding: 10px 20px;
-
-      background: #fff;
-
-      border-radius: 8px;
-
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-
-      display: flex;
-
-      align-items: center;
-
-      gap: 15px;
-
-    }
-
-    #schedule-controls label {
-
-      font-weight: 600;
-
-      margin-right: 5px;
-
-      font-size: 14px;
-
-      color: #555;
-
-    }
-
-    #schedule-controls input, #schedule-controls select {
-
-      padding: 8px;
-
-      border: 1px solid #ccc;
-
-      border-radius: 4px;
-
-    }
-
-    #schedule-controls button {
-
-      background: #1976d2;
-
-      color: #fff;
-
-      padding: 8px 15px;
-
-      font-weight: 600;
-
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-
-    }
-
-
-
-    #block-input-area {
-
-      margin-top: 10px;
-
-      margin-bottom: 20px;
-
-      padding: 15px;
-
-      border: 1px solid #ddd;
-
-      border-radius: 6px;
-
-      background: #fff8e1;
-
-      display: none;
-
-      flex-direction: column;
-
-      align-items: flex-start;
-
-      width: 450px;
-
-      box-sizing: border-box;
-
-    }
-
-    #block-input-area input {
-
-      margin-bottom: 10px;
-
-      width: 100%;
-
-      padding: 8px;
-
-      box-sizing: border-box;
-
-    }
-
-    #block-input-area button { margin-top: 10px; align-self:flex-end; }
-
-
-
-    #container-wrapper { display:flex; justify-content:center; width:100%; }
-
-    #container {
-
-      width:480px;
-
-      height:480px;
-
-      border:1px solid #ccc;
-
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-
-      background:#fff;
-
-    }
-
-
-
-    @media (max-width: 500px) {
-
-      h2 { font-size:18px; }
-
-      h2 button { padding: 8px 14px; font-size:14px; }
-
-    }
-
-  </style>
-
+  <meta charset="utf-8"/>
+  <title>Admin – Drag Tables</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2 "></script>
+  <script src="https://unpkg.com/konva@9/konva.min.js "></script>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:#f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px 0;
+    }
+    h2 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 10px;
+      width: 100%;
+    }
+    h2 .arrow { font-weight:700; font-size:24px; margin:0 10px; color:#1976d2; }
+    h2 button {
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    h2 button#save { background-color: #388e3c; }
+    h2 button#rotate { background-color: #1976d2; }
+    h2 button:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); opacity:0.95; }
+
+    #schedule-controls {
+      margin-bottom: 15px;
+      padding: 10px 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    #schedule-controls label {
+      font-weight: 600;
+      margin-right: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+    #schedule-controls input, #schedule-controls select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #schedule-controls button {
+      background: #1976d2;
+      color: #fff;
+      padding: 8px 15px;
+      font-weight: 600;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    #block-input-area {
+      margin-top: 10px;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff8e1;
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 450px;
+      box-sizing: border-box;
+    }
+    #block-input-area input {
+      margin-bottom: 10px;
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    #block-input-area button { margin-top: 10px; align-self:flex-end; }
+
+    #container-wrapper { display:flex; justify-content:center; width:100%; }
+    #container {
+      width:480px;
+      height:480px;
+      border:1px solid #ccc;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      background:#fff;
+    }
+
+    @media (max-width: 500px) {
+      h2 { font-size:18px; }
+      h2 button { padding: 8px 14px; font-size:14px; }
+    }
+  </style>
 </head>
-
 <body>
 
-
-
-  <h2>
-
-    Drag tables <span class="arrow">→</span>
-
-    <button id="save">Save layout</button>
-
-    <button id="rotate">Rotate Table 90°</button>
-
-  </h2>
-
-
-
-  <div id="schedule-controls">
-
-    <label for="booking-date">Date:</label>
-
-    <input type="date" id="booking-date">
-
-
-
-    <label for="booking-time">View Time:</label>
-
-    <select id="booking-time"></select>
-
-
-
-    <button id="view-schedule">Refresh Map</button>
-
-  </div>
-
-
-
-  <div id="block-input-area">
-
-    <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700; color: #d32f2f;"></span>**</p>
-
-    <label for="block-start-time">Start Time:</label>
-
-    <input type="time" id="block-start-time" required>
-
-    <label for="block-end-time">End Time:</label>
-
-    <input type="time" id="block-end-time" required>
-
-    <label for="host-notes">Host Notes:</label>
-
-    <input type="text" id="host-notes" required>
-
-    <button id="block-slot-button" style="background:#d32f2f;">Block Slot</button>
-
-  </div>
-
-
-
-  <div id="container-wrapper">
-
-    <div id="container"></div>
-
-  </div>
-
-
-
-  <script>
-
-    /* ---------- CONFIG ---------- */
-
-    const supabaseUrl  = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-
-    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
-
-
-
-    const STAGE_WIDTH  = 480;
-
-    const STAGE_HEIGHT = 480;
-
-    const TURN_DURATION_MINUTES = 90;
-
-    const TABLE_COLOR = '#b7d7a8';
-
-    const TAKEN_COLOR = '#9e9e9e';
-
-    const SEAT_COLOR  = '#555';
-
-
-
-    /* ---------- STAGE & LAYERS ---------- */
-
-    const stage = new Konva.Stage({container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT});
-
-    const bgLayer = new Konva.Layer();
-
-    stage.add(bgLayer);
-
-    const tblLayer = new Konva.Layer();
-
-    stage.add(tblLayer);
-
-
-
-    /* ---------- STATE ---------- */
-
-    let tablesJSON = [];
-
-    let blockedIds = new Set();
-
-    let selectedGroup = null;
-
-
-
-    /* ---------- UTILS ---------- */
-
-    const timeToMinutes = t => {
-
-      if (!t) return 0;
-
-      const parts = t.split(':').map(Number);
-
-      const h = parts[0] || 0;
-
-      const m = parts[1] || 0;
-
-      return h * 60 + m;
-
-    };
-
-
-
-    /* ---------- TIME DROPDOWN ---------- */
-
-    function populateTimeDropdown(){
-
-      const slots = ['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
-
-      const sel = document.getElementById('booking-time');
-
-      slots.forEach(s => {
-
-        const o = document.createElement('option');
-
-        o.value = s;
-
-        o.textContent = s;
-
-        sel.appendChild(o);
-
-      });
-
-      document.getElementById('booking-date').valueAsDate = new Date();
-
-      sel.value = '18:00';
-
-    }
-
-
-
-    /* ---------- FETCH BLOCKED TABLES ---------- */
-
-    async function fetchBlockedTableIds(date, time) {
-
-      const wantedMin = timeToMinutes(time);
-
-      const isoDate = new Date(date).toISOString().split('T')[0];
-
-
-
-      const { data, error } = await _supa
-
-        .from('premium_slots')
-
-        .select('table_id, start_time, end_time, date')
-
-        .eq('date', isoDate);
-
-
-
-      if (error) {
-
-        console.error('Supabase error:', error);
-
-        return new Set();
-
-      }
-
-
-
-      console.log("Fetched rows:", data);
-
-
-
-      const busy = data.filter(r => {
-
-        const s = timeToMinutes(r.start_time);
-
-        const e = r.end_time ? timeToMinutes(r.end_time) : s + TURN_DURATION_MINUTES;
-
-        const overlap = e > wantedMin && s < wantedMin + TURN_DURATION_MINUTES;
-
-        if (overlap)
-
-          console.log(`⛔ Table ${r.table_id} overlaps (${r.start_time}–${r.end_time}) with ${time}`);
-
-        return overlap;
-
-      }).map(r => r.table_id);
-
-
-
-      console.log("Busy tables:", busy);
-
-      return new Set(busy);
-
-    }
-
-
-
-    /* ---------- DRAW BACKGROUND ---------- */
-
-    function drawBackground(cb){
-
-      const img = new Image();
-
-      img.onload = () => {
-
-        bgLayer.destroyChildren();
-
-        bgLayer.add(new Konva.Image({x:0, y:0, image:img, width:STAGE_WIDTH, height:STAGE_HEIGHT}));
-
-        bgLayer.draw();
-
-        if(cb) cb();
-
-      };
-
-      img.src = 'floorplan.png';
-
-    }
-
-
-
-    /* ---------- DRAW TABLES ---------- */
-
-    async function drawTables(){
-
-      tblLayer.destroyChildren();
-
-      selectedGroup = null;
-
-
-
-      const date = document.getElementById('booking-date').value;
-
-      const time = document.getElementById('booking-time').value;
-
-      blockedIds  = await fetchBlockedTableIds(date, time);
-
-
-
-      const { data, error } = await _supa.from('tables').select('*').order('id');
-
-      if(error){ alert('Error loading tables: '+error.message); return; }
-
-      tablesJSON = data;
-
-
-
-      tablesJSON.forEach(t => {
-
-        const isBlocked = blockedIds.has(t.id);
-
-        const group = new Konva.Group({x:t.x, y:t.y, id:`g-${t.id}`, draggable:true});
-
-        tblLayer.add(group);
-
-
-
-        const rect = new Konva.Rect({
-
-          width:t.w, height:t.h,
-
-          fill: isBlocked ? TAKEN_COLOR : TABLE_COLOR,
-
-          stroke:'#000', strokeWidth:1, name:'main-table'
-
-        });
-
-        group.add(rect);
-
-
-
-        // simple seats
-
-        group.add(new Konva.Rect({x:t.w/2-6, y:-6, width:12, height:6, fill:SEAT_COLOR}));
-
-        group.add(new Konva.Rect({x:t.w/2-6, y:t.h, width:12, height:6, fill:SEAT_COLOR}));
-
-
-
-        group.offset({x:t.w/2, y:t.h/2});
-
-        group.x(t.x + t.w/2);
-
-        group.y(t.y + t.h/2);
-
-        group.rotation(t.rotation || 0);
-
-
-
-        group.on('mousedown touchstart', () => selectTable(group));
-
-      });
-
-
-
-      tblLayer.getChildren().forEach(g => {
-
-        const rect = g.findOne('.main-table');
-
-        if(rect) rect.fill(blockedIds.has(Number(g.id().slice(2))) ? TAKEN_COLOR : TABLE_COLOR);
-
-      });
-
-
-
-      tblLayer.draw();
-
-    }
-
-
-
-    /* ---------- SELECT TABLE ---------- */
-
-    function selectTable(group){
-
-      if(selectedGroup){
-
-        const oldRect = selectedGroup.findOne('.main-table');
-
-        if(oldRect) oldRect.stroke('#000');
-
-      }
-
-      selectedGroup = group;
-
-      const newRect = group.findOne('.main-table');
-
-      if(newRect) newRect.stroke('#ffeb3b');
-
-      tblLayer.draw();
-
-
-
-      const tableId = Number(group.id().slice(2));
-
-      document.getElementById('block-table-id').textContent = tableId;
-
-      document.getElementById('block-input-area').style.display = 'flex';
-
-    }
-
-
-
-    /* ---------- MANUAL BLOCK ---------- */
-
-    document.getElementById('block-slot-button').onclick = async () => {
-
-      if(!selectedGroup){ alert('No table selected'); return; }
-
-      const date  = document.getElementById('booking-date').value;
-
-      const start = document.getElementById('block-start-time').value;
-
-      const end   = document.getElementById('block-end-time').value;
-
-      const notes = document.getElementById('host-notes').value.trim();
-
-      if(!start || !end || !notes){ alert('Fill all fields'); return; }
-
-
-
-      const tableId = Number(selectedGroup.id().slice(2));
-
-      const { error } = await _supa.from('premium_slots').insert([{
-
-        table_id: tableId, date, start_time: start, end_time: end, host_notes: notes
-
-      }]);
-
-      if(error){ alert('Block failed: '+error.message); return; }
-
-
-
-      blockedIds.add(tableId);
-
-      const rect = selectedGroup.findOne('.main-table');
-
-      if(rect) rect.fill(TAKEN_COLOR);
-
-      tblLayer.draw();
-
-
-
-      document.getElementById('block-input-area').style.display = 'none';
-
-      document.getElementById('block-start-time').value = '';
-
-      document.getElementById('block-end-time').value = '';
-
-      document.getElementById('host-notes').value = '';
-
-      selectedGroup = null;
-
-    };
-
-
-
-    /* ---------- ROTATE ---------- */
-
-    document.getElementById('rotate').onclick = () => {
-
-      if(selectedGroup){ selectedGroup.rotation(selectedGroup.rotation() + 90); tblLayer.draw(); }
-
-    };
-
-
-
-    /* ---------- SAVE LAYOUT ---------- */
-
-    document.getElementById('save').onclick = async () => {
-
-      const updates = tablesJSON.map(t => {
-
-        const g = tblLayer.findOne(`#g-${t.id}`);
-
-        if(!g) return t;
-
-        const r = g.findOne('.main-table');
-
-        const x = g.x() - r.width()/2;
-
-        const y = g.y() - r.height()/2;
-
-        return {id:t.id, x, y, rotation:g.rotation()};
-
-      });
-
-      const { error } = await _supa.from('tables').upsert(updates);
-
-      if(error){ alert('Save failed: '+error.message); } else { alert('Layout saved!'); }
-
-    };
-
-
-
-    /* ---------- REFRESH MAP ---------- */
-
-    document.getElementById('view-schedule').onclick = drawTables;
-
-
-
-    /* ---------- INIT ---------- */
-
-    populateTimeDropdown();
-
-    drawBackground(drawTables);
-
-  </script>
-
+  <h2>
+    Drag tables <span class="arrow">→</span>
+    <button id="save">Save layout</button>
+    <button id="rotate">Rotate Table 90°</button>
+  </h2>
+
+  <div id="schedule-controls">
+    <label for="booking-date">Date:</label>
+    <input type="date" id="booking-date">
+
+    <label for="booking-time">View Time:</label>
+    <select id="booking-time"></select>
+
+    <button id="view-schedule">Refresh Map</button>
+  </div>
+
+  <div id="block-input-area">
+    <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700; color: #d32f2f;"></span>**</p>
+    <label for="block-start-time">Start Time:</label>
+    <input type="time" id="block-start-time" required>
+    <label for="block-end-time">End Time:</label>
+    <input type="time" id="block-end-time" required>
+    <label for="host-notes">Host Notes:</label>
+    <input type="text" id="host-notes" required>
+    <button id="block-slot-button" style="background:#d32f2f;">Block Slot</button>
+  </div>
+
+  <div id="container-wrapper">
+    <div id="container"></div>
+  </div>
+
+  <script>
+    /* ---------- CONFIG ---------- */
+    const supabaseUrl  = 'https://Rrjvdabtqzkaomjuiref.supabase.co ';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+
+    const STAGE_WIDTH  = 480;
+    const STAGE_HEIGHT = 480;
+    const TURN_DURATION_MINUTES = 90;
+    const TABLE_COLOR = '#b7d7a8';
+    const TAKEN_COLOR = '#9e9e9e';
+    const SEAT_COLOR  = '#555';
+
+    /* ---------- STAGE & LAYERS ---------- */
+    const stage = new Konva.Stage({container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT});
+    const bgLayer = new Konva.Layer();
+    stage.add(bgLayer);
+    const tblLayer = new Konva.Layer();
+    stage.add(tblLayer);
+
+    /* ---------- STATE ---------- */
+    let tablesJSON = [];
+    let blockedIds = new Set();
+    let selectedGroup = null;
+
+    /* ---------- UTILS ---------- */
+    const timeToMinutes = t => {
+      if (!t) return 0;
+      const parts = t.split(':').map(Number);
+      const h = parts[0] || 0;
+      const m = parts[1] || 0;
+      return h * 60 + m;
+    };
+
+    /* ---------- TIME DROPDOWN ---------- */
+    function populateTimeDropdown(){
+      const slots = ['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+      const sel = document.getElementById('booking-time');
+      slots.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s;
+        o.textContent = s;
+        sel.appendChild(o);
+      });
+      document.getElementById('booking-date').valueAsDate = new Date();
+      sel.value = '18:00';
+    }
+
+    /* ---------- FETCH BLOCKED TABLES ---------- */
+    async function fetchBlockedTableIds(date, time) {
+      const wantedMin = timeToMinutes(time);
+      const isoDate = new Date(date).toISOString().split('T')[0];
+
+      const { data, error } = await _supa
+        .from('premium_slots')
+        .select('table_id, start_time, end_time, date')
+        .eq('date', isoDate);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        return new Set();
+      }
+
+      console.log("Fetched rows:", data);
+
+      const busy = data.filter(r => {
+        const s = timeToMinutes(r.start_time);
+        const e = r.end_time ? timeToMinutes(r.end_time) : s + TURN_DURATION_MINUTES;
+        const overlap = e > wantedMin && s < wantedMin + TURN_DURATION_MINUTES;
+        if (overlap)
+          console.log(`⛔ Table ${r.table_id} overlaps (${r.start_time}–${r.end_time}) with ${time}`);
+        return overlap;
+      }).map(r => r.table_id);
+
+      console.log("Busy tables:", busy);
+      return new Set(busy);
+    }
+
+    /* ---------- DRAW BACKGROUND ---------- */
+    function drawBackground(cb){
+      const img = new Image();
+      img.onload = () => {
+        bgLayer.destroyChildren();
+        bgLayer.add(new Konva.Image({x:0, y:0, image:img, width:STAGE_WIDTH, height:STAGE_HEIGHT}));
+        bgLayer.draw();
+        if(cb) cb();
+      };
+      img.src = 'floorplan.png';
+    }
+
+    /* ---------- DRAW TABLES ---------- */
+    async function drawTables(){
+      tblLayer.destroyChildren();
+      selectedGroup = null;
+
+      const date = document.getElementById('booking-date').value;
+      const time = document.getElementById('booking-time').value;
+      blockedIds  = await fetchBlockedTableIds(date, time);
+
+      const { data, error } = await _supa.from('tables').select('*').order('id');
+      if(error){ alert('Error loading tables: '+error.message); return; }
+      tablesJSON = data;
+
+      tablesJSON.forEach(t => {
+        const isBlocked = blockedIds.has(t.id);
+        const group = new Konva.Group({x:t.x, y:t.y, id:`g-${t.id}`, draggable:true});
+        tblLayer.add(group);
+
+        const rect = new Konva.Rect({
+          width:t.w, height:t.h,
+          fill: isBlocked ? TAKEN_COLOR : TABLE_COLOR,
+          stroke:'#000', strokeWidth:1, name:'main-table'
+        });
+        group.add(rect);
+
+        // simple seats
+        group.add(new Konva.Rect({x:t.w/2-6, y:-6, width:12, height:6, fill:SEAT_COLOR}));
+        group.add(new Konva.Rect({x:t.w/2-6, y:t.h, width:12, height:6, fill:SEAT_COLOR}));
+
+        group.offset({x:t.w/2, y:t.h/2});
+        group.x(t.x + t.w/2);
+        group.y(t.y + t.h/2);
+        group.rotation(t.rotation || 0);
+
+        group.on('mousedown touchstart', () => selectTable(group));
+      });
+
+      tblLayer.getChildren().forEach(g => {
+        const rect = g.findOne('.main-table');
+        if(rect) rect.fill(blockedIds.has(Number(g.id().slice(2))) ? TAKEN_COLOR : TABLE_COLOR);
+      });
+
+      tblLayer.draw();
+    }
+
+    /* ---------- SELECT TABLE ---------- */
+    function selectTable(group){
+      if(selectedGroup){
+        const oldRect = selectedGroup.findOne('.main-table');
+        if(oldRect) oldRect.stroke('#000');
+      }
+      selectedGroup = group;
+      const newRect = group.findOne('.main-table');
+      if(newRect) newRect.stroke('#ffeb3b');
+      tblLayer.draw();
+
+      const tableId = Number(group.id().slice(2));
+      document.getElementById('block-table-id').textContent = tableId;
+      document.getElementById('block-input-area').style.display = 'flex';
+    }
+
+    /* ---------- MANUAL BLOCK ---------- */
+    document.getElementById('block-slot-button').onclick = async () => {
+      if(!selectedGroup){ alert('No table selected'); return; }
+      const date  = document.getElementById('booking-date').value;
+      const start = document.getElementById('block-start-time').value;
+      const end   = document.getElementById('block-end-time').value;
+      const notes = document.getElementById('host-notes').value.trim();
+      if(!start || !end || !notes){ alert('Fill all fields'); return; }
+
+      const tableId = Number(selectedGroup.id().slice(2));
+      const { error } = await _supa.from('premium_slots').insert([{
+        table_id: tableId, date, start_time: start, end_time: end, host_notes: notes
+      }]);
+      if(error){ alert('Block failed: '+error.message); return; }
+
+      blockedIds.add(tableId);
+      const rect = selectedGroup.findOne('.main-table');
+      if(rect) rect.fill(TAKEN_COLOR);
+      tblLayer.draw();
+
+      document.getElementById('block-input-area').style.display = 'none';
+      document.getElementById('block-start-time').value = '';
+      document.getElementById('block-end-time').value = '';
+      document.getElementById('host-notes').value = '';
+      selectedGroup = null;
+    };
+
+    /* ---------- ROTATE ---------- */
+    document.getElementById('rotate').onclick = () => {
+      if(selectedGroup){ selectedGroup.rotation(selectedGroup.rotation() + 90); tblLayer.draw(); }
+    };
+
+    /* ---------- SAVE LAYOUT ---------- */
+    document.getElementById('save').onclick = async () => {
+      const updates = tablesJSON.map(t => {
+        const g = tblLayer.findOne(`#g-${t.id}`);
+        if(!g) return t;
+        const r = g.findOne('.main-table');
+        const x = g.x() - r.width()/2;
+        const y = g.y() - r.height()/2;
+        return {id:t.id, x, y, rotation:g.rotation()};
+      });
+      const { error } = await _supa.from('tables').upsert(updates);
+      if(error){ alert('Save failed: '+error.message); } else { alert('Layout saved!'); }
+    };
+
+    /* ---------- REFRESH MAP ---------- */
+    document.getElementById('view-schedule').onclick = drawTables;
+
+    /* ---------- INIT ---------- */
+    populateTimeDropdown();
+    drawBackground(drawTables);
+  </script>
 </body>
-
 </html>
+
+
+My issues is that when i book a table manually, it turns gray, but when i refresh the map the table turns back to green. This is what the console brings up when i refresh the map. Fetched rows: []
+length
+: 
+0
+[[Prototype]]
+: 
+Array(0)
+admin.html:221 
+Busy tables: []
+length
+: 
+0
+[[Prototype]]
+: 
+Array(0)
+admin.html:210 
+Fetched rows: []
+length
+: 
+0
+[[Prototype]]
+: 
+Array(0)
+admin.html:221 
+Busy tables: []
+length
+: 
+0
+[[Prototype]]
+: 
+Array(0)
+admin.html:210 
+Fetched rows: []
+length
+: 
+0
+[[Prototype]]
+: 
+Array(0)
+admin.html:221 
+Busy tables: []
+length
+: 
+0
+[[Prototype]]
+: 
+Array(0)
+
+All of my bookings are being logged in my supabase table.
+My date column in my supabase table is logged as date data not text structured 2025-10-04.
+Copy
+Share
+The console shows zero rows returned, so the colour revert is expected – the client thinks no bookings exist.
+The root cause is almost always RLS (Row-Level Security) or a tiny date-format mismatch.
+Do these three checks once and the grey will survive refreshes.
+Supabase → Authentication → Policies
+If premium_slots has RLS enabled and no policy, anon inserts succeed but selects return 0 rows.
+Quick fix: add a read policy (or disable RLS while testing):
+sql
+Copy
+CREATE POLICY "anon can read" ON premium_slots
+FOR SELECT USING (true);
+Date column format
+You store a real date, but the picker gives "2025-10-04" (string).
+Make sure we compare identical types:
+In your code replace the single line inside fetchBlockedTableIds:
+JavaScript
+Copy
+// OLD
+.eq('date', isoDate)
+
+// NEW – cast both sides to text (YYYY-MM-DD)
+.eq('date', date)          // date is already "2025-10-04"
+(or cast to date on the JS side: .eq('date', new Date(date).toISOString().slice(0,10)) – either works as long as both sides match.)
+Verify the row really exists
+Run this SQL in Supabase dashboard:
+sql
+Copy
+SELECT table_id, start_time, end_time
+FROM   premium_slots
+WHERE  date = '2025-10-04';      -- use the date you picked
+If rows appear here but the fetch still returns [], the problem is 100 % RLS (step 1).
+After you add the read policy (and keep the date string identical), refresh the page – the console will show the fetched rows and the table will stay grey for every overlapping time slot.
+Copy
+Share
+give me a full copy replace code file
+Edit
+Copy
+Share
+HTML
+Preview
+Copy
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Admin – Drag Tables</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:#f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px 0;
+    }
+    h2 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 10px;
+      width: 100%;
+    }
+    h2 .arrow { font-weight:700; font-size:24px; margin:0 10px; color:#1976d2; }
+    h2 button {
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    h2 button#save { background-color: #388e3c; }
+    h2 button#rotate { background-color: #1976d2; }
+    h2 button:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); opacity:0.95; }
+
+    #schedule-controls {
+      margin-bottom: 15px;
+      padding: 10px 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    #schedule-controls label {
+      font-weight: 600;
+      margin-right: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+    #schedule-controls input, #schedule-controls select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #schedule-controls button {
+      background: #1976d2;
+      color: #fff;
+      padding: 8px 15px;
+      font-weight: 600;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    #block-input-area {
+      margin-top: 10px;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff8e1;
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 450px;
+      box-sizing: border-box;
+    }
+    #block-input-area input {
+      margin-bottom: 10px;
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    #block-input-area button { margin-top: 10px; align-self:flex-end; }
+
+    #container-wrapper { display:flex; justify-content:center; width:100%; }
+    #container {
+      width:480px;
+      height:480px;
+      border:1px solid #ccc;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      background:#fff;
+    }
+
+    @media (max-width: 500px) {
+      h2 { font-size:18px; }
+      h2 button { padding: 8px 14px; font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>
+    Drag tables <span class="arrow">→</span>
+    <button id="save">Save layout</button>
+    <button id="rotate">Rotate Table 90°</button>
+  </h2>
+
+  <div id="schedule-controls">
+    <label for="booking-date">Date:</label>
+    <input type="date" id="booking-date">
+
+    <label for="booking-time">View Time:</label>
+    <select id="booking-time"></select>
+
+    <button id="view-schedule">Refresh Map</button>
+  </div>
+
+  <div id="block-input-area">
+    <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700; color: #d32f2f;"></span>**</p>
+    <label for="block-start-time">Start Time:</label>
+    <input type="time" id="block-start-time" required>
+    <label for="block-end-time">End Time:</label>
+    <input type="time" id="block-end-time" required>
+    <label for="host-notes">Host Notes:</label>
+    <input type="text" id="host-notes" required>
+    <button id="block-slot-button" style="background:#d32f2f;">Block Slot</button>
+  </div>
+
+  <div id="container-wrapper">
+    <div id="container"></div>
+  </div>
+
+  <script>
+    /* ---------- CONFIG ---------- */
+    const supabaseUrl  = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+
+    const STAGE_WIDTH  = 480;
+    const STAGE_HEIGHT = 480;
+    const TURN_DURATION_MINUTES = 90;
+    const TABLE_COLOR = '#b7d7a8';
+    const TAKEN_COLOR = '#9e9e9e';
+    const SEAT_COLOR  = '#555';
+
+    /* ---------- STAGE & LAYERS ---------- */
+    const stage = new Konva.Stage({container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT});
+    const bgLayer  = new Konva.Layer(); stage.add(bgLayer);
+    const tblLayer = new Konva.Layer(); stage.add(tblLayer);
+
+    /* ---------- STATE ---------- */
+    let tablesJSON = [];
+    let blockedIds = new Set();
+    let selectedGroup = null;
+
+    /* ---------- UTILS ---------- */
+    const timeToMinutes = t => {
+      if (!t) return 0;
+      const [h,m] = t.split(':').map(Number);
+      return h*60 + m;
+    };
+
+    /* ---------- TIME DROPDOWN ---------- */
+    function populateTimeDropdown(){
+      const slots = ['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+      const sel = document.getElementById('booking-time');
+      slots.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+      document.getElementById('booking-date').valueAsDate = new Date();
+      sel.value = '18:00';
+    }
+
+    /* ---------- FETCH BLOCKED TABLE IDS ---------- */
+    async function fetchBlockedTableIds(date, time){
+      const wantedMin = timeToMinutes(time);
+      // date is already "YYYY-MM-DD" from the picker – match exactly
+      const { data, error } = await _supa
+            .from('premium_slots')
+            .select('table_id, start_time, end_time')
+            .eq('date', date);          // SAME string format as DB
+
+      if(error){ console.error('Supabase error:',error); return new Set(); }
+      console.log('Fetched rows:', data);
+
+      const busy = data.filter(r => {
+          const s = timeToMinutes(r.start_time);
+          const e = r.end_time ? timeToMinutes(r.end_time) : s + TURN_DURATION_MINUTES;
+          return e > wantedMin && s < wantedMin + TURN_DURATION_MINUTES;
+      }).map(r => r.table_id);
+      console.log('Busy tables:', busy);
+      return new Set(busy);
+    }
+
+    /* ---------- DRAW BACKGROUND ---------- */
+    function drawBackground(cb){
+      const img = new Image();
+      img.onload = () => {
+        bgLayer.destroyChildren();
+        bgLayer.add(new Konva.Image({x:0, y:0, image:img, width:STAGE_WIDTH, height:STAGE_HEIGHT}));
+        bgLayer.draw();
+        if(cb) cb();
+      };
+      img.src = 'floorplan.png';
+    }
+
+    /* ---------- DRAW TABLES ---------- */
+    async function drawTables(){
+      tblLayer.destroyChildren();
+      selectedGroup = null;
+
+      const date = document.getElementById('booking-date').value;
+      const time = document.getElementById('booking-time').value;
+      blockedIds  = await fetchBlockedTableIds(date, time);
+
+      const { data, error } = await _supa.from('tables').select('*').order('id');
+      if(error){ alert('Error loading tables: '+error.message); return; }
+      tablesJSON = data;
+
+      tablesJSON.forEach(t => {
+        const isBlocked = blockedIds.has(t.id);
+        const group = new Konva.Group({x:t.x, y:t.y, id:`g-${t.id}`, draggable:true});
+        tblLayer.add(group);
+
+        const rect = new Konva.Rect({
+          width:t.w, height:t.h,
+          fill: isBlocked ? TAKEN_COLOR : TABLE_COLOR,
+          stroke:'#000', strokeWidth:1, name:'main-table'
+        });
+        group.add(rect);
+
+        // simple seats
+        group.add(new Konva.Rect({x:t.w/2-6, y:-6,  width:12, height:6, fill:SEAT_COLOR}));
+        group.add(new Konva.Rect({x:t.w/2-6, y:t.h, width:12, height:6, fill:SEAT_COLOR}));
+
+        group.offset({x:t.w/2, y:t.h/2});
+        group.x(t.x + t.w/2);
+        group.y(t.y + t.h/2);
+        group.rotation(t.rotation || 0);
+
+        group.on('mousedown touchstart', () => selectTable(group));
+      });
+      tblLayer.draw();
+    }
+
+    /* ---------- SELECT TABLE ---------- */
+    function selectTable(group){
+      if(selectedGroup){
+        const oldRect = selectedGroup.findOne('.main-table');
+        if(oldRect) oldRect.stroke('#000');
+      }
+      selectedGroup = group;
+      const newRect = group.findOne('.main-table');
+      if(newRect) newRect.stroke('#ffeb3b');
+      tblLayer.draw();
+
+      const tableId = Number(group.id().slice(2));
+      document.getElementById('block-table-id').textContent = tableId;
+      document.getElementById('block-input-area').style.display = 'flex';
+    }
+
+    /* ---------- MANUAL BLOCK ---------- */
+    document.getElementById('block-slot-button').onclick = async () => {
+      if(!selectedGroup){ alert('No table selected'); return; }
+      const date  = document.getElementById('booking-date').value;
+      const start = document.getElementById('block-start-time').value;
+      const end   = document.getElementById('block-end-time').value;
+      const notes = document.getElementById('host-notes').value.trim();
+      if(!start || !end || !notes){ alert('Fill all fields'); return; }
+
+      const tableId = Number(selectedGroup.id().slice(2));
+      const { error } = await _supa.from('premium_slots').insert([{
+          table_id: tableId, date, start_time: start, end_time: end, host_notes: notes
+      }]);
+      if(error){ alert('Block failed: '+error.message); return; }
+
+      blockedIds.add(tableId);
+      const rect = selectedGroup.findOne('.main-table');
+      if(rect) rect.fill(TAKEN_COLOR);
+      tblLayer.draw();
+
+      document.getElementById('booking-time').value = start; // stay on blocked slot
+      document.getElementById('block-input-area').style.display = 'none';
+      document.getElementById('block-start-time').value = '';
+      document.getElementById('block-end-time').value = '';
+      document.getElementById('host-notes').value = '';
+      selectedGroup = null;
+    };
+
+    /* ---------- ROTATE ---------- */
+    document.getElementById('rotate').onclick = () => {
+      if(selectedGroup){ selectedGroup.rotation(selectedGroup.rotation() + 90); tblLayer.draw(); }
+    };
+
+    /* ---------- SAVE LAYOUT ---------- */
+    document.getElementById('save').onclick = async () => {
+      const updates = tablesJSON.map(t => {
+        const g = tblLayer.findOne(`#g-${t.id}`);
+        if(!g) return t;
+        const r = g.findOne('.main-table');
+        const x = g.x() - r.width()/2;
+        const y = g.y() - r.height()/2;
+        return {id:t.id, x, y, rotation:g.rotation()};
+      });
+      const { error } = await _supa.from('tables').upsert(updates);
+      if(error){ alert('Save failed: '+error.message); } else { alert('Layout saved!'); }
+    };
+
+    /* ---------- REFRESH MAP ---------- */
+    document.getElementById('view-schedule').onclick = drawTables;
+
+    /* ---------- INIT ---------- */
+    populateTimeDropdown();
+    drawBackground(drawTables);
+  </script>
+</body>
+</html>
+Copy
+Retry
+Share
+
+
+
+
