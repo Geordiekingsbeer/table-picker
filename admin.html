@@ -1,154 +1,148 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <title>Admin – Drag Tables</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+<meta charset="utf-8"/>
+<title>Admin – Drag Tables</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>
+<style>
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    background:#f7f7f7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0; 
+    padding: 20px 0;
+}
+h2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+h2 .arrow { font-weight:700; font-size:24px; margin:0 10px; color:#1976d2; }
+h2 button {
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+h2 button#save { background-color: #388e3c; }
+h2 button#rotate { background-color: #1976d2; }
+h2 button:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); opacity:0.95; }
 
-  <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f7f7f7;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px 0;
-    }
-    h2 {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      font-weight: 700;
-      color: #333;
-      margin-bottom: 25px;
-      flex-wrap: wrap;
-      gap: 10px;
-      width: 100%;
-    }
-    h2 .arrow {
-      font-weight:700;
-      font-size:24px;
-      margin:0 10px;
-      color:#1976d2;
-    }
-    h2 button {
-      padding: 10px 20px;
-      font-size: 15px;
-      font-weight: 600;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      color: #fff;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
-    h2 button#save { background-color: #388e3c; }
-    h2 button#rotate { background-color: #1976d2; }
-    h2 button:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); opacity:0.95; }
+#schedule-controls {
+  margin-bottom: 15px;
+  padding: 10px 20px; 
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+#schedule-controls label {
+  font-weight: 600;
+  margin-right: 5px;
+  font-size: 14px;
+  color: #555;
+}
+#schedule-controls input, #schedule-controls select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+#schedule-controls button {
+  background: #1976d2; 
+  color: #fff;
+  padding: 8px 15px;
+  font-weight: 600;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
 
-    #schedule-controls {
-      margin-bottom: 15px;
-      padding: 10px 20px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-    #schedule-controls label {
-      font-weight: 600;
-      margin-right: 5px;
-      font-size: 14px;
-      color: #555;
-    }
-    #schedule-controls input, #schedule-controls select {
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    #schedule-controls button {
-      background: #1976d2;
-      color: #fff;
-      padding: 8px 15px;
-      font-weight: 600;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
+#block-input-area {
+  margin-top: 10px;
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff8e1;
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 450px;
+  box-sizing: border-box;
+}
+#block-input-area input {
+  margin-bottom: 10px;
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+#block-input-area button { margin-top: 10px; align-self:flex-end; }
 
-    #block-input-area {
-      margin-top: 10px;
-      margin-bottom: 20px;
-      padding: 15px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      background: #fff8e1;
-      display: none;
-      flex-direction: column;
-      align-items: flex-start;
-      width: 450px;
-      box-sizing: border-box;
-    }
-    #block-input-area input {
-      margin-bottom: 10px;
-      width: 100%;
-      padding: 8px;
-      box-sizing: border-box;
-    }
-    #block-input-area button { margin-top: 10px; align-self:flex-end; }
+#container-wrapper { display:flex; justify-content:center; width:100%; }
+#container {
+  width:480px;
+  height:480px;
+  border:1px solid #ccc;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background:#fff;
+}
 
-    #container-wrapper { display:flex; justify-content:center; width:100%; }
-    #container {
-      width:480px;
-      height:480px;
-      border:1px solid #ccc;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      background:#fff;
-    }
-
-    @media (max-width: 500px) {
-      h2 { font-size:18px; }
-      h2 button { padding: 8px 14px; font-size:14px; }
-    }
-  </style>
+@media (max-width: 500px) {
+  h2 { font-size:18px; }
+  h2 button { padding: 8px 14px; font-size:14px; }
+}
+</style>
 </head>
-
 <body>
-  <h2>
-    Drag tables <span class="arrow">→</span>
-    <button id="save">Save layout</button>
-    <button id="rotate">Rotate Table 90°</button>
-  </h2>
 
-  <div id="schedule-controls">
-    <label for="booking-date">Date:</label>
-    <input type="date" id="booking-date">
+<h2>
+Drag tables <span class="arrow">→</span>
+<button id="save">Save layout</button>
+<button id="rotate">Rotate Table 90°</button>
+</h2>
 
-    <label for="booking-time">View Time:</label>
-    <select id="booking-time"></select>
+<div id="schedule-controls">
+  <label for="booking-date">Date:</label>
+  <input type="date" id="booking-date">
+  
+  <label for="booking-time">View Time:</label>
+  <select id="booking-time"></select>
+  
+  <button id="view-schedule">Refresh Map</button>
+</div>
 
-    <button id="view-schedule">Refresh Map</button>
-  </div>
+<div id="block-input-area">
+  <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700; color: #d32f2f;"></span>**</p>
+  <label for="block-start-time">Start Time:</label>
+  <input type="time" id="block-start-time" required>
+  <label for="block-end-time">End Time:</label>
+  <input type="time" id="block-end-time" required>
+  <label for="host-notes">Host Notes:</label>
+  <input type="text" id="host-notes" required>
+  <button id="block-slot-button" style="background:#d32f2f;">Block Slot</button>
+</div>
 
-  <div id="block-input-area">
-    <p style="margin-top:0;">**Manually Block Table <span id="block-table-id" style="font-weight:700; color: #d32f2f;"></span>**</p>
-    <label for="block-start-time">Start Time:</label>
-    <input type="time" id="block-start-time" required>
-    <label for="block-end-time">End Time:</label>
-    <input type="time" id="block-end-time" required>
-    <label for="host-notes">Host Notes:</label>
-    <input type="text" id="host-notes" required>
-    <button id="block-slot-button" style="background:#d32f2f;">Block Slot</button>
-  </div>
-
-  <div id="container-wrapper">
-    <div id="container"></div>
-  </div>
+<div id="container-wrapper">
+  <div id="container"></div>
+</div>
 
 <script>
 /* ---------- CONFIG ---------- */
@@ -165,10 +159,8 @@ const SEAT_COLOR  = '#555';
 
 /* ---------- STAGE & LAYERS ---------- */
 const stage = new Konva.Stage({container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT});
-const bgLayer = new Konva.Layer();
-stage.add(bgLayer);
-const tblLayer = new Konva.Layer();
-stage.add(tblLayer);
+const bgLayer = new Konva.Layer(); stage.add(bgLayer);
+const tblLayer = new Konva.Layer(); stage.add(tblLayer);
 
 /* ---------- STATE ---------- */
 let tablesJSON = [];
@@ -176,22 +168,13 @@ let blockedIds = new Set();
 let selectedGroup = null;
 
 /* ---------- UTILS ---------- */
-const timeToMinutes = t => {
-  if (!t) return 0;
-  const parts = t.split(':').map(Number);
-  const h = parts[0] || 0;
-  const m = parts[1] || 0;
-  return h * 60 + m;
-};
+const timeToMinutes = t => { const [h,m] = t.split(':').map(Number); return h*60 + m; };
 
 /* ---------- TIME DROPDOWN ---------- */
 function populateTimeDropdown(){
   const slots = ['17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
   const sel = document.getElementById('booking-time');
-  slots.forEach(s => {
-    const o = document.createElement('option');
-    o.value = s; o.textContent = s; sel.appendChild(o);
-  });
+  slots.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
   document.getElementById('booking-date').valueAsDate = new Date();
   sel.value = '18:00';
 }
@@ -199,27 +182,17 @@ function populateTimeDropdown(){
 /* ---------- FETCH BLOCKED TABLES ---------- */
 async function fetchBlockedTableIds(date, time){
   const wantedMin = timeToMinutes(time);
-  const { data, error } = await _supa
-    .from('premium_slots')
-    .select('table_id, start_time, end_time, date')
-    .eq('date', date);
-
-  if (error) {
-    console.error(error);
-    return new Set();
-  }
-
-  console.log("Fetched rows:", data);
+  const {data, error} = await _supa
+        .from('premium_slots')
+        .select('table_id, start_time, end_time')
+        .eq('date', date);
+  if(error){ console.error(error); return new Set(); }
 
   const busy = data.filter(r => {
-    const s = timeToMinutes(r.start_time);
-    const e = r.end_time ? timeToMinutes(r.end_time) : s + TURN_DURATION_MINUTES;
-    const overlap = e > wantedMin && s < wantedMin + TURN_DURATION_MINUTES;
-    if (overlap) console.log(`⛔ Table ${r.table_id} overlaps (${r.start_time}–${r.end_time}) with ${time}`);
-    return overlap;
+      const s = timeToMinutes(r.start_time);
+      const e = r.end_time ? timeToMinutes(r.end_time) : s + TURN_DURATION_MINUTES;
+      return e > wantedMin && s < wantedMin + TURN_DURATION_MINUTES;
   }).map(r => r.table_id);
-
-  console.log("Busy tables:", busy);
   return new Set(busy);
 }
 
@@ -260,6 +233,7 @@ async function drawTables(){
     });
     group.add(rect);
 
+    // simple seats
     group.add(new Konva.Rect({x:t.w/2-6, y:-6, width:12, height:6, fill:SEAT_COLOR}));
     group.add(new Konva.Rect({x:t.w/2-6, y:t.h, width:12, height:6, fill:SEAT_COLOR}));
 
@@ -271,7 +245,7 @@ async function drawTables(){
     group.on('mousedown touchstart', () => selectTable(group));
   });
 
-  // update colors
+  // update colors in case blockedIds changed
   tblLayer.getChildren().forEach(g => {
     const rect = g.findOne('.main-table');
     if(rect) rect.fill(blockedIds.has(Number(g.id().slice(2))) ? TAKEN_COLOR : TABLE_COLOR);
@@ -307,15 +281,18 @@ document.getElementById('block-slot-button').onclick = async () => {
 
   const tableId = Number(selectedGroup.id().slice(2));
   const {error} = await _supa.from('premium_slots').insert([{
-    table_id:tableId, date, start_time:start, end_time:end, host_notes:notes
+      table_id:tableId, date, start_time:start, end_time:end, host_notes:notes
   }]);
   if(error){ alert('Block failed: '+error.message); return; }
 
+  // update immediately
   blockedIds.add(tableId);
   const rect = selectedGroup.findOne('.main-table');
   if(rect) rect.fill(TAKEN_COLOR);
   tblLayer.draw();
 
+  // reset UI
+  document.getElementById('booking-time').value = start;
   document.getElementById('block-input-area').style.display = 'none';
   document.getElementById('block-start-time').value = '';
   document.getElementById('block-end-time').value   = '';
