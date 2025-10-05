@@ -1,9 +1,8 @@
-```html
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Admin – Drag Tables</title>
+  <title>Admin – Drag Tables & Bookings</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
@@ -14,9 +13,9 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         min-height: 100vh;
-        margin: 0; 
+        margin: 0;
         padding: 20px 0;
     }
 
@@ -28,7 +27,7 @@
       font-size: 22px;
       font-weight: 700;
       color: #333;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
       gap: 10px;
     }
@@ -65,58 +64,14 @@
       opacity: 0.95;
     }
 
-    /* Booking UI */
-    #booking-ui {
-      margin-bottom: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-      background: #fff;
-      padding: 12px 18px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    #controls {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:12px;
+      flex-wrap:wrap;
     }
 
-    #booking-ui label {
-      font-size: 14px;
-      color: #444;
-    }
-
-    #booking-ui input {
-      padding: 6px 8px;
-      font-size: 14px;
-      border: 1px solid #bbb;
-      border-radius: 4px;
-    }
-
-    #booking-ui button {
-      padding: 8px 14px;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      color: #fff;
-      background-color: #555;
-      transition: background 0.2s ease;
-    }
-
-    #booking-ui button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
-
-    #booking-ui button#book-table {
-      background-color: #388e3c;
-    }
-
-    #booking-ui button#unbook-table {
-      background-color: #d32f2f;
-    }
-
-    /* Floorplan container */
     #container-wrapper {
       display: flex;
       justify-content: center;
@@ -131,40 +86,77 @@
       background:#fff;
     }
 
-    /* Responsive for small screens */
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: white;
+      width: 420px;
+      max-width: calc(100% - 40px);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .modal h3 { margin: 0 0 12px 0; font-size: 18px; }
+    .modal label { display:block; font-size:13px; margin-top:8px; }
+    .modal input[type="datetime-local"],
+    .modal textarea, .modal input[type="text"] {
+      width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #ddd; box-sizing:border-box;
+    }
+    .modal textarea{ min-height:80px; resize:vertical; }
+    .modal .row { display:flex; gap:8px; }
+    .modal .row .col { flex:1; }
+    .modal .actions { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+    .btn { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:600; }
+    .btn.primary { background:#1976d2; color:white; }
+    .btn.negative { background:#d32f2f; color:white; }
+    .btn.ghost { background:#f2f2f2; color:#333; }
+
+    /* Responsive */
     @media (max-width: 500px) {
       h2 { font-size: 18px; }
       h2 button { padding: 8px 14px; font-size: 14px; }
+      #controls { flex-direction: column; align-items:flex-start; gap:8px; }
     }
   </style>
 </head>
-<body>
 
+<body>
   <h2>
     Drag tables <span class="arrow">→</span>
     <button id="save">Save layout</button>
     <button id="rotate">Rotate Table 90°</button>
   </h2>
 
-  <div id="booking-ui">
-    <label>Date:
-      <input type="date" id="selected-date" />
-    </label>
-    <label>Start:
-      <input type="time" id="start-time" />
-    </label>
-    <label>End:
-      <input type="time" id="end-time" />
-    </label>
-    <label>Notes:
-      <input type="text" id="booking-notes" placeholder="Optional notes" />
-    </label>
-    <button id="book-table" disabled>Book Table</button>
-    <button id="unbook-table" disabled>Remove Booking</button>
+  <div id="controls">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <label for="viewDate">View date</label>
+      <input id="viewDate" type="date" />
+      <label for="viewTime">Time</label>
+      <input id="viewTime" type="time" />
+      <button id="loadFloorplan" class="btn primary">Load</button>
+    </div>
+    <div style="margin-left:8px; color:#666; font-size:13px;">
+      Select a date/time and click a table to book or view booking.
+    </div>
   </div>
 
   <div id="container-wrapper">
       <div id="container"></div>
+  </div>
+
+  <!-- Modal backdrop -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-hidden="true">
+    <div class="modal" id="bookingModal">
+      <!-- Content injected by JS -->
+    </div>
   </div>
 
   <script>
@@ -179,26 +171,48 @@
     const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
     const backgroundLayer = new Konva.Layer();
     stage.add(backgroundLayer);
-    const layer = new Konva.Layer(); 
+    const layer = new Konva.Layer();
     stage.add(layer);
 
     let tables = [];
+    let bookingsCache = []; // bookings for current selected view datetime (all bookings that overlap that datetime)
     let selectedGroup = null;
-    let selectedTableId = null;
-    let bookings = [];
-
     const TABLE_COLOR = '#b7d7a8';
     const SEAT_COLOR = '#555';
+    const BOOKED_COLOR = '#cccccc';
 
-    // --- Default date/time ---
-    const now = new Date();
-    document.getElementById('selected-date').value = now.toISOString().split('T')[0];
-    document.getElementById('start-time').value = '12:00';
-    document.getElementById('end-time').value = '13:00';
+    // default view datetime -> now (local)
+    function setDefaultViewInputs() {
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2,'0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth()+1);
+      const dd = pad(now.getDate());
+      const hh = pad(now.getHours());
+      const mi = pad(now.getMinutes());
+      document.getElementById('viewDate').value = `${yyyy}-${mm}-${dd}`;
+      document.getElementById('viewTime').value = `${hh}:${mi}`;
+    }
+    setDefaultViewInputs();
 
+    function showModal(htmlContent) {
+      const backdrop = document.getElementById('modalBackdrop');
+      const modal = document.getElementById('bookingModal');
+      modal.innerHTML = htmlContent;
+      backdrop.style.display = 'flex';
+      backdrop.setAttribute('aria-hidden', 'false');
+    }
+    function closeModal() {
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.style.display = 'none';
+      backdrop.setAttribute('aria-hidden', 'true');
+    }
+
+    // load background floorplan image (if present)
     function loadBackground(callback) {
       const imageObj = new Image();
       imageObj.onload = function() {
+        backgroundLayer.destroyChildren();
         const floorplan = new Konva.Image({
           x: 0,
           y: 0,
@@ -210,47 +224,34 @@
         backgroundLayer.draw();
         if (callback) callback();
       };
+      // If floorplan.png missing, image load will error quietly; still proceed
       imageObj.src = 'floorplan.png';
+      imageObj.onerror = function(){ if (callback) callback(); };
     }
 
-    async function loadTables() {
-      const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
-      if(error){ console.error(error); alert('Error loading tables'); return; }
-      tables = data;
-      tables.forEach(t => {
-        const group = drawTable(t);
-        const tableRect = group.findOne('.main-table');
-
-        group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
-        group.x(t.x + tableRect.width()/2);
-        group.y(t.y + tableRect.height()/2);
-        group.rotation(t.rotation || 0); 
-      });
-      layer.draw();
-    }
-
-    function drawTable(t){
-      const group = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, draggable:true });
+    // Draw a table group from table record object t
+    function drawTable(t) {
+      const group = new Konva.Group({ x:t.x || 0, y:t.y || 0, id:'g-'+t.id, draggable:true });
       layer.add(group);
 
-      const tableRect = new Konva.Rect({ 
-        width:t.w, 
-        height:t.h, 
-        fill:TABLE_COLOR, 
-        stroke:'#000', 
+      const tableRect = new Konva.Rect({
+        width:t.w,
+        height:t.h,
+        fill: TABLE_COLOR,
+        stroke:'#000',
         strokeWidth:1,
-        name: 'main-table' 
+        name: 'main-table'
       });
       group.add(tableRect);
 
-      const baseSeatSize = 12; 
-      const seatHalf = baseSeatSize / 2; 
+      const baseSeatSize = 12;
+      const seatHalf = baseSeatSize / 2;
 
       function makeSeat(x, y, w, h) {
         group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
       }
 
-      // Seat positions
+      // Seat positions based on dims
       if (t.w === 30 && t.h === 30) { // 2-seater
         makeSeat(t.w/2 - baseSeatSize/2, -seatHalf, baseSeatSize, seatHalf);
         makeSeat(t.w/2 - baseSeatSize/2, t.h, baseSeatSize, seatHalf);
@@ -269,106 +270,300 @@
         }
       }
 
+      // clickable behavior (will be set/extended in loadTables)
       group.on('click', () => {
-        if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
+        // selection visual
+        if(selectedGroup) {
+          const prevRect = selectedGroup.findOne('.main-table');
+          if (prevRect) prevRect.stroke('#000');
+        }
         selectedGroup = group;
-        selectedTableId = t.id;
         tableRect.stroke('#ffeb3b');
         layer.draw();
 
-        const isBooked = bookings.some(b => b.table_id === t.id);
-        document.getElementById('book-table').disabled = isBooked;
-        document.getElementById('unbook-table').disabled = !isBooked;
+        // manage booking modal in loadTables (we will set group.meta when creating them)
+        if (group.meta && typeof group.meta.onClick === 'function') {
+          group.meta.onClick();
+        }
       });
 
       return group;
     }
 
-    async function loadBookings() {
-      const date = document.getElementById('selected-date').value;
-      const { data, error } = await _supa
-        .from('bookings')
-        .select('*')
-        .eq('date', date);
-
-      if (error) { console.error(error); return; }
-      bookings = data;
-      greyOutBookedTables();
+    // Helper: format date for display
+    function fmtLocalISO(dt) {
+      // returns "YYYY-MM-DDTHH:MM" (suitable for datetime-local)
+      const pad = n=>String(n).padStart(2,'0');
+      return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
     }
 
-    function greyOutBookedTables() {
+    // Load tables and mark bookings for a given selectedDateTime (JS Date)
+    async function loadTables(selectedDateTime) {
+      if (!selectedDateTime || !(selectedDateTime instanceof Date)) {
+        alert('Invalid date/time selected.');
+        return;
+      }
+
+      layer.destroyChildren();
+      // reload background first
+      loadBackground();
+
+      // load tables from supabase
+      const { data: tableData, error: tableErr } = await _supa.from('tables').select('*').order('id');
+      if (tableErr) { console.error(tableErr); alert('Error loading tables'); return; }
+      tables = tableData || [];
+
+      // Query bookings where start_time <= selectedDateTime AND end_time >= selectedDateTime
+      const dtISO = selectedDateTime.toISOString();
+      const { data: bookingData, error: bookingErr } = await _supa
+        .from('bookings')
+        .select('*')
+        .lte('start_time', dtISO)
+        .gte('end_time', dtISO);
+
+      if (bookingErr) {
+        console.error('Error loading bookings: ', bookingErr);
+      }
+      bookingsCache = bookingData || [];
+
+      // Draw tables and mark those booked
       tables.forEach(t => {
-        const group = layer.findOne('#g-' + t.id);
+        const group = drawTable(t);
         const tableRect = group.findOne('.main-table');
-        const isBooked = bookings.some(b => b.table_id === t.id);
-        tableRect.fill(isBooked ? '#999' : TABLE_COLOR);
+
+        // place group centered on table coordinate like before
+        group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+        group.x((t.x || 0) + tableRect.width()/2);
+        group.y((t.y || 0) + tableRect.height()/2);
+        group.rotation(t.rotation || 0);
+
+        // determine if this table is booked at selectedDateTime
+        const booking = bookingsCache.find(b => b.table_id === t.id);
+        if (booking) {
+          tableRect.fill(BOOKED_COLOR);
+          group.draggable(false);
+          group.isBooked = true;
+          group.booking = booking;
+        } else {
+          tableRect.fill(TABLE_COLOR);
+          group.draggable(true);
+          group.isBooked = false;
+          group.booking = null;
+        }
+
+        // attach meta click handler to open booking modal
+        group.meta = {
+          table: t,
+          onClick: () => openBookingFlowForGroup(group)
+        };
       });
+
       layer.draw();
     }
 
-    document.getElementById('selected-date').onchange = () => {
-      loadBookings();
-    };
-
-    document.getElementById('book-table').onclick = async () => {
-      const date = document.getElementById('selected-date').value;
-      const start = document.getElementById('start-time').value;
-      const end = document.getElementById('end-time').value;
-      const notes = document.getElementById('booking-notes').value;
-
-      if (!selectedTableId || !date || !start || !end) return alert('Missing fields');
-
-      const { error } = await _supa.from('bookings').insert({
-        table_id: selectedTableId,
-        date,
-        start_time: start,
-        end_time: end,
-        notes
-      });
-
-      if (error) return alert('Booking failed: ' + error.message);
-      alert('Table booked!');
-      await loadBookings();
-    };
-
-    document.getElementById('unbook-table').onclick = async () => {
-      if (!selectedTableId) return;
-
-      const { error } = await _supa
+    // booking overlap check (client-side)
+    async function hasOverlap(tableId, startISO, endISO) {
+      // fetch bookings for this table and check overlap
+      const { data: existing, error } = await _supa
         .from('bookings')
-        .delete()
-        .eq('table_id', selectedTableId)
-        .eq('date', document.getElementById('selected-date').value);
+        .select('*')
+        .eq('table_id', tableId);
 
-      if (error) return alert('Remove failed: ' + error.message);
-      alert('Booking removed');
-      await loadBookings();
-    };
+      if (error) {
+        console.error('Error fetching bookings for overlap check', error);
+        throw error;
+      }
 
-    document.getElementById('rotate').onclick = () => {
-      if(selectedGroup){
-        selectedGroup.rotation(selectedGroup.rotation()+90);
-        layer.draw();
+      const newStart = new Date(startISO);
+      const newEnd = new Date(endISO);
+      for (const b of (existing || [])) {
+        const s = new Date(b.start_time);
+        const e = new Date(b.end_time);
+        // overlap if newStart < e AND newEnd > s
+        if (newStart < e && newEnd > s) return true;
+      }
+      return false;
+    }
+
+    // attempt to create booking
+    async function bookTable(tableId, startISO, endISO, notes) {
+      // validation
+      const start = new Date(startISO);
+      const end = new Date(endISO);
+      if (isNaN(start) || isNaN(end) || end <= start) {
+        alert('Invalid start/end times.');
+        return { success:false };
+      }
+
+      // prevent overlaps
+      const overlap = await hasOverlap(tableId, startISO, endISO);
+      if (overlap) {
+        return { success:false, message: 'Time overlaps an existing booking for that table.' };
+      }
+
+      const { data, error } = await _supa.from('bookings').insert([
+        { table_id: tableId, start_time: start.toISOString(), end_time: end.toISOString(), notes }
+      ]).select('*');
+
+      if (error) {
+        console.error('Booking failed', error);
+        return { success:false, message: error.message || 'Booking failed' };
+      }
+
+      return { success:true, booking: (data && data[0]) || null };
+    }
+
+    // delete a booking by id
+    async function removeBooking(bookingId) {
+      const { data, error } = await _supa.from('bookings').delete().eq('id', bookingId);
+      if (error) {
+        return { success:false, message: error.message };
+      }
+      return { success:true };
+    }
+
+    // Open booking flow modal for a group (either show booking form if free, or show booking details if booked)
+    function openBookingFlowForGroup(group) {
+      const t = group.meta.table;
+      const viewDate = document.getElementById('viewDate').value;
+      const viewTime = document.getElementById('viewTime').value;
+      const viewDateTime = viewDate && viewTime ? new Date(`${viewDate}T${viewTime}`) : new Date();
+
+      if (group.isBooked && group.booking) {
+        // show booking details and delete option
+        const bk = group.booking;
+        const start = new Date(bk.start_time);
+        const end = new Date(bk.end_time);
+        const modalHtml = `
+          <h3>Booking for Table #${t.id}</h3>
+          <div><strong>Start:</strong> ${start.toLocaleString()}</div>
+          <div><strong>End:</strong> ${end.toLocaleString()}</div>
+          <div style="margin-top:8px;"><strong>Notes:</strong><div style="margin-top:6px; padding:8px; background:#f6f6f6; border-radius:6px;">${escapeHtml(bk.notes || '')}</div></div>
+          <div class="actions">
+            <button class="btn ghost" id="closeModalBtn">Close</button>
+            <button class="btn negative" id="deleteBookingBtn">Remove Booking</button>
+          </div>
+        `;
+        showModal(modalHtml);
+        document.getElementById('closeModalBtn').onclick = closeModal;
+        document.getElementById('deleteBookingBtn').onclick = async () => {
+          if (!confirm('Remove this booking?')) return;
+          const res = await removeBooking(bk.id);
+          if (!res.success) {
+            alert('Failed to remove booking: ' + (res.message || 'unknown'));
+            return;
+          }
+          closeModal();
+          // reload current view
+          loadCurrentView();
+        };
+        return;
+      }
+
+      // not booked -> show booking form. Prefill start/end around viewDateTime
+      const defaultStart = new Date(viewDateTime);
+      defaultStart.setMinutes( Math.ceil(defaultStart.getMinutes()/15)*15 ); // round to 15min
+      const defaultEnd = new Date(defaultStart.getTime() + 60*60*1000); // +1h
+
+      const modalHtml = `
+        <h3>Book Table #${t.id}</h3>
+        <label>Start</label>
+        <input id="b_start" type="datetime-local" value="${fmtLocalISO(defaultStart)}" />
+        <label>End</label>
+        <input id="b_end" type="datetime-local" value="${fmtLocalISO(defaultEnd)}" />
+        <label>Notes</label>
+        <textarea id="b_notes" placeholder="Optional notes"></textarea>
+        <div class="actions">
+          <button class="btn ghost" id="cancelBookingBtn">Cancel</button>
+          <button class="btn primary" id="confirmBookingBtn">Book</button>
+        </div>
+      `;
+      showModal(modalHtml);
+      document.getElementById('cancelBookingBtn').onclick = closeModal;
+      document.getElementById('confirmBookingBtn').onclick = async () => {
+        const startVal = document.getElementById('b_start').value;
+        const endVal = document.getElementById('b_end').value;
+        const notes = document.getElementById('b_notes').value || '';
+        if (!startVal || !endVal) { alert('Start and end required'); return; }
+        if (new Date(endVal) <= new Date(startVal)) { alert('End must be after start'); return; }
+
+        // attempt booking
+        const result = await bookTable(t.id, new Date(startVal).toISOString(), new Date(endVal).toISOString(), notes);
+        if (!result.success) {
+          alert(result.message || 'Booking failed (possible overlap)');
+          return;
+        }
+        closeModal();
+        loadCurrentView(); // refresh floorplan for the same view time
+        alert('Booked!');
+      };
+    }
+
+    // Escape HTML for display in modal
+    function escapeHtml(unsafe) {
+      return String(unsafe).replace(/[&<"'>]/g, function(m) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+      });
+    }
+
+    // Load the floorplan for selected view controls
+    function loadCurrentView() {
+      const date = document.getElementById('viewDate').value;
+      const time = document.getElementById('viewTime').value;
+      if (!date || !time) { alert('Pick a date and time first'); return; }
+      const dt = new Date(`${date}T${time}`);
+      loadTables(dt);
+    }
+
+    // Save current layout: update tables positions/rotation
+    document.getElementById('save').onclick = async () => {
+      try {
+        const updates = tables.map(t=>{
+          const g = layer.findOne('#g-'+t.id);
+          if (!g) return null;
+          const tableRect = g.findOne('.main-table');
+          // compute top-left from centered group coordinates
+          const finalX = g.x() - tableRect.width()/2;
+          const finalY = g.y() - tableRect.height()/2;
+          const finalRotation = g.rotation();
+          return { id:t.id, x: Math.round(finalX), y: Math.round(finalY), rotation: Math.round(finalRotation) };
+        }).filter(Boolean);
+
+        if (updates.length === 0) { alert('No tables to save'); return; }
+        const { data, error } = await _supa.from('tables').upsert(updates).select('*');
+        if (error) { alert('Save failed: ' + (error.message || 'unknown')); return; }
+        // refresh tables list
+        tables = data;
+        alert('Layout saved!');
+      } catch (err) {
+        console.error(err);
+        alert('Save failed: ' + err.message);
       }
     };
 
-    document.getElementById('save').onclick = async () => {
-      const updates = tables.map(t=>{
-        const g = layer.findOne('#g-'+t.id);
-        const tableRect = g.findOne('.main-table');
-        const finalX = g.x() - tableRect.width()/2;
-        const finalY = g.y() - tableRect.height()/2;
-        const finalRotation = g.rotation();
-        return { id:t.id, x:finalX, y:finalY, rotation: finalRotation };
-      });
-      const { data, error } = await _supa.from('tables').upsert(updates).select('*, rotation');
-      if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
+    // Rotate selected table 90 degrees
+    document.getElementById('rotate').onclick = () => {
+      if(selectedGroup){
+        selectedGroup.rotation((selectedGroup.rotation() + 90) % 360);
+        layer.draw();
+      } else {
+        alert('Select a table first (click it).');
+      }
     };
 
-    loadBackground(() => {
-      loadTables().then(() => loadBookings());
+    document.getElementById('loadFloorplan').onclick = loadCurrentView;
+
+    // close modal when clicking backdrop
+    document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeModal();
     });
+
+    // initial load: draw background and load tables at default datetime
+    (async function init(){
+      loadBackground();
+      // attempt to load for default view inputs
+      loadCurrentView();
+    })();
   </script>
 </body>
 </html>
-```
