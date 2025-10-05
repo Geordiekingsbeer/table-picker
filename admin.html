@@ -252,7 +252,6 @@
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <script>
     // --- Supabase setup ---
-    // This inline code is now guaranteed to run AFTER the two scripts above it.
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
@@ -436,14 +435,14 @@
         
         // --- Double-Click (UNRESERVE) ---
         group.on('dblclick', (e) => {
-            // Prevent the click event from also firing (though dblclick often overrides click)
             e.evt.preventDefault();
             const booking = group.getAttr('booking_data');
             
             if (booking) {
                 // Trigger removal confirmation directly
                 if (confirm(`Table ${t.id} is booked. Double-click detected. Do you want to cancel the booking (ID: ${booking.id}) for ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)}?`)) {
-                    deleteBooking(booking.id);
+                    // This calls the working delete function
+                    deleteBooking(booking.id); 
                 }
             } else {
                 alert(`Table ${t.id} is currently available. Open the modal to book.`);
@@ -480,13 +479,6 @@
             currentBookings = []; 
         } else { 
             
-            // CRITICAL DEBUGGING LOG ADDED HERE
-            console.log("--- DEBUG: RAW BOOKINGS FETCHED FOR DATE ---");
-            console.log("Selected Date (Used in Query):", selectedDateSupabase);
-            console.log("Selected Time (Used in Filter):", currentSelectedTime);
-            console.log("Raw Data Fetched:", data); 
-            console.log("-------------------------------------------");
-
             // 2. Filter the fetched data using robust numeric time comparison
             const selectedTimeMinutes = timeToMinutes(currentSelectedTime); 
 
@@ -548,18 +540,20 @@
     }
     
     async function deleteBooking(bookingId) {
+        // The core DELETE command. If this fails, the RLS policy is missing.
         const { error } = await _supa
             .from('premium_slots') 
             .delete()
             .eq('id', bookingId);
         
         if (error) {
+            // Note: If this hits, check the Network tab for a 401/403 RLS error.
             console.error('Error deleting booking:', error);
             alert('Deletion failed: ' + error.message);
             return false;
         } else {
             alert('Booking removed!');
-            modal.style.display = 'none';
+            // Reloads the bookings, which turns the table back to green.
             await loadBookings();
             return true;
         }
@@ -591,8 +585,8 @@
             // Set up removal button action (used by the internal modal button)
             removeBookingButton.onclick = async () => {
                 if (confirm('Are you sure you want to remove this booking?')) {
-                    // Note: We hide the modal inside deleteBooking now.
                     await deleteBooking(booking.id);
+                    modal.style.display = 'none'; // Hide modal after delete confirms
                 }
             };
         } else {
@@ -664,7 +658,6 @@
     };
 
     // --- Initialization ---
-    // Execute all initialization code immediately after the scripts above it have loaded.
     setDefaultDateTime();
     loadBackground(loadTables);
     </script>
