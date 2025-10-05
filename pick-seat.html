@@ -144,7 +144,7 @@
         stage.add(layer);
         
         const payBtn = document.getElementById('payBtn');
-        let selectedTableIds = []; // CHANGED: Array to hold multiple selected table IDs
+        let selectedTableIds = []; 
         let currentBookings = []; 
 
         const TABLE_COLOR = '#b7d7a8'; // Available
@@ -152,7 +152,7 @@
         const SEAT_COLOR = '#555'; 
         const HIGHLIGHT_COLOR = '#ffeb3b'; // Selection color
         
-        // --- Helper Functions (Copied from Admin) ---
+        // --- Helper Functions ---
 
         function timeToMinutes(timeStr) {
             const parts = timeStr.split(':').map(Number);
@@ -232,11 +232,13 @@
                 
                 tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
                 tableRect.stroke('#000'); // Default border
+                tableRect.strokeWidth(1);
             });
             
             // 2. Re-apply selection highlights only to tables that are still available
             currentSelection.forEach(id => {
                 const group = layer.findOne('#g-' + id);
+                if (!group) return; // Skip if table element doesn't exist
                 const tableRect = group.findOne('.main-table');
 
                 // If the table is NOT booked, re-add it to the selection
@@ -275,7 +277,6 @@
                 group.rotation(t.rotation || 0); 
             });
             
-            // Load bookings to set initial statuses
             await loadBookings();
         }
         
@@ -284,7 +285,7 @@
                 x: t.x, 
                 y: t.y, 
                 id: 'g-' + t.id,
-                name: 'selectable-table' // Add a name for easier searching
+                name: 'selectable-table'
             });
             layer.add(group);
 
@@ -298,7 +299,6 @@
             });
             group.add(tableRect);
 
-            // Use the click event handler with native event access
             group.on('click tap', (e) => selectTable(t.id, e.evt));
 
             // Seat drawing logic (unchanged)
@@ -355,8 +355,10 @@
                     // If no key pressed, clear all previous selections
                     selectedTableIds.forEach(prevId => {
                         const prevGroup = layer.findOne('#g-' + prevId);
-                        prevGroup.findOne('.main-table').stroke('#000');
-                        prevGroup.findOne('.main-table').strokeWidth(1);
+                        if(prevGroup) { // Check if group exists before trying to access its children
+                            prevGroup.findOne('.main-table').stroke('#000');
+                            prevGroup.findOne('.main-table').strokeWidth(1);
+                        }
                     });
                     selectedTableIds = [];
                 }
@@ -399,8 +401,10 @@
             // Clear current selection state when checking availability for a new time slot
             selectedTableIds.forEach(id => {
                 const group = layer.findOne('#g-' + id);
-                group.findOne('.main-table').stroke('#000');
-                group.findOne('.main-table').strokeWidth(1);
+                if (group) {
+                    group.findOne('.main-table').stroke('#000');
+                    group.findOne('.main-table').strokeWidth(1);
+                }
             });
             selectedTableIds = [];
             payBtn.disabled = true;
@@ -412,10 +416,16 @@
         payBtn.onclick = async () => {
             if (selectedTableIds.length === 0) return;
             
-            // Re-check tables just before checkout (optional but good for speed)
+            const selectedDate = document.getElementById('booking-date').value;
+            const selectedTime = document.getElementById('booking-time').value;
+
+            if (!selectedDate || !selectedTime) {
+                alert('Please select a valid date and time before proceeding.');
+                return;
+            }
+
             await loadBookings();
             
-            // Final check that all selected tables are still available
             const isAnySelectedTableBooked = selectedTableIds.some(id => {
                 const group = layer.findOne('#g-' + id);
                 return group.findOne('.main-table').fill() === BOOKED_COLOR;
@@ -423,7 +433,6 @@
 
             if (isAnySelectedTableBooked) {
                 alert("Error: One or more selected tables were just booked. Please re-check availability and select again.");
-                // Re-run visuals to grey out the new conflict
                 updateTableVisuals();
                 return;
             }
@@ -432,16 +441,19 @@
             if (!email) return alert('Email is required');
             
             try {
-                // IMPORTANT: We send the entire array of table IDs to the server
-                const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
+                // --- CRITICAL FETCH WITH STABLE VERCEL URL ---
+                const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        table_ids: selectedTableIds, // CHANGED: Sending array of IDs
+                        table_ids: selectedTableIds, 
                         email: email,
-                        // NOTE: You must update your Vercel/Stripe server to handle this array and charge accordingly
+                        booking_date: selectedDate,
+                        booking_time: selectedTime
                     })
                 });
+                // ---------------------------------------------
+                
                 const data = await res.json();
                 if (data.url) {
                     window.location.href = data.url;    
@@ -456,8 +468,8 @@
         };
 
         // --- Initialization ---
-        setDefaultDateTime(); // Set default date/time inputs
-        loadTables();         // Load layout and initial bookings
+        setDefaultDateTime(); 
+        loadTables();         
     </script>
 </body>
 </html>
