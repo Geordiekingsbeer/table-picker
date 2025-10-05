@@ -1,413 +1,669 @@
-<script>
-    // --- (UNCHANGED SETUP CODE) ---
-    const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-    const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-    const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
-
-    const STAGE_WIDTH = 480;
-    const STAGE_HEIGHT = 480;
-
-    const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
-    const backgroundLayer = new Konva.Layer();
-    stage.add(backgroundLayer);
-    const layer = new Konva.Layer(); 
-    stage.add(layer);
-
-    let tables = [];
-    let selectedGroup = null;
-    const TABLE_COLOR = '#b7d7a8';
-    const BOOKED_COLOR = '#bdbdbd'; 
-    const SEAT_COLOR = '#555';
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Admin – Drag Tables & Bookings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    let currentBookings = []; 
-    let currentSelectedDate = ''; 
-    let currentSelectedTime = ''; 
-    let currentSelectedTableId = null; 
+    <style>
+        /* (CSS styles remain unchanged) */
+        body{
+            font-family: Arial, Helvetica, sans-serif;
+            background:#f7f7f7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0; 
+            padding: 20px 0;
+        }
 
-    // Helper function to convert HH:MM:SS string to minutes since midnight for numeric comparison
-    function timeToMinutes(timeStr) {
-        const parts = timeStr.split(':').map(Number);
-        const hours = parts[0] || 0;
-        const minutes = parts[1] || 0;
-        return (hours * 60) + minutes;
-    }
+        /* Header container */
+        h2 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
 
-    // Helper function to ensure date is always YYYY-MM-DD for Supabase
-    function getSupabaseDate() {
-         const dateInput = document.getElementById('booking-date').value;
-         if (!dateInput) return '';
+        h2 .arrow {
+            font-weight: 700;
+            font-size: 24px;
+            margin: 0 10px;
+            color: #1976d2;
+        }
 
-         // The safest way is to let the browser's input type="date" give us the value (which is usually YYYY-MM-DD)
-         if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        /* Buttons in header */
+        h2 button {
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            color: #fff;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        h2 button#save {
+            background-color: #388e3c;
+        }
+        h2 button#rotate {
+            background-color: #1976d2;
+        }
+
+        h2 button:hover {
+            box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+            opacity: 0.95;
+        }
+
+        /* Date/Time Selector */
+        #datetime-controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: center;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #datetime-controls label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        #datetime-controls input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        #load-bookings {
+            padding: 8px 15px;
+            background-color: #f57c00; /* Orange color for action */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        #load-bookings:hover {
+            background-color: #e65100;
+        }
+
+
+        /* Floorplan container */
+        #container-wrapper {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #container{
+            width:480px;
+            height:480px;
+            border:1px solid #ccc;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background:#fff;
+        }
+        
+        /* Modal for booking */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.4); 
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; 
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; 
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .modal-content label { display: block; margin-top: 10px; font-weight: 600; }
+        .modal-content input, .modal-content textarea, .modal-content button { 
+            width: 100%; 
+            padding: 8px; 
+            margin-top: 5px; 
+            box-sizing: border-box; 
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .modal-content button {
+            background-color: #388e3c;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .modal-content button:hover {
+            background-color: #2e7d32;
+        }
+        
+        #current-booking-info {
+            padding: 10px;
+            margin-top: 15px;
+            border: 1px solid #ffcc80;
+            background-color: #fff3e0;
+            border-radius: 5px;
+        }
+        
+        #remove-booking {
+            background-color: #d32f2f;
+        }
+        
+        /* Responsive for small screens */
+        @media (max-width: 500px) {
+            h2 { font-size: 18px; }
+            h2 button { padding: 8px 14px; font-size: 14px; }
+            #datetime-controls { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <h2>
+        Drag tables <span class="arrow">→</span>
+        <button id="save">Save layout</button>
+        <button id="rotate">Rotate Table 90°</button>
+    </h2>
+    
+    <div id="datetime-controls">
+        <label for="booking-date">Date:</label>
+        <input type="date" id="booking-date" value="">
+        <label for="booking-time">Time:</label>
+        <input type="time" id="booking-time" value="">
+        <button id="load-bookings">Load Bookings</button>
+    </div>
+
+    <div id="container-wrapper">
+        <div id="container"></div>
+    </div>
+    
+    <div id="booking-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modal-title">Table Booking</h3>
+            <form id="booking-form">
+                <input type="hidden" id="modal-table-id">
+                
+                <div id="current-booking-info" style="display:none;">
+                    <p><strong>Status:</strong> Booked</p>
+                    <p><strong>Start:</strong> <span id="booked-start"></span></p>
+                    <p><strong>End:</strong> <span id="booked-end"></span></p>
+                    <p><strong>Notes:</strong> <span id="booked-notes"></span></p>
+                    <button type="button" id="remove-booking">Remove Booking</button>
+                </div>
+
+                <div id="new-booking-form">
+                    <label for="start-time">Start Time (HH:MM):</label>
+                    <input type="time" id="start-time" required>
+                    
+                    <label for="end-time">End Time (HH:MM):</label>
+                    <input type="time" id="end-time" required>
+                    
+                    <label for="notes">Notes:</label>
+                    <textarea id="notes" rows="3"></textarea>
+                    
+                    <button type="submit" id="book-slot">Book Slot</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <script>
+        // --- Supabase setup ---
+        const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+        const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+        const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+
+        const STAGE_WIDTH = 480;
+        const STAGE_HEIGHT = 480;
+
+        const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
+        const backgroundLayer = new Konva.Layer();
+        stage.add(backgroundLayer);
+        const layer = new Konva.Layer(); 
+        stage.add(layer);
+
+        let tables = [];
+        let selectedGroup = null;
+        const TABLE_COLOR = '#b7d7a8';
+        const BOOKED_COLOR = '#bdbdbd'; // Grey for booked
+        const SEAT_COLOR = '#555';
+        
+        let currentBookings = []; 
+        let currentSelectedDate = ''; // Will hold the date 'YYYY-MM-DD'
+        let currentSelectedTime = ''; // Will hold the time 'HH:MM'
+        let currentSelectedTableId = null; // ID of the table clicked in the modal
+
+        // Helper function to convert HH:MM:SS string to minutes since midnight for numeric comparison
+        function timeToMinutes(timeStr) {
+            // Handles HH:MM or HH:MM:SS format
+            const parts = timeStr.split(':').map(Number);
+            const hours = parts[0] || 0;
+            const minutes = parts[1] || 0;
+            return (hours * 60) + minutes;
+        }
+
+        // Helper function to ensure date is always YYYY-MM-DD for Supabase
+        function getSupabaseDate() {
+             const dateInput = document.getElementById('booking-date').value;
+             if (!dateInput) return '';
+
+             // If the browser returns YYYY-MM-DD (standard behavior), it's fine.
+             if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                 return dateInput;
+             }
+
+             // Handle DD/MM/YYYY manually if the browser is overriding the format
+             if (dateInput.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                 const [day, month, year] = dateInput.split('/');
+                 return `${year}-${month}-${day}`;
+             }
+             
+             // Fallback: Use new Date() to force ISO format from whatever the browser gives us
+             const dateObj = new Date(dateInput);
+             if (!isNaN(dateObj)) {
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+             }
+             
              return dateInput;
-         }
-
-         // Handle DD/MM/YYYY manually if the browser is overriding the format
-         if (dateInput.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-             const [day, month, year] = dateInput.split('/');
-             return `${year}-${month}-${day}`;
-         }
-         
-         // Fallback/safety net (often unnecessary for modern input type="date")
-         const dateObj = new Date(dateInput);
-         if (!isNaN(dateObj)) {
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-         }
-         
-         return dateInput;
-    }
+        }
 
 
-    // Helper to get today's date and a default time for inputs
-    function setDefaultDateTime() {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        
-        currentSelectedDate = `${year}-${month}-${day}`;
-        currentSelectedTime = '19:00'; 
+        // Helper to get today's date and a default time for inputs
+        function setDefaultDateTime() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            
+            // Set the state variables in the required YYYY-MM-DD format
+            currentSelectedDate = `${year}-${month}-${day}`;
+            currentSelectedTime = '19:00'; // Default evening time
 
-        document.getElementById('booking-date').value = currentSelectedDate;
-        document.getElementById('booking-time').value = currentSelectedTime;
-    }
+            // Set the input values (browser will display them based on locale)
+            document.getElementById('booking-date').value = currentSelectedDate;
+            document.getElementById('booking-time').value = currentSelectedTime;
+        }
 
-    // --- Konva Functions ---
+        // --- Konva Functions ---
 
-    function loadBackground(callback) {
-        const imageObj = new Image();
-        imageObj.onload = function() {
-            const floorplan = new Konva.Image({
-                x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
+        function loadBackground(callback) {
+            const imageObj = new Image();
+            imageObj.onload = function() {
+                const floorplan = new Konva.Image({
+                    x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
+                });
+                backgroundLayer.add(floorplan);
+                backgroundLayer.draw();
+                if (callback) callback();
+            };
+            imageObj.src = 'floorplan.png';
+        }
+
+        async function loadTables() {
+            const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
+            if(error){ console.error(error); alert('Error loading tables'); return; }
+            tables = data;
+            
+            layer.destroyChildren(); // Clear existing tables
+            tables.forEach(t => {
+                const group = drawTable(t);
+                const tableRect = group.findOne('.main-table');
+
+                group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+                group.x(t.x + tableRect.width()/2);
+                group.y(t.y + tableRect.height()/2);
+                group.rotation(t.rotation || 0); 
             });
-            backgroundLayer.add(floorplan);
-            backgroundLayer.draw();
-            if (callback) callback();
-        };
-        imageObj.src = 'floorplan.png';
-    }
-
-    async function loadTables() {
-        const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
-        if(error){ console.error(error); alert('Error loading tables'); return; }
-        tables = data;
+            layer.draw();
+            await loadBookings(); 
+        }
         
-        layer.destroyChildren(); // Clear existing tables
-        tables.forEach(t => {
-            const group = drawTable(t);
-            const tableRect = group.findOne('.main-table');
+        function updateTableVisuals() {
+            tables.forEach(t => {
+                const group = layer.findOne('#g-'+t.id);
+                if (!group) return;
+                const tableRect = group.findOne('.main-table');
+                
+                // --- HYPOTHESIS 1 FIX APPLIED HERE ---
+                // Convert the table ID (from 'tables' data) to a number for reliable comparison
+                const tableIdNumber = Number(t.id);
+                
+                // Search the filtered list of bookings
+                const activeBooking = currentBookings.find(b => 
+                    Number(b.table_id) === tableIdNumber 
+                );
+                
+                group.setAttr('booking_data', activeBooking || null);
 
-            group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
-            group.x(t.x + tableRect.width()/2);
-            group.y(t.y + tableRect.height()/2);
-            group.rotation(t.rotation || 0); 
-        });
-        layer.draw();
-        await loadBookings(); 
-    }
-    
-    function updateTableVisuals() {
-        tables.forEach(t => {
-            const group = layer.findOne('#g-'+t.id);
-            if (!group) return;
-            const tableRect = group.findOne('.main-table');
+                tableRect.fill(activeBooking ? BOOKED_COLOR : TABLE_COLOR);
+                layer.draw();
+            });
+        }
+
+        function drawTable(t){
+            const group = new Konva.Group({ 
+                x:t.x, 
+                y:t.y, 
+                id:'g-'+t.id, 
+                table_id: Number(t.id), // Store table_id as number
+                draggable:true 
+            });
+            layer.add(group);
+
+            const tableRect = new Konva.Rect({ 
+                width:t.w, height:t.h, fill:TABLE_COLOR, stroke:'#000', strokeWidth:1, name: 'main-table' 
+            });
+            group.add(tableRect);
+
+            const baseSeatSize = 12; 
+            const seatHalf = baseSeatSize / 2; 
+
+            function makeSeat(x, y, w, h) {
+                group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
+            }
+
+            // Seat positions (original logic retained)
+            if (t.w === 30 && t.h === 30) { // 2-seater
+                makeSeat(t.w/2 - baseSeatSize/2, -seatHalf, baseSeatSize, seatHalf);
+                makeSeat(t.w/2 - baseSeatSize/2, t.h, baseSeatSize, seatHalf);
+            } else if (t.w === 30 && t.h === 50) { // 4-seater
+                const v_spacing = (t.h - 2*baseSeatSize)/3;
+                makeSeat(-seatHalf, v_spacing, seatHalf, baseSeatSize);
+                makeSeat(-seatHalf, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
+                makeSeat(t.w, v_spacing, seatHalf, baseSeatSize);
+                makeSeat(t.w, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
+            } else if (t.w === 90 && t.h === 30) { // 6-seater
+                const h_spacing = t.w / 4;
+                for(let i=0; i<3; i++){
+                    const x_pos = h_spacing*(i+1) - baseSeatSize/2;
+                    makeSeat(x_pos, -seatHalf, baseSeatSize, seatHalf);
+                    makeSeat(x_pos, t.h, baseSeatSize, seatHalf);
+                }
+            }
+
+            // --- Left-Click (Standard Select & Booking Modal) ---
+            group.on('click', () => {
+                if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
+                selectedGroup = group;
+                tableRect.stroke('#ffeb3b');
+                layer.draw();
+                
+                currentSelectedTableId = t.id;
+                showBookingModal(t.id, group.getAttr('booking_data')); 
+            });
             
-            // --- HYPOTHESIS 1 FIX APPLIED HERE ---
-            // Force comparison to be numeric.
-            const tableIdNumber = Number(t.id);
+            // --- Right-Click (Unreserve Feature) ---
+            group.on('contextmenu', (e) => {
+                e.evt.preventDefault(); 
+                const booking = group.getAttr('booking_data');
+                
+                if (booking) {
+                    if (confirm(`Table ${t.id} is booked. Do you want to cancel the booking (ID: ${booking.id}) for ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)} on ${booking.date}?`)) {
+                        deleteBooking(booking.id);
+                    }
+                } else {
+                    alert(`Table ${t.id} is currently available at ${currentSelectedTime} on ${currentSelectedDate}.`);
+                }
+            });
             
-            const activeBooking = currentBookings.find(b => 
-                Number(b.table_id) === tableIdNumber 
+            return group;
+        }
+        
+        // --- Supabase Booking Functions ---
+        
+        async function loadBookings() {
+            // Get the date in the strict format Supabase needs
+            const selectedDateSupabase = getSupabaseDate();
+            currentSelectedTime = document.getElementById('booking-time').value; // HH:MM
+
+            if (!selectedDateSupabase || !currentSelectedTime) {
+                console.log("Date and time not selected. Skipping booking load.");
+                currentBookings = [];
+                updateTableVisuals();
+                return;
+            }
+            
+            // 1. Fetch all bookings for the strictly formatted date
+            const { data, error } = await _supa
+                .from('premium_slots') 
+                .select('*')
+                .eq('date', selectedDateSupabase); 
+                
+            if(error){ 
+                console.error('Error loading bookings:', error); 
+                alert('Error loading bookings'); 
+                currentBookings = []; 
+            } else { 
+                
+                // 2. Filter the fetched data using robust numeric time comparison
+                const selectedTimeMinutes = timeToMinutes(currentSelectedTime); 
+
+                currentBookings = data.filter(b => {
+                    const bookingStartMinutes = timeToMinutes(b.start_time);
+                    const bookingEndMinutes = timeToMinutes(b.end_time);
+                    
+                    // The selected moment must be >= start_time AND strictly < end_time.
+                    return selectedTimeMinutes >= bookingStartMinutes && selectedTimeMinutes < bookingEndMinutes;
+                });
+            }
+            
+            updateTableVisuals();
+        }
+        
+        async function createBooking(tableId, startTime, endTime, notes) {
+            const dateSupabase = getSupabaseDate();
+            
+            // Use numeric comparison for validation
+            const tableIdNumber = Number(tableId);
+            const startTimeMinutes = timeToMinutes(startTime);
+            const endTimeMinutes = timeToMinutes(endTime);
+            
+            // Basic time validation
+            if (endTimeMinutes <= startTimeMinutes) {
+                alert('End time must be after start time.');
+                return false;
+            }
+
+            // Check for overlap using the client-side array
+            const overlap = currentBookings.some(b => 
+                Number(b.table_id) === tableIdNumber && ( // Ensure numeric comparison here too
+                    startTimeMinutes < timeToMinutes(b.end_time) && endTimeMinutes > timeToMinutes(b.start_time)
+                )
             );
             
-            group.setAttr('booking_data', activeBooking || null);
+            if (overlap) {
+                 alert('This slot overlaps with an existing booking. Please try a different time.');
+                 return false;
+            }
+            
+            const newBooking = {
+                table_id: tableIdNumber, // Ensure we send a number
+                date: dateSupabase, 
+                start_time: startTime, 
+                end_time: endTime,     
+                host_notes: notes,     // Confirmed column name
+            };
 
-            tableRect.fill(activeBooking ? BOOKED_COLOR : TABLE_COLOR);
-            layer.draw();
-        });
-    }
-
-    function drawTable(t){
-        // Ensure table_id is stored numerically or as a safe string
-        const group = new Konva.Group({ 
-            x:t.x, 
-            y:t.y, 
-            id:'g-'+t.id, 
-            table_id: Number(t.id), // Store table_id as number
-            draggable:true 
-        });
-        layer.add(group);
-
-        const tableRect = new Konva.Rect({ 
-            width:t.w, height:t.h, fill:TABLE_COLOR, stroke:'#000', strokeWidth:1, name: 'main-table' 
-        });
-        group.add(tableRect);
-
-        const baseSeatSize = 12; 
-        const seatHalf = baseSeatSize / 2; 
-
-        function makeSeat(x, y, w, h) {
-            group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
+            const { error } = await _supa.from('premium_slots').insert([newBooking]); 
+            
+            if (error) {
+                console.error('Error creating booking:', error);
+                alert('Booking failed: ' + error.message);
+                return false;
+            } else {
+                alert('Booking successful!');
+                return true;
+            }
         }
-
-        // Seat positions (original logic retained)
-        if (t.w === 30 && t.h === 30) { // 2-seater
-            makeSeat(t.w/2 - baseSeatSize/2, -seatHalf, baseSeatSize, seatHalf);
-            makeSeat(t.w/2 - baseSeatSize/2, t.h, baseSeatSize, seatHalf);
-        } else if (t.w === 30 && t.h === 50) { // 4-seater
-            const v_spacing = (t.h - 2*baseSeatSize)/3;
-            makeSeat(-seatHalf, v_spacing, seatHalf, baseSeatSize);
-            makeSeat(-seatHalf, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
-            makeSeat(t.w, v_spacing, seatHalf, baseSeatSize);
-            makeSeat(t.w, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
-        } else if (t.w === 90 && t.h === 30) { // 6-seater
-            const h_spacing = t.w / 4;
-            for(let i=0; i<3; i++){
-                const x_pos = h_spacing*(i+1) - baseSeatSize/2;
-                makeSeat(x_pos, -seatHalf, baseSeatSize, seatHalf);
-                makeSeat(x_pos, t.h, baseSeatSize, seatHalf);
+        
+        async function deleteBooking(bookingId) {
+            const { error } = await _supa
+                .from('premium_slots') 
+                .delete()
+                .eq('id', bookingId);
+            
+            if (error) {
+                console.error('Error deleting booking:', error);
+                alert('Deletion failed: ' + error.message);
+                return false;
+            } else {
+                alert('Booking removed!');
+                modal.style.display = 'none';
+                await loadBookings();
+                return true;
             }
         }
 
-        // --- Left-Click (Standard Select & Booking Modal) ---
-        group.on('click', () => {
-            if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
-            selectedGroup = group;
-            tableRect.stroke('#ffeb3b');
-            layer.draw();
-            
-            currentSelectedTableId = t.id;
-            showBookingModal(t.id, group.getAttr('booking_data')); 
-        });
+        // --- Modal/UI Functions ---
         
-        // --- Right-Click (Unreserve Feature) ---
-        group.on('contextmenu', (e) => {
-            e.evt.preventDefault(); 
-            const booking = group.getAttr('booking_data');
+        const modal = document.getElementById('booking-modal');
+        const closeModal = document.querySelector('.close-button');
+        const removeBookingButton = document.getElementById('remove-booking');
+        
+        closeModal.onclick = () => { modal.style.display = 'none'; };
+        window.onclick = (event) => { if (event.target == modal) { modal.style.display = 'none'; } };
+        
+        function showBookingModal(tableId, booking) {
+            document.getElementById('modal-table-id').value = tableId;
+            document.getElementById('modal-title').textContent = 'Table ' + tableId + ' Booking';
             
             if (booking) {
-                if (confirm(`Table ${t.id} is booked. Do you want to cancel the booking (ID: ${booking.id}) for ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)} on ${booking.date}?`)) {
-                    deleteBooking(booking.id);
-                }
-            } else {
-                alert(`Table ${t.id} is currently available at ${currentSelectedTime} on ${currentSelectedDate}.`);
-            }
-        });
-        
-        return group;
-    }
-    
-    // --- Supabase Booking Functions ---
-    
-    async function loadBookings() {
-        // Get the date in the strict format Supabase needs
-        const selectedDateSupabase = getSupabaseDate();
-        currentSelectedTime = document.getElementById('booking-time').value; // HH:MM
-
-        if (!selectedDateSupabase || !currentSelectedTime) {
-            console.log("Date and time not selected. Skipping booking load.");
-            currentBookings = [];
-            updateTableVisuals();
-            return;
-        }
-        
-        // Fetch all bookings for the strictly formatted date
-        const { data, error } = await _supa
-            .from('premium_slots') 
-            .select('*')
-            .eq('date', selectedDateSupabase); 
-            
-        if(error){ 
-            console.error('Error loading bookings:', error); 
-            alert('Error loading bookings'); 
-            currentBookings = []; 
-        } else { 
-            
-            // Get the selected time in minutes since midnight
-            const selectedTimeMinutes = timeToMinutes(currentSelectedTime); 
-
-            // Use robust numeric time comparison
-            currentBookings = data.filter(b => {
-                const bookingStartMinutes = timeToMinutes(b.start_time);
-                const bookingEndMinutes = timeToMinutes(b.end_time);
+                // BOOKED STATE
+                document.getElementById('current-booking-info').style.display = 'block';
+                document.getElementById('new-booking-form').style.display = 'none';
                 
-                return selectedTimeMinutes >= bookingStartMinutes && selectedTimeMinutes < bookingEndMinutes;
-            });
-        }
-        
-        updateTableVisuals();
-    }
-    
-    async function createBooking(tableId, startTime, endTime, notes) {
-        const dateSupabase = getSupabaseDate();
-        
-        // Use numeric comparison for validation
-        const startTimeMinutes = timeToMinutes(startTime);
-        const endTimeMinutes = timeToMinutes(endTime);
-        
-        // Basic time validation
-        if (endTimeMinutes <= startTimeMinutes) {
-            alert('End time must be after start time.');
-            return false;
+                // Populate booked info (substring(0, 5) to cut HH:MM:SS to HH:MM)
+                document.getElementById('booked-start').textContent = booking.start_time.substring(0, 5);
+                document.getElementById('booked-end').textContent = booking.end_time.substring(0, 5);
+                document.getElementById('booked-notes').textContent = booking.host_notes || 'None'; // Confirmed column name
+                
+                // Set up removal button action
+                removeBookingButton.onclick = async () => {
+                    if (confirm('Are you sure you want to remove this booking?')) {
+                        await deleteBooking(booking.id);
+                    }
+                };
+            } else {
+                // AVAILABLE STATE
+                document.getElementById('current-booking-info').style.display = 'none';
+                document.getElementById('new-booking-form').style.display = 'block';
+                
+                // Pre-fill times with the selected time range (e.g., 1 hour slot)
+                document.getElementById('start-time').value = currentSelectedTime;
+                
+                // Calculate end time (e.g., +1 hour)
+                const [h, m] = currentSelectedTime.split(':').map(Number);
+                const endDate = new Date();
+                endDate.setHours(h);
+                endDate.setMinutes(m);
+                endDate.setHours(endDate.getHours() + 1);
+                
+                const endH = String(endDate.getHours()).padStart(2, '0');
+                const endM = String(endDate.getMinutes()).padStart(2, '0');
+
+                document.getElementById('end-time').value = `${endH}:${endM}`;
+                document.getElementById('notes').value = '';
+            }
+            
+            modal.style.display = 'block';
         }
 
-        // Check for overlap using the client-side array
-        const overlap = currentBookings.some(b => 
-            Number(b.table_id) === Number(tableId) && ( // Ensure numeric comparison here too
-                startTimeMinutes < timeToMinutes(b.end_time) && endTimeMinutes > timeToMinutes(b.start_time)
-            )
-        );
-        
-        if (overlap) {
-             alert('This slot overlaps with an existing booking. Please try a different time.');
-             return false;
-        }
-        
-        const newBooking = {
-            table_id: Number(tableId), // Ensure we send a number
-            date: dateSupabase, 
-            start_time: startTime, 
-            end_time: endTime,     
-            host_notes: notes,     // Confirmed column name
+        // --- Event Listeners ---
+
+        document.getElementById('load-bookings').onclick = async () => {
+            // Read time from input
+            currentSelectedTime = document.getElementById('booking-time').value; 
+            
+            // Update state with the clean date
+            currentSelectedDate = getSupabaseDate(); 
+            
+            await loadBookings();
         };
 
-        const { error } = await _supa.from('premium_slots').insert([newBooking]); 
-        
-        if (error) {
-            console.error('Error creating booking:', error);
-            alert('Booking failed: ' + error.message);
-            return false;
-        } else {
-            alert('Booking successful!');
-            return true;
-        }
-    }
-    
-    async function deleteBooking(bookingId) {
-        const { error } = await _supa
-            .from('premium_slots') 
-            .delete()
-            .eq('id', bookingId);
-        
-        if (error) {
-            console.error('Error deleting booking:', error);
-            alert('Deletion failed: ' + error.message);
-            return false;
-        } else {
-            alert('Booking removed!');
-            modal.style.display = 'none';
-            await loadBookings();
-            return true;
-        }
-    }
+        document.getElementById('booking-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const tableId = document.getElementById('modal-table-id').value; 
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+            const notes = document.getElementById('notes').value;
 
-    // --- Modal/UI Functions ---
-    
-    const modal = document.getElementById('booking-modal');
-    const closeModal = document.querySelector('.close-button');
-    const removeBookingButton = document.getElementById('remove-booking');
-    
-    closeModal.onclick = () => { modal.style.display = 'none'; };
-    window.onclick = (event) => { if (event.target == modal) { modal.style.display = 'none'; } };
-    
-    function showBookingModal(tableId, booking) {
-        document.getElementById('modal-table-id').value = tableId;
-        document.getElementById('modal-title').textContent = 'Table ' + tableId + ' Booking';
-        
-        if (booking) {
-            // BOOKED STATE
-            document.getElementById('current-booking-info').style.display = 'block';
-            document.getElementById('new-booking-form').style.display = 'none';
-            
-            // Populate booked info (substring(0, 5) to cut HH:MM:SS to HH:MM)
-            document.getElementById('booked-start').textContent = booking.start_time.substring(0, 5);
-            document.getElementById('booked-end').textContent = booking.end_time.substring(0, 5);
-            document.getElementById('booked-notes').textContent = booking.host_notes || 'None'; // UPDATED COLUMN NAME
-            
-            // Set up removal button action
-            removeBookingButton.onclick = async () => {
-                if (confirm('Are you sure you want to remove this booking?')) {
-                    await deleteBooking(booking.id);
-                }
-            };
-        } else {
-            // AVAILABLE STATE
-            document.getElementById('current-booking-info').style.display = 'none';
-            document.getElementById('new-booking-form').style.display = 'block';
-            
-            // Pre-fill times with the selected time range (e.g., 1 hour slot)
-            document.getElementById('start-time').value = currentSelectedTime;
-            
-            // Calculate end time (e.g., +1 hour)
-            const [h, m] = currentSelectedTime.split(':').map(Number);
-            const endDate = new Date();
-            endDate.setHours(h);
-            endDate.setMinutes(m);
-            endDate.setHours(endDate.getHours() + 1);
-            
-            const endH = String(endDate.getHours()).padStart(2, '0');
-            const endM = String(endDate.getMinutes()).padStart(2, '0');
-
-            document.getElementById('end-time').value = `${endH}:${endM}`;
-            document.getElementById('notes').value = '';
-        }
-        
-        modal.style.display = 'block';
-    }
-
-    // --- Event Listeners ---
-
-    document.getElementById('load-bookings').onclick = async () => {
-        // Read time from input
-        currentSelectedTime = document.getElementById('booking-time').value; 
-        
-        // Update state with the clean date
-        currentSelectedDate = getSupabaseDate(); 
-        
-        await loadBookings();
-    };
-
-    document.getElementById('booking-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const tableId = document.getElementById('modal-table-id').value; // Read as string
-        const startTime = document.getElementById('start-time').value;
-        const endTime = document.getElementById('end-time').value;
-        const notes = document.getElementById('notes').value;
-
-        const success = await createBooking(tableId, startTime, endTime, notes);
-        if (success) {
-            modal.style.display = 'none';
-            await loadBookings(); // Reload visuals after successful booking
-        }
-    };
+            const success = await createBooking(tableId, startTime, endTime, notes);
+            if (success) {
+                modal.style.display = 'none';
+                await loadBookings(); // Reload visuals after successful booking
+            }
+        };
 
 
-    document.getElementById('rotate').onclick = () => {
-        if(selectedGroup){
-            selectedGroup.rotation(selectedGroup.rotation()+90);
-            layer.draw();
-        }
-    };
+        document.getElementById('rotate').onclick = () => {
+            if(selectedGroup){
+                selectedGroup.rotation(selectedGroup.rotation()+90);
+                layer.draw();
+            }
+        };
 
-    document.getElementById('save').onclick = async () => {
-        const updates = tables.map(t=>{
-            const g = layer.findOne('#g-'+t.id);
-            const tableRect = g.findOne('.main-table');
-            const finalX = g.x() - tableRect.width()/2;
-            const finalY = g.y() - tableRect.height()/2;
-            const finalRotation = g.rotation();
-            return { id:t.id, x:finalX, y:finalY, rotation: finalRotation };
-        });
-        const { data, error } = await _supa.from('tables').upsert(updates).select('*, rotation');
-        if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
-    };
+        document.getElementById('save').onclick = async () => {
+            const updates = tables.map(t=>{
+                const g = layer.findOne('#g-'+t.id);
+                const tableRect = g.findOne('.main-table');
+                const finalX = g.x() - tableRect.width()/2;
+                const finalY = g.y() - tableRect.height()/2;
+                const finalRotation = g.rotation();
+                return { id:t.id, x:finalX, y:finalY, rotation: finalRotation };
+            });
+            const { data, error } = await _supa.from('tables').upsert(updates).select('*, rotation');
+            if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
+        };
 
-    // --- Initialization ---
-    setDefaultDateTime();
-    loadBackground(loadTables);
-</script>
+        // --- Initialization ---
+        setDefaultDateTime();
+        loadBackground(loadTables);
+    </script>
 </body>
 </html>
