@@ -5,6 +5,9 @@
     <title>Admin – Drag Tables & Bookings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    
     <style>
         body{
             font-family: Arial, Helvetica, sans-serif;
@@ -251,7 +254,6 @@
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <script>
         // --- Supabase setup ---
-        // This is line 257 where the error was happening, but now the library is guaranteed to be loaded!
         const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
         const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
         const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
@@ -431,14 +433,17 @@
                 currentBookings = []; 
             } else { 
                 // Client-side filtering for bookings active at the selected time
-                // A table is booked if selectedTime is >= booking start_time AND < booking end_time
+                
+                // Get the full time string from the UI's HH:MM format
+                const selectedTimeFull = currentSelectedTime + ':00'; // Now it's HH:MM:00
+                
                 currentBookings = data.filter(b => {
-                    const selectedTime = currentSelectedTime; // HH:MM
-                    const bookingStart = b.start_time;       // HH:MM:SS
-                    const bookingEnd = b.end_time;           // HH:MM:SS
+                    const bookingStart = b.start_time; // HH:MM:SS
+                    const bookingEnd = b.end_time;     // HH:MM:SS
                     
-                    // Compare times as strings (HH:MM is comparable to HH:MM:SS)
-                    return selectedTime >= bookingStart && selectedTime < bookingEnd;
+                    // The selected moment must be >= start_time AND < end_time
+                    // We compare strings which is fine for time formats
+                    return selectedTimeFull >= bookingStart && selectedTimeFull < bookingEnd;
                 });
             }
             
@@ -448,8 +453,12 @@
         async function createBooking(tableId, startTime, endTime, notes) {
             const date = document.getElementById('booking-date').value;
             
+            // Ensure inputs are HH:MM:00 for robust comparison with DB's HH:MM:SS
+            const startTimeFull = startTime + ':00';
+            const endTimeFull = endTime + ':00';
+            
             // Basic time validation
-            if (endTime <= startTime) {
+            if (endTimeFull <= startTimeFull) {
                 alert('End time must be after start time.');
                 return false;
             }
@@ -458,7 +467,7 @@
             const overlap = currentBookings.some(b => 
                 b.table_id === tableId && (
                     // Overlap: The new start is before the existing end AND the new end is after the existing start
-                    (startTime < b.end_time && endTime > b.start_time)
+                    (startTimeFull < b.end_time && endTimeFull > b.start_time)
                 )
             );
             
@@ -470,9 +479,9 @@
             const newBooking = {
                 table_id: tableId,
                 date: date, // YYYY-MM-DD
-                start_time: startTime, // HH:MM
-                end_time: endTime, // HH:MM
-                host_notes: notes, // UPDATED COLUMN NAME
+                start_time: startTime, // HH:MM (Supabase will handle the type conversion)
+                end_time: endTime,     // HH:MM
+                host_notes: notes,     // UPDATED COLUMN NAME
             };
 
             const { error } = await _supa.from('premium_slots').insert([newBooking]); // UPDATED TABLE NAME
