@@ -113,7 +113,7 @@
 </head>
 <body>
     <h2>Tap the table you want</h2>
-    <p class="instructions">Use **Shift + Click** to select multiple adjacent tables for large parties.</p>
+    <p class="instructions">Use **Shift + Click** to select multiple tables for large parties.</p>
     
     <div id="datetime-controls">
         <label for="booking-date">Date:</label>
@@ -146,6 +146,13 @@
         const payBtn = document.getElementById('payBtn');
         let selectedTableIds = []; 
         let currentBookings = []; 
+        let tableDataMap = new Map(); // Store table size/price data by ID
+
+        // --- Price Constants in Cents/Pence (Stripe prefers smallest unit) ---
+        const PRICE_2_SEATER = 499; // $4.99
+        const PRICE_4_SEATER = 998; // $9.98
+        const PRICE_6_SEATER = 998; // $9.98 (Assuming 6-seater is also $9.98 based on your example)
+        // ------------------------------------------------------------------
 
         const TABLE_COLOR = '#b7d7a8'; // Available
         const BOOKED_COLOR = '#9e9e9e'; // Booked
@@ -165,6 +172,25 @@
             const dateInput = document.getElementById('booking-date').value;
             if (!dateInput) return '';
             return dateInput.match(/^\d{4}-\d{2}-\d{2}$/) ? dateInput : ''; 
+        }
+        
+        // NEW: Function to determine price based on table dimensions (w, h)
+        function getTablePrice(w, h) {
+            if (w === 30 && h === 30) return PRICE_2_SEATER; // 2-seater
+            if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER; // 4-seater (vertical or horizontal)
+            if (w === 90 && h === 30) return PRICE_6_SEATER; // 6-seater
+            return 0; // Default or unknown size
+        }
+
+        function updatePayButton(totalPence) {
+            const totalDollars = (totalPence / 100).toFixed(2);
+            if (totalPence > 0) {
+                payBtn.disabled = false;
+                payBtn.textContent = `Pay £${totalDollars} – Stripe`;
+            } else {
+                payBtn.disabled = true;
+                payBtn.textContent = `Pay for 0 Tables – Stripe`;
+            }
         }
 
         function setDefaultDateTime() {
@@ -191,7 +217,6 @@
                 return false;
             }
 
-            // 1. Fetch all bookings for the date
             const { data, error } = await _supa
                 .from('premium_slots') 
                 .select('*')
@@ -204,7 +229,6 @@
                 return false;
             } 
 
-            // 2. Filter the fetched data using robust numeric time comparison
             const selectedTimeMinutes = timeToMinutes(selectedTime); 
 
             currentBookings = data.filter(b => {
@@ -218,30 +242,38 @@
             return true;
         }
 
-        function updateTableVisuals() {
-            const currentSelection = [...selectedTableIds]; // Keep current selection
-            selectedTableIds = []; // Clear selection array temporarily
-            payBtn.disabled = true; // Disable button until new selection is valid
-            payBtn.textContent = `Pay for 0 Tables – Stripe`;
+        function calculateTotalPence() {
+            let totalPence = 0;
+            selectedTableIds.forEach(id => {
+                const data = tableDataMap.get(id);
+                if (data) {
+                    totalPence += data.price;
+                }
+            });
+            return totalPence;
+        }
 
+        function updateTableVisuals() {
+            const currentSelection = [...selectedTableIds]; 
+            selectedTableIds = []; 
+            
             // 1. Iterate over all tables to apply status
             stage.find('.main-table').forEach(tableRect => {
                 const group = tableRect.getParent();
-                const tableId = Number(group.id().substring(2)); // Extract numeric ID from 'g-ID'
+                const tableId = Number(group.id().substring(2)); 
                 const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
                 
                 tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
-                tableRect.stroke('#000'); // Default border
+                tableRect.stroke('#000'); 
                 tableRect.strokeWidth(1);
             });
             
             // 2. Re-apply selection highlights only to tables that are still available
             currentSelection.forEach(id => {
                 const group = layer.findOne('#g-' + id);
-                if (!group) return; // Skip if table element doesn't exist
+                if (!group) return; 
                 const tableRect = group.findOne('.main-table');
 
-                // If the table is NOT booked, re-add it to the selection
                 if (tableRect.fill() !== BOOKED_COLOR) {
                     selectedTableIds.push(id);
                     tableRect.stroke(HIGHLIGHT_COLOR);
@@ -249,13 +281,9 @@
                 }
             });
 
-            // 3. Update button state
-            if (selectedTableIds.length > 0) {
-                payBtn.disabled = false;
-                payBtn.textContent = `Pay for ${selectedTableIds.length} Table(s) – Stripe`;
-            } else {
-                payBtn.disabled = true;
-            }
+            // 3. Update button state and price
+            const totalPence = calculateTotalPence();
+            updatePayButton(totalPence);
 
             layer.draw();
         }
@@ -263,11 +291,17 @@
         // --- Konva Functions ---
         
         async function loadTables() {
-            const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
+            const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
             if (error) { console.error(error); return; }
             
             layer.destroyChildren();
+            tableDataMap = new Map(); // Reset map
+            
             data.forEach(t => {
+                // Store table metadata (price and capacity) for later use
+                const price = getTablePrice(t.w, t.h);
+                tableDataMap.set(t.id, { id: t.id, price: price, w: t.w, h: t.h });
+
                 const group = drawTable(t);
                 const tableRect = group.findOne('.main-table');
                 
@@ -355,7 +389,7 @@
                     // If no key pressed, clear all previous selections
                     selectedTableIds.forEach(prevId => {
                         const prevGroup = layer.findOne('#g-' + prevId);
-                        if(prevGroup) { // Check if group exists before trying to access its children
+                        if(prevGroup) { 
                             prevGroup.findOne('.main-table').stroke('#000');
                             prevGroup.findOne('.main-table').strokeWidth(1);
                         }
@@ -383,14 +417,9 @@
                 }
             }
             
-            // Update button state
-            if (selectedTableIds.length > 0) {
-                payBtn.disabled = false;
-                payBtn.textContent = `Pay for ${selectedTableIds.length} Table(s) – Stripe`;
-            } else {
-                payBtn.disabled = true;
-                payBtn.textContent = `Pay for 0 Tables – Stripe`;
-            }
+            // Update button state and price
+            const totalPence = calculateTotalPence();
+            updatePayButton(totalPence);
 
             layer.draw();
         }
@@ -407,8 +436,6 @@
                 }
             });
             selectedTableIds = [];
-            payBtn.disabled = true;
-            payBtn.textContent = `Pay for 0 Tables – Stripe`;
             
             await loadBookings();
         };
@@ -440,8 +467,15 @@
             const email = prompt('Enter your email for confirmation:');
             if (!email) return alert('Email is required');
             
+            // --- CRITICAL PAYLOAD UPDATE ---
+            const totalPence = calculateTotalPence();
+            if (totalPence === 0) {
+                alert("Error: Selected tables have no defined price.");
+                return;
+            }
+            
             try {
-                // --- CRITICAL FETCH WITH STABLE VERCEL URL ---
+                // NOTE: We MUST send the totalPrice (or tableCount) to the backend
                 const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -449,10 +483,11 @@
                         table_ids: selectedTableIds, 
                         email: email,
                         booking_date: selectedDate,
-                        booking_time: selectedTime
+                        booking_time: selectedTime,
+                        // NEW: Send the total calculated price for the backend to verify/use
+                        total_pence: totalPence 
                     })
                 });
-                // ---------------------------------------------
                 
                 const data = await res.json();
                 if (data.url) {
