@@ -278,6 +278,15 @@
         let currentSelectedTime = ''; // Will hold the time 'HH:MM'
         let currentSelectedTableId = null; // ID of the table clicked in the modal
 
+        // Helper function to convert HH:MM:SS string to minutes since midnight for numeric comparison
+        function timeToMinutes(timeStr) {
+            // Handles HH:MM or HH:MM:SS format
+            const parts = timeStr.split(':').map(Number);
+            const hours = parts[0] || 0;
+            const minutes = parts[1] || 0;
+            return (hours * 60) + minutes;
+        }
+
         // Helper to get today's date and a default time for inputs
         function setDefaultDateTime() {
             const today = new Date();
@@ -432,18 +441,18 @@
                 alert('Error loading bookings'); 
                 currentBookings = []; 
             } else { 
-                // Client-side filtering for bookings active at the selected time
                 
-                // Get the full time string from the UI's HH:MM format
-                const selectedTimeFull = currentSelectedTime + ':00'; // Now it's HH:MM:00
-                
+                // *** FIX APPLIED HERE ***
+                const selectedTimeMinutes = timeToMinutes(currentSelectedTime); // e.g., 19:00 -> 1140 minutes
+
                 currentBookings = data.filter(b => {
-                    const bookingStart = b.start_time; // HH:MM:SS
-                    const bookingEnd = b.end_time;     // HH:MM:SS
+                    // Convert DB times (HH:MM:SS) to minutes for comparison
+                    const bookingStartMinutes = timeToMinutes(b.start_time);
+                    const bookingEndMinutes = timeToMinutes(b.end_time);
                     
-                    // The selected moment must be >= start_time AND < end_time
-                    // We compare strings which is fine for time formats
-                    return selectedTimeFull >= bookingStart && selectedTimeFull < bookingEnd;
+                    // A booking is active if the selected time is greater than or equal to the start
+                    // AND strictly less than the end time.
+                    return selectedTimeMinutes >= bookingStartMinutes && selectedTimeMinutes < bookingEndMinutes;
                 });
             }
             
@@ -453,12 +462,12 @@
         async function createBooking(tableId, startTime, endTime, notes) {
             const date = document.getElementById('booking-date').value;
             
-            // Ensure inputs are HH:MM:00 for robust comparison with DB's HH:MM:SS
-            const startTimeFull = startTime + ':00';
-            const endTimeFull = endTime + ':00';
+            // Use numeric comparison for validation
+            const startTimeMinutes = timeToMinutes(startTime);
+            const endTimeMinutes = timeToMinutes(endTime);
             
             // Basic time validation
-            if (endTimeFull <= startTimeFull) {
+            if (endTimeMinutes <= startTimeMinutes) {
                 alert('End time must be after start time.');
                 return false;
             }
@@ -466,8 +475,8 @@
             // Check for overlap using the client-side array
             const overlap = currentBookings.some(b => 
                 b.table_id === tableId && (
-                    // Overlap: The new start is before the existing end AND the new end is after the existing start
-                    (startTimeFull < b.end_time && endTimeFull > b.start_time)
+                    // Convert existing booking times to minutes for overlap check
+                    startTimeMinutes < timeToMinutes(b.end_time) && endTimeMinutes > timeToMinutes(b.start_time)
                 )
             );
             
@@ -479,7 +488,7 @@
             const newBooking = {
                 table_id: tableId,
                 date: date, // YYYY-MM-DD
-                start_time: startTime, // HH:MM (Supabase will handle the type conversion)
+                start_time: startTime, // HH:MM
                 end_time: endTime,     // HH:MM
                 host_notes: notes,     // UPDATED COLUMN NAME
             };
