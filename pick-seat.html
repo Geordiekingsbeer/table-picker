@@ -62,6 +62,7 @@
         }
 
         #container{
+            /* RESTORED CSS BACKGROUND FOR RELIABILITY */
             background:url('floorplan.png') no-repeat center center;
             background-size:contain;
             border:1px solid #ccc;
@@ -69,7 +70,7 @@
             margin:20px auto;
             width:480px;
             height:480px;
-            background-color: #fff; /* Ensure Konva sits on top of white */
+            background-color: #fff; 
         }
         
         /* Table Status Indicators */
@@ -143,7 +144,7 @@
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
-    const layer = new Konva.Layer();
+    const layer = new Konva.Layer(); // This layer will hold all tables
     stage.add(layer);
     
     const payBtn = document.getElementById('payBtn');
@@ -217,23 +218,6 @@
 
         document.getElementById('booking-date').value = defaultDate;
         document.getElementById('booking-time').value = defaultTime;
-    }
-
-    // --- Background Loading (REQUIRED for Konva) ---
-
-    function loadBackground(callback) {
-        const imageObj = new Image();
-        imageObj.onload = function() {
-            const backgroundLayer = new Konva.Layer();
-            const floorplan = new Konva.Image({
-                x: 0, y: 0, image: imageObj, width: 480, height: 480,
-            });
-            backgroundLayer.add(floorplan);
-            stage.add(backgroundLayer);
-            backgroundLayer.draw();
-            if (callback) callback();
-        };
-        imageObj.src = 'floorplan.png';
     }
 
     // --- Booking Logic ---
