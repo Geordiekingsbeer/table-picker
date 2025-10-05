@@ -94,7 +94,6 @@
 
   <div id="controls">
     <label>Date: <input type="date" id="bookingDate"></label>
-    <label>Time: <input type="time" id="bookingTime"></label>
     <button id="refresh">Load Floorplan</button>
   </div>
 
@@ -151,8 +150,7 @@
 
     async function colorBookedTables() {
       const selectedDate = document.getElementById('bookingDate').value;
-      const selectedTime = document.getElementById('bookingTime').value;
-      if(!selectedDate || !selectedTime) return;
+      if(!selectedDate) return;
 
       const { data, error } = await _supa
         .from('premium_slots')
@@ -163,9 +161,7 @@
       layer.find('Group').forEach(g => {
         const tableRect = g.findOne('.main-table');
         const tableId = parseInt(g.id().replace('g-', ''));
-        const bookings = data.filter(b => b.table_id === tableId);
-        const currentTime = selectedTime;
-        const isBooked = bookings.some(b => b.start_time <= currentTime && b.end_time >= currentTime);
+        const isBooked = data.some(b => b.table_id === tableId);
         tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
       });
       layer.draw();
@@ -184,7 +180,6 @@
         group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
       }
 
-      // Seat layout
       if (t.w === 30 && t.h === 30) {
         makeSeat(t.w/2 - baseSeatSize/2, -seatHalf, baseSeatSize, seatHalf);
         makeSeat(t.w/2 - baseSeatSize/2, t.h, baseSeatSize, seatHalf);
@@ -203,6 +198,7 @@
         }
       }
 
+      // Left-click to book
       group.on('click', async () => {
         if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
         selectedGroup = group;
@@ -224,13 +220,8 @@
           .eq('table_id', tableId)
           .eq('date', selectedDate);
 
-        const overlap = existing.some(b => 
-          !(end_time <= b.start_time || start_time >= b.end_time)
-        );
-        if(overlap){
-          alert('This table is already booked for that time.');
-          return;
-        }
+        const overlap = existing.some(b => !(end_time <= b.start_time || start_time >= b.end_time));
+        if(overlap){ alert('This table is already booked for that time.'); return; }
 
         const { error } = await _supa.from('premium_slots').insert({
           table_id: tableId,
@@ -240,8 +231,36 @@
           host_notes: notes || ''
         });
         if(error){ alert('Error booking: '+error.message); return; }
-        alert('Table booked!');
         await colorBookedTables();
+        alert('Table booked!');
+      });
+
+      // Right-click to remove booking
+      group.on('contextmenu', async e => {
+        e.evt.preventDefault(); // prevent default right-click menu
+        const selectedDate = document.getElementById('bookingDate').value;
+        if(!selectedDate){ alert('Select a date first'); return; }
+        const tableId = parseInt(group.id().replace('g-', ''));
+
+        const { data: existing, error } = await _supa.from('premium_slots')
+          .select('*')
+          .eq('table_id', tableId)
+          .eq('date', selectedDate);
+
+        if(error){ alert('Error fetching bookings: '+error.message); return; }
+        if(existing.length === 0){ alert('No booking to remove for this table.'); return; }
+
+        const confirmDelete = confirm('Remove all bookings for this table on this date?');
+        if(!confirmDelete) return;
+
+        const { error: delErr } = await _supa.from('premium_slots')
+          .delete()
+          .eq('table_id', tableId)
+          .eq('date', selectedDate);
+        if(delErr){ alert('Error deleting booking: '+delErr.message); return; }
+
+        await colorBookedTables();
+        alert('Booking removed!');
       });
 
       return group;
