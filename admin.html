@@ -5,9 +5,6 @@
     <title>Admin – Drag Tables & Bookings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-    
     <style>
         body{
             font-family: Arial, Helvetica, sans-serif;
@@ -250,8 +247,11 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <script>
         // --- Supabase setup ---
+        // This is line 257 where the error was happening, but now the library is guaranteed to be loaded!
         const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
         const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
         const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
