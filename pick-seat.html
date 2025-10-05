@@ -23,6 +23,13 @@
             margin-bottom: 20px;
         }
 
+        /* Instructions added for clarity */
+        .instructions {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
         /* Date/Time Selector */
         #datetime-controls {
             display: flex;
@@ -106,6 +113,7 @@
 </head>
 <body>
     <h2>Tap the table you want</h2>
+    <p class="instructions">Use **Shift + Click** to select multiple adjacent tables for large parties.</p>
     
     <div id="datetime-controls">
         <label for="booking-date">Date:</label>
@@ -123,7 +131,7 @@
         <div class="legend-item"><span class="legend-color" style="border: 3px solid #ffeb3b;"></span>Selected</div>
     </div>
     
-    <button id="payBtn" disabled>Pay £4.99 – Stripe</button>
+    <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
 
     <script>
         // Supabase setup
@@ -136,13 +144,13 @@
         stage.add(layer);
         
         const payBtn = document.getElementById('payBtn');
-        let selectedTableId = null; 
-        let selectedGroup = null; 
-        let currentBookings = []; // Array to hold bookings for the selected time slot
+        let selectedTableIds = []; // CHANGED: Array to hold multiple selected table IDs
+        let currentBookings = []; 
 
         const TABLE_COLOR = '#b7d7a8'; // Available
         const BOOKED_COLOR = '#9e9e9e'; // Booked
         const SEAT_COLOR = '#555'; 
+        const HIGHLIGHT_COLOR = '#ffeb3b'; // Selection color
         
         // --- Helper Functions (Copied from Admin) ---
 
@@ -156,7 +164,6 @@
         function getSupabaseDate() {
             const dateInput = document.getElementById('booking-date').value;
             if (!dateInput) return '';
-            // Only need to handle YYYY-MM-DD from the date picker
             return dateInput.match(/^\d{4}-\d{2}-\d{2}$/) ? dateInput : ''; 
         }
 
@@ -166,7 +173,6 @@
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const day = String(today.getDate()).padStart(2, '0');
             
-            // Set the state variables in the required YYYY-MM-DD format
             const defaultDate = `${year}-${month}-${day}`;
             const defaultTime = '19:00'; 
 
@@ -174,7 +180,7 @@
             document.getElementById('booking-time').value = defaultTime;
         }
 
-        // --- Booking Logic (Copied from Admin) ---
+        // --- Booking Logic ---
 
         async function loadBookings() {
             const selectedDateSupabase = getSupabaseDate();
@@ -213,34 +219,51 @@
         }
 
         function updateTableVisuals() {
-            // Reset all tables to default (Available) and apply booked status
+            const currentSelection = [...selectedTableIds]; // Keep current selection
+            selectedTableIds = []; // Clear selection array temporarily
+            payBtn.disabled = true; // Disable button until new selection is valid
+            payBtn.textContent = `Pay for 0 Tables – Stripe`;
+
+            // 1. Iterate over all tables to apply status
             stage.find('.main-table').forEach(tableRect => {
                 const group = tableRect.getParent();
                 const tableId = Number(group.id().substring(2)); // Extract numeric ID from 'g-ID'
-
                 const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
                 
                 tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
-                tableRect.stroke('#000'); // Reset border highlight
+                tableRect.stroke('#000'); // Default border
+            });
+            
+            // 2. Re-apply selection highlights only to tables that are still available
+            currentSelection.forEach(id => {
+                const group = layer.findOne('#g-' + id);
+                const tableRect = group.findOne('.main-table');
 
-                // If the previously selected table is now booked, deselect it
-                if (selectedTableId === tableId && isBooked) {
-                    selectedTableId = null;
-                    selectedGroup = null;
-                    payBtn.disabled = true;
+                // If the table is NOT booked, re-add it to the selection
+                if (tableRect.fill() !== BOOKED_COLOR) {
+                    selectedTableIds.push(id);
+                    tableRect.stroke(HIGHLIGHT_COLOR);
+                    tableRect.strokeWidth(3);
                 }
             });
+
+            // 3. Update button state
+            if (selectedTableIds.length > 0) {
+                payBtn.disabled = false;
+                payBtn.textContent = `Pay for ${selectedTableIds.length} Table(s) – Stripe`;
+            } else {
+                payBtn.disabled = true;
+            }
+
             layer.draw();
         }
 
-        // --- Konva Functions (Modified) ---
-
+        // --- Konva Functions ---
+        
         async function loadTables() {
-            // Fetch layout data first
             const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
             if (error) { console.error(error); return; }
             
-            // Clear layer and draw tables based on layout data
             layer.destroyChildren();
             data.forEach(t => {
                 const group = drawTable(t);
@@ -252,7 +275,7 @@
                 group.rotation(t.rotation || 0); 
             });
             
-            // Now load bookings to set initial statuses
+            // Load bookings to set initial statuses
             await loadBookings();
         }
         
@@ -261,6 +284,7 @@
                 x: t.x, 
                 y: t.y, 
                 id: 'g-' + t.id,
+                name: 'selectable-table' // Add a name for easier searching
             });
             layer.add(group);
 
@@ -274,10 +298,10 @@
             });
             group.add(tableRect);
 
-            // Add click handler to the group
-            group.on('click tap', () => selectTable(t.id));
+            // Use the click event handler with native event access
+            group.on('click tap', (e) => selectTable(t.id, e.evt));
 
-            // 2. Draw seats (using finalized, flush logic - same as admin)
+            // Seat drawing logic (unchanged)
             const baseSeatSize = 12; 
             const seatHalf = baseSeatSize / 2; 
 
@@ -288,28 +312,20 @@
             if (t.w === 30 && t.h === 30) {
                 const seatW = baseSeatSize; 
                 const seatH = seatHalf;     
-                
                 makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);            
                 makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);                 
-                
             } else if (t.w === 30 && t.h === 50) {
                 const seatW = seatHalf;     
                 const seatH = baseSeatSize; 
-                
                 const v_spacing = (t.h - 2 * seatH) / 3; 
-                
                 makeSeat(-seatW, v_spacing, seatW, seatH);                  
                 makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);       
-                
                 makeSeat(t.w, v_spacing, seatW, seatH);                   
                 makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);           
-                
             } else if (t.w === 90 && t.h === 30) {
                 const seatW = baseSeatSize; 
                 const seatH = seatHalf;     
-                
                 const h_spacing = t.w / 4; 
-                
                 for(let i=0; i<3; i++){
                     const x_pos = h_spacing * (i+1) - seatW/2;
                     makeSeat(x_pos, -seatH, seatW, seatH);                      
@@ -319,58 +335,111 @@
             return group;
         }
 
-        function selectTable(id) {
+        function selectTable(id, evt) {
             const group = layer.findOne('#g-' + id);
             const tableRect = group.findOne('.main-table');
-
-            // --- CRITICAL CHECK: Block if booked ---
+            const idNumber = Number(id);
+            const index = selectedTableIds.indexOf(idNumber);
+            
+            // 1. Check if the table is booked
             if (tableRect.fill() === BOOKED_COLOR) {
                 alert('Sorry, this table is booked for the selected time slot.');
                 return;
             }
-            // ----------------------------------------
 
-            // Deselect previous table
-            if (selectedGroup) {
-                selectedGroup.findOne('.main-table').stroke('#000');
+            const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
+
+            if (index === -1) {
+                // Table is NOT currently selected: ADD it
+                if (!isShiftPressed) {
+                    // If no key pressed, clear all previous selections
+                    selectedTableIds.forEach(prevId => {
+                        const prevGroup = layer.findOne('#g-' + prevId);
+                        prevGroup.findOne('.main-table').stroke('#000');
+                        prevGroup.findOne('.main-table').strokeWidth(1);
+                    });
+                    selectedTableIds = [];
+                }
+                
+                // Add the new table
+                selectedTableIds.push(idNumber);
+                tableRect.stroke(HIGHLIGHT_COLOR);
+                tableRect.strokeWidth(3);
+
+            } else {
+                // Table IS currently selected: REMOVE it
+                if (isShiftPressed || selectedTableIds.length > 1) {
+                    // Remove if shift is pressed OR if multiple tables are already selected
+                    selectedTableIds.splice(index, 1);
+                    tableRect.stroke('#000');
+                    tableRect.strokeWidth(1);
+                } else if (selectedTableIds.length === 1) {
+                    // If only one table is selected and we click it again, deselect it
+                     selectedTableIds.splice(index, 1);
+                    tableRect.stroke('#000');
+                    tableRect.strokeWidth(1);
+                }
+            }
+            
+            // Update button state
+            if (selectedTableIds.length > 0) {
+                payBtn.disabled = false;
+                payBtn.textContent = `Pay for ${selectedTableIds.length} Table(s) – Stripe`;
+            } else {
+                payBtn.disabled = true;
+                payBtn.textContent = `Pay for 0 Tables – Stripe`;
             }
 
-            selectedGroup = group;
-            selectedTableId = id;
-            tableRect.stroke('#ffeb3b'); // Highlight selected table
-            payBtn.disabled = false;
             layer.draw();
         }
 
         // --- Event Listeners ---
 
         document.getElementById('check-availability').onclick = async () => {
-            selectedTableId = null;
-            selectedGroup = null;
+            // Clear current selection state when checking availability for a new time slot
+            selectedTableIds.forEach(id => {
+                const group = layer.findOne('#g-' + id);
+                group.findOne('.main-table').stroke('#000');
+                group.findOne('.main-table').strokeWidth(1);
+            });
+            selectedTableIds = [];
             payBtn.disabled = true;
+            payBtn.textContent = `Pay for 0 Tables – Stripe`;
+            
             await loadBookings();
         };
 
-        // Note: The original payment logic is retained below
         payBtn.onclick = async () => {
-            if (!selectedTableId) return;
-            // The table must not be currently booked AT THE MOMENT OF PAYMENT
-            const currentGroup = layer.findOne('#g-' + selectedTableId);
-            if (currentGroup.findOne('.main-table').fill() === BOOKED_COLOR) {
-                alert("Error: The selected table was just booked. Please re-check availability.");
+            if (selectedTableIds.length === 0) return;
+            
+            // Re-check tables just before checkout (optional but good for speed)
+            await loadBookings();
+            
+            // Final check that all selected tables are still available
+            const isAnySelectedTableBooked = selectedTableIds.some(id => {
+                const group = layer.findOne('#g-' + id);
+                return group.findOne('.main-table').fill() === BOOKED_COLOR;
+            });
+
+            if (isAnySelectedTableBooked) {
+                alert("Error: One or more selected tables were just booked. Please re-check availability and select again.");
+                // Re-run visuals to grey out the new conflict
+                updateTableVisuals();
                 return;
             }
 
             const email = prompt('Enter your email for confirmation:');
             if (!email) return alert('Email is required');
+            
             try {
-                // NOTE: You may need to pass the date/time to your Stripe backend if you want to record the slot booking there.
+                // IMPORTANT: We send the entire array of table IDs to the server
                 const res = await fetch('https://stripe-serverless-git-main-geordies-projects-8a74623d.vercel.app/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        table_id: selectedTableId, 
-                        email: email 
+                        table_ids: selectedTableIds, // CHANGED: Sending array of IDs
+                        email: email,
+                        // NOTE: You must update your Vercel/Stripe server to handle this array and charge accordingly
                     })
                 });
                 const data = await res.json();
