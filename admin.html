@@ -161,42 +161,53 @@
       layer.find('Group').forEach(g => {
         const tableRect = g.findOne('.main-table');
         const tableId = parseInt(g.id().replace('g-', ''));
-        const isBooked = data.some(b => b.table_id === tableId);
-        tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
+        const tableBookings = data.filter(b => b.table_id === tableId);
+
+        if(tableBookings.length > 0){
+          tableRect.fill(BOOKED_COLOR);
+          g.bookingInfo = tableBookings.map(b => `Start: ${b.start_time}, End: ${b.end_time}, Notes: ${b.host_notes}`).join('\n');
+        } else {
+          tableRect.fill(TABLE_COLOR);
+          g.bookingInfo = null;
+        }
       });
+
       layer.draw();
     }
+
+    const tooltip = new Konva.Label({ opacity: 0.75, visible: false, listening: false });
+    tooltip.add(new Konva.Tag({ fill: 'black', cornerRadius: 4 }));
+    tooltip.add(new Konva.Text({ text: '', fontSize: 12, fill: 'white', padding: 5 }));
+    layer.add(tooltip);
+
+    layer.on('mouseover', e => {
+      const shape = e.target;
+      const group = shape.getParent();
+      if(group.bookingInfo){
+        tooltip.position({ x: group.x() + 10, y: group.y() - 10 });
+        tooltip.getText().text(group.bookingInfo);
+        tooltip.show();
+        layer.draw();
+      }
+    });
+
+    layer.on('mouseout', e => {
+      tooltip.hide();
+      layer.draw();
+    });
 
     function drawTable(t){
       const group = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, draggable:true });
       layer.add(group);
-      const tableRect = new Konva.Rect({
-        width:t.w, height:t.h, fill:TABLE_COLOR, stroke:'#000', strokeWidth:1, name:'main-table'
-      });
+      const tableRect = new Konva.Rect({ width:t.w, height:t.h, fill:TABLE_COLOR, stroke:'#000', strokeWidth:1, name:'main-table' });
       group.add(tableRect);
 
       const baseSeatSize = 12, seatHalf = baseSeatSize / 2;
-      function makeSeat(x, y, w, h) {
-        group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
-      }
+      function makeSeat(x, y, w, h) { group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y })); }
 
-      if (t.w === 30 && t.h === 30) {
-        makeSeat(t.w/2 - baseSeatSize/2, -seatHalf, baseSeatSize, seatHalf);
-        makeSeat(t.w/2 - baseSeatSize/2, t.h, baseSeatSize, seatHalf);
-      } else if (t.w === 30 && t.h === 50) {
-        const v_spacing = (t.h - 2*baseSeatSize)/3;
-        makeSeat(-seatHalf, v_spacing, seatHalf, baseSeatSize);
-        makeSeat(-seatHalf, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
-        makeSeat(t.w, v_spacing, seatHalf, baseSeatSize);
-        makeSeat(t.w, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
-      } else if (t.w === 90 && t.h === 30) {
-        const h_spacing = t.w / 4;
-        for(let i=0;i<3;i++){
-          const x_pos = h_spacing*(i+1) - baseSeatSize/2;
-          makeSeat(x_pos, -seatHalf, baseSeatSize, seatHalf);
-          makeSeat(x_pos, t.h, baseSeatSize, seatHalf);
-        }
-      }
+      if(t.w === 30 && t.h === 30){ makeSeat(t.w/2 - seatHalf, -seatHalf, baseSeatSize, seatHalf); makeSeat(t.w/2 - seatHalf, t.h, baseSeatSize, seatHalf);}
+      else if(t.w === 30 && t.h === 50){ const v_spacing=(t.h-2*baseSeatSize)/3; makeSeat(-seatHalf,v_spacing,seatHalf,baseSeatSize); makeSeat(-seatHalf,v_spacing*2+baseSeatSize,seatHalf,baseSeatSize); makeSeat(t.w,v_spacing,seatHalf,baseSeatSize); makeSeat(t.w,v_spacing*2+baseSeatSize,seatHalf,baseSeatSize);}
+      else if(t.w===90&&t.h===30){ const h_spacing=t.w/4; for(let i=0;i<3;i++){ const x_pos=h_spacing*(i+1)-seatHalf; makeSeat(x_pos,-seatHalf,baseSeatSize,seatHalf); makeSeat(x_pos,t.h,baseSeatSize,seatHalf); } }
 
       // Left-click to book
       group.on('click', async () => {
@@ -205,58 +216,43 @@
         tableRect.stroke('#ffeb3b');
         layer.draw();
 
-        const selectedDate = document.getElementById('bookingDate').value;
-        if(!selectedDate){ alert('Select a date first'); return; }
+        let selectedDate = document.getElementById('bookingDate').value;
+        if(!selectedDate){
+          selectedDate = prompt('Enter booking date (YYYY-MM-DD):');
+          if(!selectedDate) return;
+          document.getElementById('bookingDate').value = selectedDate;
+        }
 
         const tableId = parseInt(group.id().replace('g-', ''));
         const start_time = prompt('Start time (HH:MM):');
         const end_time = prompt('End time (HH:MM):');
         const notes = prompt('Notes:');
+        if(!start_time||!end_time) return;
 
-        if(!start_time || !end_time) return;
-
-        const { data: existing } = await _supa.from('premium_slots')
-          .select('*')
-          .eq('table_id', tableId)
-          .eq('date', selectedDate);
-
-        const overlap = existing.some(b => !(end_time <= b.start_time || start_time >= b.end_time));
+        const { data: existing } = await _supa.from('premium_slots').select('*').eq('table_id', tableId).eq('date', selectedDate);
+        const overlap = existing.some(b=>!(end_time <= b.start_time || start_time >= b.end_time));
         if(overlap){ alert('This table is already booked for that time.'); return; }
 
-        const { error } = await _supa.from('premium_slots').insert({
-          table_id: tableId,
-          date: selectedDate,
-          start_time,
-          end_time,
-          host_notes: notes || ''
-        });
+        const { error } = await _supa.from('premium_slots').insert({ table_id: tableId, date: selectedDate, start_time, end_time, host_notes: notes||'' });
         if(error){ alert('Error booking: '+error.message); return; }
+
         await colorBookedTables();
         alert('Table booked!');
       });
 
       // Right-click to remove booking
       group.on('contextmenu', async e => {
-        e.evt.preventDefault(); // prevent default right-click menu
+        e.evt.preventDefault();
         const selectedDate = document.getElementById('bookingDate').value;
         if(!selectedDate){ alert('Select a date first'); return; }
         const tableId = parseInt(group.id().replace('g-', ''));
 
-        const { data: existing, error } = await _supa.from('premium_slots')
-          .select('*')
-          .eq('table_id', tableId)
-          .eq('date', selectedDate);
-
+        const { data: existing, error } = await _supa.from('premium_slots').select('*').eq('table_id', tableId).eq('date', selectedDate);
         if(error){ alert('Error fetching bookings: '+error.message); return; }
-        if(existing.length === 0){ alert('No booking to remove for this table.'); return; }
+        if(existing.length===0){ alert('No booking to remove for this table.'); return; }
 
-        const confirmDelete = confirm('Remove all bookings for this table on this date?');
-        if(!confirmDelete) return;
-
-        const { error: delErr } = await _supa.from('premium_slots')
-          .delete()
-          .eq('table_id', tableId)
-          .eq('date', selectedDate);
+        if(!confirm('Remove all bookings for this table on this date?')) return;
+        const { error: delErr } = await _supa.from('premium_slots').delete().eq('table_id', tableId).eq('date', selectedDate);
         if(delErr){ alert('Error deleting booking: '+delErr.message); return; }
 
         await colorBookedTables();
@@ -267,10 +263,7 @@
     }
 
     document.getElementById('rotate').onclick = () => {
-      if(selectedGroup){
-        selectedGroup.rotation(selectedGroup.rotation()+90);
-        layer.draw();
-      }
+      if(selectedGroup){ selectedGroup.rotation(selectedGroup.rotation()+90); layer.draw(); }
     };
 
     document.getElementById('save').onclick = async () => {
@@ -287,9 +280,7 @@
       else { alert('Layout saved!'); }
     };
 
-    document.getElementById('refresh').onclick = () => {
-      loadTables();
-    };
+    document.getElementById('refresh').onclick = () => { loadTables(); };
 
     loadBackground(loadTables);
   </script>
