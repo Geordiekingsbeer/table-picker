@@ -1,141 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Pick Your Table</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-    <style>
-        body{
-            font-family: Arial, Helvetica, sans-serif;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
-            background: #f7f7f7;
-        }
-        
-        h2 {
-            font-size: 20px;
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        /* Instructions added for clarity */
-        .instructions {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
-        }
-
-        /* Date/Time Selector */
-        #datetime-controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            align-items: center;
-            padding: 10px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        #datetime-controls input {
-            padding: 6px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        
-        #check-availability {
-            padding: 6px 12px;
-            background-color: #1976d2; /* Blue for action */
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        
-        #check-availability:hover {
-            background-color: #1565c0;
-        }
-
-        #container{
-            background:url('floorplan.png') no-repeat center center;
-            background-size:contain;
-            border:1px solid #ccc;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            margin:20px auto;
-            width:480px;
-            height:480px;
-            background-color: #fff; /* Ensure Konva sits on top of white */
-        }
-        
-        /* Table Status Indicators */
-        .status-legend {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #555;
-            display: flex;
-            gap: 15px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-        }
-        .legend-color {
-            width: 15px;
-            height: 15px;
-            border-radius: 3px;
-            margin-right: 5px;
-            border: 1px solid #aaa;
-        }
-
-        #payBtn{
-            margin-top:20px;
-            padding:12px 24px;
-            font-size:16px;
-            background:#388e3c; /* Green for payment */
-            color:#fff;
-            border:none;
-            border-radius:4px;
-            cursor:pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        #payBtn:disabled{
-            background:#bbb;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-    </style>
-</head>
-<body>
-    <h2>Tap the table you want</h2>
-    <p class="instructions">Use **Shift + Click** to select multiple tables for large parties.</p>
-    
-    <div id="datetime-controls">
-        <label for="booking-date">Date:</label>
-        <input type="date" id="booking-date" value="">
-        <label for="booking-time">Time:</label>
-        <input type="time" id="booking-time" value="">
-        <button id="check-availability">Check Availability</button>
-    </div>
-
-    <div id="container"></div>
-
-    <div class="status-legend">
-        <div class="legend-item"><span class="legend-color" style="background-color: #b7d7a8;"></span>Available</div>
-        <div class="legend-item"><span class="legend-color" style="background-color: #9e9e9e;"></span>Booked</div>
-        <div class="legend-item"><span class="legend-color" style="border: 3px solid #ffeb3b;"></span>Selected</div>
-    </div>
-    
-    <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
-
-    <script>
-    // --- START OF JAVASCRIPT ---
-
+<script>
     // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
@@ -148,7 +11,7 @@
     const payBtn = document.getElementById('payBtn');
     let selectedTableIds = []; 
     let currentBookings = []; 
-    let tableDataMap = new Map(); // GLOBAL: Store table size/price data by ID
+    let tableDataMap = new Map(); 
 
     // --- Price Constants in Cents/Pence ---
     const PRICE_2_SEATER = 499; 
@@ -156,10 +19,10 @@
     const PRICE_6_SEATER = 998; 
     // --------------------------------------
 
-    const TABLE_COLOR = '#b7d7a8'; // Available
-    const BOOKED_COLOR = '#9e9e9e'; // Booked
+    const TABLE_COLOR = '#b7d7a8';
+    const BOOKED_COLOR = '#9e9e9e'; 
     const SEAT_COLOR = '#555'; 
-    const HIGHLIGHT_COLOR = '#ffeb3b'; // Selection color
+    const HIGHLIGHT_COLOR = '#ffeb3b';
     
     // --- Helper Functions ---
 
@@ -177,10 +40,10 @@
     }
     
     function getTablePrice(w, h) {
-        if (w === 30 && h === 30) return PRICE_2_SEATER; // 2-seater
-        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER; // 4-seater 
-        if (w === 90 && h === 30) return PRICE_6_SEATER; // 6-seater
-        return 0; // Default or unknown size
+        if (w === 30 && h === 30) return PRICE_2_SEATER;
+        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER;
+        if (w === 90 && h === 30) return PRICE_6_SEATER;
+        return 0;
     }
 
     function calculateTotalPence() {
@@ -216,6 +79,23 @@
 
         document.getElementById('booking-date').value = defaultDate;
         document.getElementById('booking-time').value = defaultTime;
+    }
+
+    // --- Background Loading (REQUIRED for Konva) ---
+
+    function loadBackground(callback) {
+        const imageObj = new Image();
+        imageObj.onload = function() {
+            const backgroundLayer = new Konva.Layer();
+            const floorplan = new Konva.Image({
+                x: 0, y: 0, image: imageObj, width: 480, height: 480,
+            });
+            backgroundLayer.add(floorplan);
+            stage.add(backgroundLayer);
+            backgroundLayer.draw();
+            if (callback) callback();
+        };
+        imageObj.src = 'floorplan.png';
     }
 
     // --- Booking Logic ---
@@ -287,18 +167,17 @@
         layer.draw();
     }
 
-    // --- Konva Functions ---
+    // --- Konva Table Drawing ---
     
     async function loadTables() {
-        // Fetch w and h explicitly for price calculation
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
         if (error) { console.error(error); return; }
         
+        // Remove existing table layer children before redrawing
         layer.destroyChildren();
-        tableDataMap = new Map(); // Reset map on load
+        tableDataMap = new Map(); 
         
         data.forEach(t => {
-            // CRITICAL STEP: Populate map with price data
             const price = getTablePrice(t.w, t.h);
             tableDataMap.set(t.id, { id: t.id, price: price, w: t.w, h: t.h });
 
@@ -375,7 +254,6 @@
         const idNumber = Number(id);
         const index = selectedTableIds.indexOf(idNumber);
         
-        // 1. Check if the table is booked
         if (tableRect.fill() === BOOKED_COLOR) {
             alert('Sorry, this table is booked for the selected time slot.');
             return;
@@ -384,9 +262,7 @@
         const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
 
         if (index === -1) {
-            // Table is NOT currently selected: ADD it
             if (!isShiftPressed) {
-                // If no key pressed, clear all previous selections
                 selectedTableIds.forEach(prevId => {
                     const prevGroup = layer.findOne('#g-' + prevId);
                     if(prevGroup) { 
@@ -397,13 +273,11 @@
                 selectedTableIds = [];
             }
             
-            // Add the new table
             selectedTableIds.push(idNumber);
             tableRect.stroke(HIGHLIGHT_COLOR);
             tableRect.strokeWidth(3);
 
         } else {
-            // Table IS currently selected: REMOVE it
             if (isShiftPressed || selectedTableIds.length > 1) {
                 selectedTableIds.splice(index, 1);
                 tableRect.stroke('#000');
@@ -415,7 +289,6 @@
             }
         }
         
-        // Update button state and price
         const totalPence = calculateTotalPence();
         updatePayButton(totalPence);
 
@@ -464,11 +337,41 @@
         const email = prompt('Enter your email for confirmation:');
         if (!email) return alert('Email is required');
         
-        // --- CRITICAL PRICE CALCULATION AND LOGGING ---
         const totalPence = calculateTotalPence(); 
         console.log('Final Calculated Pence Sent:', totalPence); 
-        // ---------------------------------------------
         
         if (totalPence === 0) {
             alert("Error: Selected tables have no defined price (Total is 0).");
             return;
+        }
+
+        try {
+            const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    table_ids: selectedTableIds, 
+                    email: email,
+                    booking_date: selectedDate,
+                    booking_time: selectedTime,
+                    total_pence: totalPence 
+                })
+            });
+            
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;    
+            } else {
+                console.error(data);
+                alert('Checkout creation failed. See console for details.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Checkout creation failed. See console for details.');
+        }
+    };
+
+    // --- Initialization ---
+    setDefaultDateTime(); 
+    loadBackground(loadTables); // CORRECT: Calls loadTables after background image loads
+</script>
