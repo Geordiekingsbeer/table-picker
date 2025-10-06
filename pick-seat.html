@@ -80,6 +80,8 @@
             color: #555;
             display: flex;
             gap: 15px;
+            flex-wrap: wrap; /* Added wrap for small screens */
+            justify-content: center;
         }
         .legend-item {
             display: flex;
@@ -110,7 +112,7 @@
             box-shadow: none;
         }
 
-        /* --- MODAL STYLES --- */
+        /* --- MODAL STYLES (Kept for reference) --- */
         .modal {
             display: none; 
             position: fixed; 
@@ -171,11 +173,10 @@
     <div id="container"></div>
 
     <div class="status-legend">
-        <div class="legend-item"><span class="legend-color" style="background-color: #b7d7a8;"></span>Available</div>
-        <div class="legend-item"><span class="legend-color" style="background-color: #9e9e9e;"></span>Booked</div>
-        <div class="legend-item"><span class="legend-color" style="border: 3px solid #ffeb3b;"></span>Selected</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #b7d7a8;"></span>Premium Available</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #e0e0e0; border: none;"></span>Booked (Premium)</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #424242;"></span>Staff Use Only (N/A)</div>
     </div>
-    
     <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
 
     <div id="customer-modal" class="modal">
@@ -211,16 +212,20 @@
     let currentBookings = []; 
     let tableDataMap = new Map(); 
 
-    // --- Price Constants in Cents/Pence ---
+    // --- Price and Color Constants ---
     const PRICE_2_SEATER = 499; 
     const PRICE_4_SEATER = 998; 
     const PRICE_6_SEATER = 998; 
-    // --------------------------------------
 
-    const TABLE_COLOR = '#b7d7a8'; // Available
-    const BOOKED_COLOR = '#9e9e9e'; // Booked
+    const TABLE_COLOR = '#b7d7a8';      // Available (Light Green)
+    const BOOKED_COLOR = '#e0e0e0';     // NEW: Booked (Light Gray)
+    const UNAVAILABLE_COLOR = '#424242';// NEW: Permanently Unavailable (Dark Gray)
     const SEAT_COLOR = '#555'; 
     const HIGHLIGHT_COLOR = '#ffeb3b';
+
+    // List of tables permanently unavailable for customer booking
+    const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 17, 1];
+    // --------------------------------------
     
     // --- Helper Functions ---
 
@@ -238,10 +243,10 @@
     }
     
     function getTablePrice(w, h) {
-        if (w === 30 && h === 30) return PRICE_2_SEATER; // 2-seater
-        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER; // 4-seater 
-        if (w === 90 && h === 30) return PRICE_6_SEATER; // 6-seater
-        return 0; // Default or unknown size
+        if (w === 30 && h === 30) return PRICE_2_SEATER;
+        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER;
+        if (w === 90 && h === 30) return PRICE_6_SEATER;
+        return 0;
     }
 
     function calculateTotalPence() {
@@ -279,9 +284,10 @@
         document.getElementById('booking-time').value = defaultTime;
     }
 
-    // --- Background Loading (Uses simple sequential load) ---
+    // --- Background Loading ---
 
     function loadBackground() {
+        // Start the table loading process
         loadTables();
     }
 
@@ -292,7 +298,6 @@
         const selectedTime = document.getElementById('booking-time').value;
 
         if (!selectedDateSupabase || !selectedTime) {
-            // No alert needed on initial load
             currentBookings = []; 
             return false;
         }
@@ -330,9 +335,16 @@
         stage.find('.main-table').forEach(tableRect => {
             const group = tableRect.getParent();
             const tableId = Number(group.id().substring(2)); 
-            const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
             
-            tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
+            // 1. Check if table is permanently unavailable
+            if (STAFF_USE_TABLE_IDS.includes(tableId)) {
+                tableRect.fill(UNAVAILABLE_COLOR);
+            } else {
+                // 2. Check current bookings (only if table is premium)
+                const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
+                tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
+            }
+            
             tableRect.stroke('#000'); 
             tableRect.strokeWidth(1);
         });
@@ -342,7 +354,8 @@
             if (!group) return; 
             const tableRect = group.findOne('.main-table');
 
-            if (tableRect.fill() !== BOOKED_COLOR) {
+            // 3. Re-select only if available AND not permanently unavailable
+            if (tableRect.fill() === TABLE_COLOR) {
                 selectedTableIds.push(id);
                 tableRect.stroke(HIGHLIGHT_COLOR);
                 tableRect.strokeWidth(3);
@@ -375,6 +388,11 @@
             group.x(t.x + tableRect.width()/2);
             group.y(t.y + tableRect.height()/2);
             group.rotation(t.rotation || 0); 
+
+            // Initial coloring for STAFF USE tables
+            if (STAFF_USE_TABLE_IDS.includes(t.id)) {
+                tableRect.fill(UNAVAILABLE_COLOR);
+            }
         });
         
         await loadBookings();
@@ -438,23 +456,31 @@
     function selectTable(id, evt) {
         const group = layer.findOne('#g-' + id);
         const tableRect = group.findOne('.main-table');
-        const idNumber = Number(id);
-        const index = selectedTableIds.indexOf(idNumber);
         
+        // 1. Check if table is permanently unavailable
+        if (STAFF_USE_TABLE_IDS.includes(id)) {
+            alert('This table is reserved for staff walk-ins and is not available for online booking.');
+            return;
+        }
+
+        // 2. Check if table is temporarily booked
         if (tableRect.fill() === BOOKED_COLOR) {
             alert('Sorry, this table is booked for the selected time slot.');
             return;
         }
 
+        const idNumber = Number(id);
+        const index = selectedTableIds.indexOf(idNumber);
         const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
 
         if (index === -1) {
+            // Table is NOT currently selected: ADD it
             if (!isShiftPressed) {
-                selectedTableIds.forEach(prevId => {
-                    const prevGroup = layer.findOne('#g-' + prevId);
-                    if(prevGroup) { 
-                        prevGroup.findOne('.main-table').stroke('#000');
-                        prevGroup.findOne('.main-table').strokeWidth(1);
+                // Clear all previous selections
+                stage.find('.main-table').forEach(rect => {
+                    if (rect.fill() !== BOOKED_COLOR && rect.fill() !== UNAVAILABLE_COLOR) {
+                        rect.stroke('#000');
+                        rect.strokeWidth(1);
                     }
                 });
                 selectedTableIds = [];
@@ -465,15 +491,10 @@
             tableRect.strokeWidth(3);
 
         } else {
-            if (isShiftPressed || selectedTableIds.length > 1) {
-                selectedTableIds.splice(index, 1);
-                tableRect.stroke('#000');
-                tableRect.strokeWidth(1);
-            } else if (selectedTableIds.length === 1) {
-                selectedTableIds.splice(index, 1);
-                tableRect.stroke('#000');
-                tableRect.strokeWidth(1);
-            }
+            // Table IS currently selected: REMOVE it
+            selectedTableIds.splice(index, 1);
+            tableRect.stroke('#000');
+            tableRect.strokeWidth(1);
         }
         
         const totalPence = calculateTotalPence();
@@ -482,15 +503,13 @@
         layer.draw();
     }
 
-    // --- Event Listeners ---
+    // --- Event Listeners and Initialization ---
 
     document.getElementById('check-availability').onclick = async () => {
-        selectedTableIds.forEach(id => {
-            const group = layer.findOne('#g-' + id);
-            if (group) {
-                group.findOne('.main-table').stroke('#000');
-                group.findOne('.main-table').strokeWidth(1);
-            }
+        // Clear all selection highlights on check
+        stage.find('.main-table').forEach(rect => {
+            rect.stroke('#000');
+            rect.strokeWidth(1);
         });
         selectedTableIds = [];
         
@@ -510,6 +529,7 @@
 
         await loadBookings();
         
+        // Final pre-fetch validation (check if any table turned gray after loadBookings())
         const isAnySelectedTableBooked = selectedTableIds.some(id => {
             const group = layer.findOne('#g-' + id);
             return group.findOne('.main-table').fill() === BOOKED_COLOR;
@@ -520,7 +540,7 @@
             updateTableVisuals();
             return;
         }
-        
+
         // Show modal instead of prompts
         customerModal.style.display = 'flex';
     };
@@ -540,7 +560,6 @@
 
         customerModal.style.display = 'none'; // Hide modal before fetching
 
-        // Retrieve date and time again (safely)
         const selectedDate = document.getElementById('booking-date').value;
         const selectedTime = document.getElementById('booking-time').value;
         
