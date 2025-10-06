@@ -12,6 +12,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start; /* Aligned to start to avoid stretching content */
             padding: 20px 10px; /* Added horizontal padding for small screens */
             background: #f7f7f7;
             min-height: 100vh;
@@ -47,16 +48,21 @@
             justify-content: center;
         }
 
+        #datetime-controls label {
+            font-weight: 600;
+            color: #555;
+        }
+
         #datetime-controls input {
             padding: 6px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            max-width: 90px; /* Constraint on input width */
+            max-width: 90px;
         }
         
         #check-availability {
             padding: 6px 12px;
-            background-color: #1976d2; /* Blue for action */
+            background-color: #1976d2; 
             color: white;
             border: none;
             border-radius: 4px;
@@ -143,7 +149,7 @@
             box-shadow: none;
         }
 
-        /* MODAL STYLES */
+        /* MODAL STYLES (Adjusted for mobile) */
         .modal {
             display: none; 
             position: fixed; 
@@ -166,7 +172,7 @@
             max-width: 400px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            margin: 10vh auto; /* Adjusted margin for mobile */
+            margin: 10vh auto;
         }
         
         .modal-content h3 { margin-top: 0; }
@@ -331,21 +337,15 @@
     
     // --- KONVA RESIZE FUNCTION (The core responsiveness logic) ---
     function resizeStage() {
-        // Get the current width of the container element
         const containerWidth = container.offsetWidth;
-        
-        // Calculate the scaling factor based on the container's new width
         const scale = containerWidth / STAGE_WIDTH;
 
-        // Set the new Konva stage dimensions and scale the content
         stage.width(containerWidth);
         stage.height(STAGE_HEIGHT * scale);
         stage.scale({ x: scale, y: scale });
 
-        // Ensure the container element reflects the scaled height for layout flow
         container.style.height = `${STAGE_HEIGHT * scale}px`;
 
-        // Redraw layers to apply changes
         stage.draw();
     }
     // -------------------------------------------------------------
@@ -457,7 +457,8 @@
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
         if (error) { console.error(error); return; }
         
-        layer.find('.selectable-table').destroy(); // Destroy old tables, keep floorplan
+        // Remove old table groups but preserve the floorplan image (which is at zIndex 0)
+        layer.find('.selectable-table').destroy(); 
         tableDataMap = new Map(); 
         
         data.forEach(t => {
@@ -477,7 +478,6 @@
             }
         });
         
-        // The loadFloorplan function is now responsible for initial draw and resize
         await loadBookings();
     }
     
