@@ -9,7 +9,7 @@
     <style>
         body{
             font-family: Arial, Helvetica, sans-serif;
-            background:#e3e3e3; /* Matching the new gray background */
+            background:#e3e3e3; /* MATCHING NEW GRAY BACKGROUND */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -76,6 +76,8 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             flex-wrap: wrap;
             justify-content: center;
+            max-width: 700px;
+            width: 100%;
         }
 
         #datetime-controls label {
@@ -118,6 +120,8 @@
             color: #444;
             transition: all 0.2s ease;
             white-space: nowrap;
+            max-width: 700px;
+            width: 100%;
         }
         
         #multi-select-toggle.active {
@@ -129,20 +133,22 @@
             background-color: #388e3c;
             color: white;
             border: none;
+            width: 90vw;
+            max-width: 700px;
         }
 
-        /* Floorplan container - STYLING CHANGES HERE */
+        /* Floorplan container - STYLING CHANGES APPLIED */
         #container-wrapper {
             display: flex;
             justify-content: center;
             width: 100%;
-            max-width: 500px; 
+            max-width: 700px; 
         }
 
         #container{
             width: 100%;
             height: auto;
-            /* REMOVED WHITE BACKGROUND, BORDER, AND SHADOW */
+            /* REMOVED VISUAL BOUNDARIES TO BLEND WITH PAGE */
             border: none; 
             box-shadow: none;
             background-color: transparent;
@@ -157,6 +163,8 @@
             color: #555;
             flex-wrap: wrap;
             justify-content: center;
+            max-width: 700px;
+            width: 100%;
         }
         .legend-item {
             display: flex;
@@ -336,8 +344,8 @@
 
     <script>
         // --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
-        const STAGE_WIDTH = 480;
-        const STAGE_HEIGHT = 480;
+        const STAGE_WIDTH = 700;
+        const STAGE_HEIGHT = 700;
         // ---------------------------------------------------------------------------------
         
         // --- Supabase setup ---
