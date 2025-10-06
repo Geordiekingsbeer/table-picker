@@ -38,7 +38,8 @@
 			cursor: pointer;
 			color: #fff;
 			transition: all 0.2s ease;
-			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			/* UPDATED: Added subtle box shadow for depth */
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 
 		/* UPDATED: Save button matches table color */
@@ -54,7 +55,8 @@
 		}
 		
 		.admin-controls-top button:hover {
-			box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+			/* Increased shadow on hover for better effect */
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
 			opacity: 0.95;
 		}
 
@@ -92,7 +94,7 @@
 			text-align: center;
 		}
 		
-		/* UPDATED: Load Bookings button matches table color */
+		/* UPDATED: Load Bookings button matches table color & has bold text */
 		#load-bookings {
 			padding: 12px 10px;
 			background-color: #b7d7a8; /* Table Color */
@@ -100,14 +102,16 @@
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
-			font-weight: 500;
+			/* UPDATED: Make text bold */
+			font-weight: 600; 
 			flex-grow: 1;
-			box-shadow: none;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Added subtle box shadow */
 			white-space: nowrap;
 		}
 		
 		#load-bookings:hover {
 			background-color: #a7c598; /* Slightly darker hover for table color */
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Increased shadow on hover */
 		}
 		
 		.admin-controls-top button#save:hover {
@@ -135,8 +139,14 @@
 			width: 90vw;
 			max-width: 480px;
 			text-align: center;
+			/* Added subtle shadow to this button too */
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 		
+		#multi-select-toggle:hover, #multi-book-button:hover {
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+		}
+
 		#multi-select-toggle.active {
 			background-color: #1976d2;
 			color: white;
@@ -273,7 +283,6 @@
 </head>
 <body>
 	<div class="admin-controls-top">
-		Drag tables <span style="font-size:20px; margin: 0 5px;">→</span>
 		<button id="save">Save layout</button>
 		<button id="rotate">Rotate Table 90°</button>
 	</div>
