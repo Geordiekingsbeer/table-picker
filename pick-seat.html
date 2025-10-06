@@ -77,21 +77,18 @@
 		}
 		
 		/* Custom appearance based on placeholder/external styling in screenshot */
-		/* These styles simulate the original look after the inputs are processed */
 		#booking-date {
-			 /* Placeholder/value for date */
 			 text-align: left;
 			 padding-right: 5px;
 		}
 
 		#booking-time {
-			 /* Placeholder/value for time */
 			 text-align: left;
 			 padding-right: 5px;
 		}
 
 
-		/* UPDATED: Check Availability Button matches table color */
+		/* UPDATED: Check Availability Button matches table color & text is bold */
 		#check-availability {
 			padding: 12px 10px;
 			background-color: #b7d7a8; /* Table Color */
@@ -99,7 +96,8 @@
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
-			font-weight: 500;
+			/* UPDATED: Make text bold */
+			font-weight: 600; 
 			flex-grow: 1;
 			box-shadow: none;
 			white-space: nowrap;
@@ -181,7 +179,8 @@
 			background:#388e3c;
 			color:#fff;
 			border:none;
-			border-radius:4px;
+			/* UPDATED: More rounded corners (Pill shape) */
+			border-radius: 20px; 
 			cursor:pointer;
 			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 			width: 90vw;
