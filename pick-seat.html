@@ -104,7 +104,6 @@
             color: #333;
             transition: all 0.2s ease;
             white-space: nowrap;
-            /* New placement below the control group */
             width: 90vw;
             max-width: 480px;
             text-align: center;
@@ -116,7 +115,7 @@
             border: 1px solid #1976d2;
         }
 
-        /* CONTAINER FIXES */
+        /* CONTAINER FIXES: REMOVE WHITE BACKGROUND AND BORDER */
         #container-wrapper {
             display: flex;
             justify-content: center;
@@ -127,10 +126,10 @@
         #container{
             width: 100%;
             height: auto;
-            border:1px solid #ccc;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: none; /* REMOVED BORDER */
+            box-shadow: none; /* REMOVED BOX SHADOW */
             margin:0 auto;
-            background-color: #fff;
+            background-color: transparent; /* REMOVED WHITE BACKGROUND */
         }
         /* END CONTAINER FIXES */
         
