@@ -117,8 +117,30 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             background:#fff;
         }
+
+        /* Status Legend (NEW) */
+        #status-legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #555;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+        }
         
-        /* Modal for booking */
+        /* Modal styles (unchanged) */
         .modal {
             display: none; 
             position: fixed; 
@@ -216,6 +238,11 @@
         <div id="container"></div>
     </div>
     
+    <div id="status-legend">
+        <div class="legend-item"><span class="legend-color" style="background-color: #b7d7a8;"></span>Premium Available</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #e0e0e0;"></span>Booked (Premium)</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #ffffff;"></span>Staff Use Only (N/A)</div> 
+    </div>
     <div id="booking-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
@@ -266,9 +293,13 @@
         let selectedGroup = null;
         
         // --- UNIFIED COLOR CONSTANTS ---
-        const TABLE_COLOR = '#b7d7a8';      // Available (Light Green)
-        const BOOKED_COLOR = '#e0e0e0';     // Booked (Light Gray - MATCHES CUSTOMER)
-        const SEAT_COLOR = '#555';          // Seat Color
+        const TABLE_COLOR = '#b7d7a8';          // Available (Light Green)
+        const BOOKED_COLOR = '#e0e0e0';         // Booked (Light Gray - MATCHES CUSTOMER)
+        const UNAVAILABLE_COLOR = '#ffffff';    // Staff Use Only (White)
+        const SEAT_COLOR = '#555';              // Seat Color
+
+        // List of tables permanently unavailable for customer booking (to be colored white)
+        const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 17, 1];
         // -------------------------------
         
         let currentBookings = []; 
@@ -364,13 +395,18 @@
                 
                 const tableIdNumber = Number(t.id);
                 
-                const activeBooking = currentBookings.find(b => 
-                    Number(b.table_id) === tableIdNumber 
-                );
+                // 1. Check if table is permanently unavailable (Staff Use Only)
+                if (STAFF_USE_TABLE_IDS.includes(tableIdNumber)) {
+                    tableRect.fill(UNAVAILABLE_COLOR);
+                } else {
+                    // 2. Check current bookings
+                    const activeBooking = currentBookings.find(b => 
+                        Number(b.table_id) === tableIdNumber 
+                    );
+                    tableRect.fill(activeBooking ? BOOKED_COLOR : TABLE_COLOR);
+                }
                 
-                group.setAttr('booking_data', activeBooking || null);
-
-                tableRect.fill(activeBooking ? BOOKED_COLOR : TABLE_COLOR);
+                group.setAttr('booking_data', currentBookings.find(b => Number(b.table_id) === tableIdNumber) || null);
                 layer.draw();
             });
         }
@@ -381,14 +417,17 @@
                 y:t.y, 
                 id:'g-'+t.id, 
                 table_id: Number(t.id),
-                draggable:true // Enable dragging for all tables (requested flexibility)
+                draggable:true // Keep drag enabled for staff flexibility
             });
             layer.add(group);
+
+            const isStaffUseOnly = STAFF_USE_TABLE_IDS.includes(t.id);
 
             const tableRect = new Konva.Rect({ 
                 width:t.w, 
                 height:t.h, 
-                fill:TABLE_COLOR, // All tables start as available
+                // Initial fill color based on permanent availability
+                fill: isStaffUseOnly ? UNAVAILABLE_COLOR : TABLE_COLOR,
                 stroke:'#000', 
                 strokeWidth:1,
                 name: 'main-table' 
@@ -432,7 +471,6 @@
                 showBookingModal(t.id, group.getAttr('booking_data'));
             });
 
-            // Restore dblclick for delete if it was working previously
             group.on('dblclick', (e) => {
                 e.evt.preventDefault();
                 const booking = group.getAttr('booking_data');
@@ -447,7 +485,7 @@
             return group;
         }
         
-        // --- Supabase Booking Functions (unchanged) ---
+        // --- Supabase Booking Functions ---
         
         async function loadBookings() {
             currentSelectedDate = document.getElementById('booking-date').value;
