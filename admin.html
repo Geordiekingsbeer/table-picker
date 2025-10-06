@@ -399,11 +399,7 @@
 
         // --- Konva Functions ---
 
-        // NOTE: loadBackground is now simplified to just call loadTables
-        function loadBackground(callback) {
-            // No longer relying on unreliable image object loading
-            if (callback) callback();
-        }
+        // REMOVED loadBackground function (Now called directly below)
 
         async function loadTables() {
             const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
@@ -790,7 +786,7 @@
 
         // --- Initialization ---
         setDefaultDateTime();
-        loadBackground(loadTables);
+        loadTables(); // DIRECTLY CALL loadTables()
     </script>
 </body>
 </html>
