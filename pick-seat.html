@@ -67,21 +67,29 @@
             max-width: none;
             font-weight: 500;
             text-align: center;
-            /* Adding icons for visual match */
-            background-repeat: no-repeat;
-            background-position: left 10px center;
-            padding-left: 30px; 
+            
+            /* Add space for pseudo-icons */
+            padding-left: 10px; 
+            /* Reset specific type styling that might conflict */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
         
+        /* Custom appearance based on placeholder/external styling in screenshot */
+        /* These styles simulate the original look after the inputs are processed */
         #booking-date {
-            background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%23666%22%3E%3Cpath%20d%3D%22M20%203h-1V1h-2v2H7V1H5v2H4c-1.1%200-2%20.9-2%202v16c0%201.1.9%202%202%202h16c1.1%200%202-.9%202-2V5c0-1.1-.9-2-2-2zm0%2018H4V8h16v13zM4%206V5h16v1H4z%22%2F%3E%3C%2Fsvg%3E');
-            background-size: 18px;
+             /* Placeholder/value for date */
+             text-align: left;
+             padding-right: 5px;
         }
 
         #booking-time {
-            background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%23666%22%3E%3Cpath%20d%3D%22M12%202C6.48%202%202%206.48%202%2012s4.48%2010%2010%2010%2010-4.48%2010-10S17.52%202%2012%202zm0%2018c-4.41%200-8-3.59-8-8s3.59-8%208-8%208%203.59%208%208-3.59%208-8%208zm-.62-12.63L11%2012.38V16h2v-4.75l-1.38-1.38z%22%2F%3E%3C%2Fsvg%3E');
-            background-size: 18px;
+             /* Placeholder/value for time */
+             text-align: left;
+             padding-right: 5px;
         }
+
 
         /* Check Availability Button */
         #check-availability {
@@ -109,7 +117,7 @@
             margin-bottom: 20px;
             border-radius: 4px;
             cursor: pointer;
-            border: 1px solid #ccc; 
+            border: 1px solid #ccc; /* Lighter border to match screenshot */
             background-color: #f7f7f7; 
             color: #333;
             transition: all 0.2s ease;
@@ -237,8 +245,8 @@
     <p class="subtitle" style="font-size: 16px;">Select your preferred seating</p>
     
     <div id="datetime-controls">
-        <input type="date" id="booking-date" value="" placeholder="dd/mm/yyyy">
-        <input type="time" id="booking-time" value="" placeholder="--:--">
+        <input type="date" id="booking-date" value="" placeholder="dd/mm/yyyy" style="text-align: left;">
+        <input type="time" id="booking-time" value="" placeholder="--:--" style="text-align: left;">
         <button id="check-availability">Check Availability</button>
     </div>
 
@@ -328,7 +336,6 @@
     }
 
     function getSupabaseDate() {
-        // The value of type="date" input is always YYYY-MM-DD
         return document.getElementById('booking-date').value; 
     }
     
@@ -362,6 +369,7 @@
     }
 
     function setDefaultDateTime() {
+        // --- THIS SECTION WAS CRASHING ---
         const today = new Date();
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -370,8 +378,13 @@
         const defaultDate = `${year}-${month}-${day}`;
         const defaultTime = '19:00'; 
 
-        document.getElementById('booking-date').value = defaultDate;
-        document.getElementById('booking-time').value = defaultTime;
+        // CRITICAL FIX: The JS must find the elements by ID to set their initial values
+        const dateInput = document.getElementById('booking-date');
+        const timeInput = document.getElementById('booking-time');
+
+        if (dateInput) dateInput.value = defaultDate;
+        if (timeInput) timeInput.value = defaultTime;
+        // ------------------------------------
     }
     
     // --- KONVA RESIZE FUNCTION (Proven Admin Logic) ---
@@ -684,8 +697,9 @@
     window.addEventListener('resize', resizeStage);
 
     document.getElementById('multi-select-toggle').onclick = () => {
-        const toggleButton = document.getElementById('multi-select-toggle');
-
+        // --- CRITICAL FIX: The event handler must be attached to the button object itself ---
+        const toggleButton = document.getElementById('multi-select-toggle'); 
+        
         isMultiSelectMode = !isMultiSelectMode;
         
         if (isMultiSelectMode) {
@@ -698,105 +712,130 @@
                 selectedGroup = null;
             }
             
-            layer.find('Group').forEach(group => group.draggable(false));
-
-            } else {
-                toggleButton.dataset.active = 'false';
-                toggleButton.classList.remove('active');
-                toggleButton.textContent = 'Start Multi-Select Mode';
-                
-                selectedMultiTables.clear();
-                multiBookButton.style.display = 'none';
-
-                layer.find('Group').forEach(group => group.draggable(true));
-            }
-
-            updateTableVisuals();
-        };
-
-        document.getElementById('multi-book-button').onclick = () => {
-            showMultiBookingModal();
-        };
-
-        document.getElementById('multi-booking-form').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const startTime = document.getElementById('multi-start-time').value;
-            const endTime = document.getElementById('multi-end-time').value;
-            const notes = document.getElementById('multi-notes').value;
-            const tableIds = Array.from(selectedMultiTables);
-
-            if (tableIds.length === 0) {
-                alert("No tables selected for booking.");
-                return;
-            }
-
-            await createBulkBooking(tableIds, startTime, endTime, notes);
-            multiModal.style.display = 'none';
+            // NOTE: Admin tables remain draggable by default unless multi-select is active
+            layer.find('Group').forEach(group => group.draggable(false)); 
+        } else {
+            toggleButton.dataset.active = 'false';
+            toggleButton.classList.remove('active');
+            toggleButton.textContent = 'Start Multi-Select Mode';
             
             selectedMultiTables.clear();
-            document.getElementById('multi-select-toggle').click(); 
-        };
+            multiBookButton.style.display = 'none';
 
-        document.getElementById('load-bookings').onclick = async () => {
-            currentSelectedDate = document.getElementById('booking-date').value;
-            currentSelectedTime = document.getElementById('booking-time').value;
-            await loadBookings();
-        };
+            layer.find('Group').forEach(group => group.draggable(true));
+        }
 
-        document.getElementById('booking-form').onsubmit = async (e) => {
-            e.preventDefault();
+        updateTableVisuals();
+    };
+
+
+    document.getElementById('check-availability').onclick = async () => {
+        // Clear selection highlights on check
+        stage.find('.main-table').forEach(rect => {
+            rect.stroke('#000');
+            rect.strokeWidth(1);
+        });
+        selectedTableIds = [];
+        
+        await loadBookings();
+    };
+    
+    // --- Re-attach Check Availability logic to the specific button ---
+    const checkAvailabilityButton = document.getElementById('check-availability');
+    if (checkAvailabilityButton) {
+        checkAvailabilityButton.onclick = async () => {
+            // Re-run the load bookings logic
+            await loadBookings(); 
+        };
+    }
+    // -----------------------------------------------------------------
+
+
+    payBtn.onclick = async () => {
+        if (selectedTableIds.length === 0) return;
+        
+        const selectedDate = document.getElementById('booking-date').value;
+        const selectedTime = document.getElementById('booking-time').value;
+
+        if (!selectedDate || !selectedTime) {
+            alert('Please select a valid date and time before proceeding.');
+            return;
+        }
+
+        await loadBookings();
+        
+        const isAnySelectedTableBooked = selectedTableIds.some(id => {
+            const group = layer.findOne('#g-' + id);
+            return group.findOne('.main-table').fill() === BOOKED_COLOR;
+        });
+
+        if (isAnySelectedTableBooked) {
+            alert("Error: One or more selected tables were just booked. Please re-check availability and select again.");
+            updateTableVisuals();
+            return;
+        }
+
+        customerModal.style.display = 'flex';
+    };
+    
+    // --- FINAL SUBMIT LOGIC FROM MODAL ---
+    customerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const customerName = document.getElementById('customer-name').value;
+        const partySize = parseInt(document.getElementById('party-size').value);
+        const email = document.getElementById('customer-email').value;
+
+        if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
+            alert('Please fill out all fields correctly.');
+            return;
+        }
+
+        customerModal.style.display = 'none'; 
+
+        const selectedDate = document.getElementById('booking-date').value;
+        const selectedTime = document.getElementById('booking-time').value;
+        
+        const totalPence = calculateTotalPence(); 
+        
+        if (totalPence === 0) {
+            alert("Error: Selected tables have no defined price (Total is 0).");
+            return;
+        }
+
+        try {
+            const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    table_ids: selectedTableIds, 
+                    email: email,
+                    booking_date: selectedDate,
+                    booking_time: selectedTime,
+                    total_pence: totalPence,
+                    customer_name: customerName,
+                    party_size: partySize
+                })
+            });
             
-            const tableId = document.getElementById('modal-table-id').value; 
-            const startTime = document.getElementById('start-time').value;
-            const endTime = document.getElementById('end-time').value;
-            const notes = document.getElementById('notes').value;
-
-            const success = await createBooking(tableId, startTime, endTime, notes);
-            if (success) { 
-                singleModal.style.display = 'none';
-                await loadBookings(); 
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;    
             } else {
-                alert("Failed to create single booking. Check inputs/console.");
+                console.error(data);
+                alert('Checkout creation failed. See console for details.');
             }
-        };
+        } catch (err) {
+            console.error(err);
+            alert('Checkout creation failed. See console for details.');
+        }
+    });
+    // ------------------------------------
 
-
-        document.getElementById('rotate').onclick = () => {
-            if (isMultiSelectMode) {
-                selectedMultiTables.forEach(tableId => {
-                    const group = layer.findOne('#g-' + tableId);
-                    if (group) {
-                        group.rotation(group.rotation() + 90);
-                    }
-                });
-                layer.draw();
-            } else if(selectedGroup){
-                selectedGroup.rotation(selectedGroup.rotation()+90);
-                layer.draw();
-            }
-        };
-
-        document.getElementById('save').onclick = async () => {
-            const updates = tables.map(t=>{
-                const g = layer.findOne('#g-'+t.id);
-                if (!g) return null; 
-                
-                const tableRect = g.findOne('.main-table');
-                const finalX = g.x() - tableRect.width()/2;
-                const finalY = g.y() - tableRect.height()/2;
-                const finalRotation = g.rotation();
-                return { id:t.id, x:finalX, y:finalY, rotation: finalRotation };
-            }).filter(t => t !== null);
-            
-            const { data, error } = await _supa.from('tables').upsert(updates).select('*, rotation');
-            if(error){ alert('Layout saved!'); } else { tables = data; alert('Layout saved!'); }
-        };
-
-        // --- Initialization ---
-        setDefaultDateTime();
-        window.addEventListener('resize', resizeStage);
-        loadBackground(loadTables);
+    // --- Initialization ---
+    setDefaultDateTime();
+    window.addEventListener('resize', resizeStage);
+    loadFloorplan(loadTables);
 </script>
 </body>
 </html>
