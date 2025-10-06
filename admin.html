@@ -76,7 +76,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 700px;
+            max-width: 480px; /* FIXED: Reverting to original width */
             width: 100%;
         }
 
@@ -120,7 +120,7 @@
             color: #444;
             transition: all 0.2s ease;
             white-space: nowrap;
-            max-width: 700px;
+            max-width: 480px; /* FIXED: Reverting to original width */
             width: 100%;
         }
         
@@ -134,7 +134,7 @@
             color: white;
             border: none;
             width: 90vw;
-            max-width: 700px;
+            max-width: 480px; /* FIXED: Reverting to original width */
         }
 
         /* Floorplan container - STYLING CHANGES APPLIED */
@@ -142,7 +142,7 @@
             display: flex;
             justify-content: center;
             width: 100%;
-            max-width: 700px; 
+            max-width: 480px; /* FIXED: Reverting to original width */
         }
 
         #container{
@@ -162,7 +162,7 @@
             color: #555;
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 700px;
+            max-width: 480px; /* FIXED: Reverting to original width */
             width: 100%;
         }
         .legend-item {
@@ -343,8 +343,8 @@
 
     <script>
         // --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
-        const STAGE_WIDTH = 480; // REVERTED TO ORIGINAL WORKING SIZE
-        const STAGE_HEIGHT = 480; // REVERTED TO ORIGINAL WORKING SIZE
+        const STAGE_WIDTH = 480; 
+        const STAGE_HEIGHT = 480; 
         // ---------------------------------------------------------------------------------
         
         // --- Supabase setup ---
@@ -455,7 +455,8 @@
                 
                 if (callback) callback();
             };
-            imageObj.src = 'floorplan.png';
+            // ADDED CACHE BUSTER TO ADMIN FILE
+            imageObj.src = 'floorplan.png?v=' + new Date().getTime(); 
         }
 
         async function loadTables() {
