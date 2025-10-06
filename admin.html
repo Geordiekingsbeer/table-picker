@@ -7,9 +7,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <style>
+        /* NEW: Gray Background */
         body{
             font-family: Arial, Helvetica, sans-serif;
-            background:#e3e3e3;
+            background:#e3e3e3; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -19,63 +20,49 @@
             padding: 20px 10px;
         }
 
-        /* Header container */
-        h2 {
+        /* Admin Management Buttons (Drag, Save, Rotate) */
+        .admin-controls-top {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
             gap: 10px;
         }
-
-        h2 .arrow {
-            font-weight: 700;
-            font-size: 24px;
-            margin: 0 10px;
-            color: #1976d2;
-        }
-
-        /* Buttons in header */
-        h2 button {
-            padding: 10px 20px;
-            font-size: 15px;
+        
+        .admin-controls-top button {
+            padding: 8px 15px;
+            font-size: 14px;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 4px;
             border: none;
             cursor: pointer;
             color: #fff;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        h2 button#save {
+        .admin-controls-top button#save {
             background-color: #388e3c;
         }
-        h2 button#rotate {
+        .admin-controls-top button#rotate {
             background-color: #1976d2;
         }
-
-        h2 button:hover {
-            box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+        .admin-controls-top button:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             opacity: 0.95;
         }
 
-        /* Date/Time Selector */
+        /* Date/Time Selector - MATCHES CUSTOMER FILE */
         #datetime-controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             align-items: center;
-            padding: 10px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            flex-wrap: wrap;
-            justify-content: center;
+            padding: 0;
+            background: none;
+            box-shadow: none;
+            flex-wrap: nowrap;
             max-width: 480px;
             width: 100%;
         }
@@ -83,45 +70,57 @@
         #datetime-controls label {
             font-weight: 600;
             color: #555;
+            white-space: nowrap;
         }
 
+        /* Input Styling - MATCHES CUSTOMER FILE */
         #datetime-controls input {
-            padding: 8px;
+            flex-grow: 1;
+            padding: 12px 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            background: white;
             font-size: 16px;
-            max-width: 100px;
+            color: #333;
+            max-width: none;
+            font-weight: 500;
+            text-align: center;
         }
         
+        /* Load Bookings Button - MATCHES CUSTOMER FILE (Check Availability) */
         #load-bookings {
-            padding: 8px 15px;
-            background-color: #f57c00;
+            padding: 12px 10px;
+            background-color: #789069; /* Dark Olive Green */
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 500;
+            flex-grow: 1;
+            box-shadow: none;
+            white-space: nowrap;
         }
         
         #load-bookings:hover {
-            background-color: #e65100;
+            background-color: #6a7f5c;
         }
 
-        /* NEW: Multi-Select Toggle Button & Multi-Book Button */
+        /* Multi-Select Toggle Button - MATCHES CUSTOMER FILE */
         #multi-select-toggle, #multi-book-button {
-            padding: 8px 15px;
-            font-size: 14px;
-            font-weight: 600;
-            margin: 0 5px 15px;
-            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            border-radius: 4px;
             cursor: pointer;
-            border: 1px solid #999;
-            background-color: #f0f7ff;
-            color: #444;
+            border: 1px solid #666;
+            background-color: #f7f7f7; /* Light Gray Background */
+            color: #333;
             transition: all 0.2s ease;
             white-space: nowrap;
+            width: 90vw;
             max-width: 480px;
-            width: 100%;
+            text-align: center;
         }
         
         #multi-select-toggle.active {
@@ -133,11 +132,9 @@
             background-color: #388e3c;
             color: white;
             border: none;
-            width: 90vw;
-            max-width: 480px;
         }
 
-        /* Floorplan container - STYLING CHANGES APPLIED */
+        /* Floorplan container */
         #container-wrapper {
             display: flex;
             justify-content: center;
@@ -256,20 +253,19 @@
         
         /* Responsive for small screens */
         @media (max-width: 500px) {
-            h2 { font-size: 18px; }
-            h2 button { padding: 8px 14px; font-size: 14px; }
+            .admin-controls-top button { padding: 8px 10px; font-size: 12px; }
         }
     </style>
 </head>
 <body>
-    <h2>
-        Drag tables <span class="arrow">→</span>
+    <div class="admin-controls-top">
+        Drag tables <span style="font-size:20px; margin: 0 5px;">→</span>
         <button id="save">Save layout</button>
         <button id="rotate">Rotate Table 90°</button>
-    </h2>
+    </div>
 
     <button id="multi-select-toggle" data-active="false">Start Multi-Select Mode</button>
-    <button id="multi-book-button" style="display:none; padding: 8px 15px; font-size: 14px; font-weight: 600; margin-bottom: 15px; border-radius: 5px; cursor: pointer; border: none; background-color: #388e3c; color: white;">Book Selected Tables</button>
+    <button id="multi-book-button" style="display:none;">Book Selected Tables</button>
 
 
     <div id="datetime-controls">
@@ -459,9 +455,70 @@
         }
 
         async function loadTables() {
-            const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
-            if(error){ console.error(error); alert('Error loading tables'); return; }
-            tables = data;
+            // NOTE: HARDCODING TABLE DATA HERE TO INCLUDE 4 NEW TABLES
+            const initialTables = [
+                { id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
+                { id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
+                { id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
+                { id: 4, x: 140, y: 220, w: 30, h: 30, rotation: 0 },
+                { id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 },
+                { id: 6, x: 250, y: 330, w: 30, h: 30, rotation: 0 },
+                { id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 },
+                { id: 8, x: 400, y: 100, w: 30, h: 30, rotation: 0 },
+                { id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 },
+                { id: 10, x: 300, y: 240, w: 30, h: 30, rotation: 0 },
+                { id: 11, x: 40, y: 80, w: 30, h: 30, rotation: 0 },
+                { id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 },
+                { id: 13, x: 400, y: 280, w: 30, h: 30, rotation: 0 },
+                { id: 14, x: 250, y: 180, w: 30, h: 30, rotation: 0 },
+                { id: 15, x: 330, y: 30, w: 90, h: 30, rotation: 0 },
+                { id: 16, x: 30, y: 400, w: 30, h: 30, rotation: 0 },
+                { id: 17, x: 200, y: 30, w: 90, h: 30, rotation: 0 },
+                // --- NEW TABLES ADDED ---
+                { id: 18, x: 150, y: 10, w: 30, h: 30, rotation: 0 }, // New 2-seater (Top Left)
+                { id: 19, x: 300, y: 120, w: 30, h: 30, rotation: 0 }, // New 2-seater (Middle Right)
+                { id: 20, x: 40, y: 250, w: 30, h: 30, rotation: 0 }, // New 2-seater (Mid Left)
+                { id: 21, x: 180, y: 160, w: 50, h: 30, rotation: 90 }, // New 4-seater (Center)
+            ];
+            
+            // NOTE: In a real environment, you would fetch the positions from Supabase:
+            // const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
+            // tables = data;
+
+            // Simulate fetching and merging:
+            let { data: dbData, error } = await _supa.from('tables').select('id, x, y, w, h, rotation').order('id');
+
+            if (error) {
+                console.error("Error fetching table positions from Supabase:", error);
+                // Fallback to hardcoded positions if fetch fails
+                tables = initialTables;
+            } else {
+                // Merge database positions with the full set of initial table definitions
+                const positionMap = new Map(dbData.map(t => [t.id, t]));
+                tables = initialTables.map(t => {
+                    const dbPos = positionMap.get(t.id);
+                    if (dbPos) {
+                        return { 
+                            id: t.id, 
+                            x: dbPos.x, 
+                            y: dbPos.y, 
+                            w: t.w, 
+                            h: t.h, 
+                            rotation: dbPos.rotation 
+                        };
+                    }
+                    return t;
+                });
+                
+                // Add any new tables not yet in the DB to the list
+                const maxDbId = dbData.length > 0 ? Math.max(...dbData.map(t => t.id)) : 0;
+                tables = tables.concat(initialTables.filter(t => t.id > maxDbId && !positionMap.has(t.id)));
+
+                // If no data was fetched but initialTables exists, use initialTables
+                if (tables.length === 0 && initialTables.length > 0) {
+                     tables = initialTables;
+                }
+            }
             
             layer.destroyChildren(); 
             tables.forEach(t => {
@@ -546,7 +603,7 @@
             });
             group.add(tableRect);
 
-            // Seat drawing logic (unchanged)
+            // Seat drawing logic 
             const baseSeatSize = 12; 
             const seatHalf = baseSeatSize / 2; 
 
