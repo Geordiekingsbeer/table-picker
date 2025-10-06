@@ -27,7 +27,7 @@
             font-size: 22px;
             font-weight: 700;
             color: #333;
-            margin-bottom: 10px; /* Reduced margin to fit toggle */
+            margin-bottom: 10px; 
             flex-wrap: wrap;
             gap: 10px;
         }
@@ -62,6 +62,26 @@
         h2 button:hover {
             box-shadow: 0 6px 14px rgba(0,0,0,0.3);
             opacity: 0.95;
+        }
+
+        /* NEW: Multi-Select Toggle Button */
+        #multi-select-toggle {
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #999;
+            background-color: #f0f7ff;
+            color: #444;
+            transition: all 0.2s ease;
+        }
+        
+        #multi-select-toggle.active {
+            background-color: #1976d2;
+            color: white;
+            border: 1px solid #1976d2;
         }
 
         /* Date/Time Selector */
@@ -102,25 +122,6 @@
             background-color: #e65100;
         }
 
-        /* NEW: Multi-Select Toggle Button */
-        #multi-select-toggle {
-            padding: 8px 15px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            border: 1px solid #999;
-            background-color: #f0f7ff;
-            color: #444;
-            transition: all 0.2s ease;
-        }
-        
-        #multi-select-toggle.active {
-            background-color: #1976d2;
-            color: white;
-            border: 1px solid #1976d2;
-        }
 
         /* Floorplan container */
         #container-wrapper {
@@ -493,13 +494,8 @@
             group.on('click', () => {
                 const tableIdNumber = Number(t.id);
 
-                if (isStaffUseOnly) {
-                    alert('This table is reserved for staff walk-ins and is not an online premium booking.');
-                    return;
-                }
-                
-                // Clear previous highlight
-                if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
+                // Staff can still click N/A tables to view booking modal
+                if (selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
                 
                 // Set new selection
                 selectedGroup = group;
@@ -706,6 +702,27 @@
             const { data, error } = await _supa.from('tables').upsert(updates).select('*, rotation');
             if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
         };
+
+        // --- Multi-Select Toggle Listener ---
+        const multiSelectToggle = document.getElementById('multi-select-toggle');
+
+        multiSelectToggle.addEventListener('click', () => {
+            isMultiSelectMode = !isMultiSelectMode;
+            multiSelectToggle.setAttribute('data-active', isMultiSelectMode);
+            multiSelectToggle.classList.toggle('active', isMultiSelectMode);
+            
+            const modeText = isMultiSelectMode ? "Stop Multi-Select Mode" : "Start Multi-Select Mode";
+            multiSelectToggle.textContent = modeText;
+            
+            // Clear current selected group on toggle for clarity
+            if(selectedGroup) {
+                selectedGroup.findOne('.main-table').stroke('#000');
+                selectedGroup = null;
+                currentSelectedTableId = null;
+                layer.draw();
+            }
+        });
+
 
         // --- Initialization ---
         setDefaultDateTime();
