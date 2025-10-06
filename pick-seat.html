@@ -27,6 +27,9 @@
             font-size: 14px;
             color: #666;
             margin-bottom: 10px;
+            padding: 0 10px;
+            max-width: 480px;
+            width: 100%;
         }
 
         /* Date/Time Selector */
@@ -60,6 +63,25 @@
         #check-availability:hover {
             background-color: #1565c0;
         }
+        
+        /* NEW: Multi-Select Toggle Button */
+        #multi-select-toggle {
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #1976d2;
+            background-color: #f0f7ff;
+            color: #1976d2;
+            transition: all 0.2s ease;
+        }
+        
+        #multi-select-toggle.active {
+            background-color: #1976d2;
+            color: white;
+        }
 
         #container{
             background:url('floorplan.png') no-repeat center center;
@@ -91,8 +113,7 @@
             height: 15px;
             border-radius: 3px;
             margin-right: 5px;
-            /* Ensure all legend colors have a light border for contrast */
-            border: 1px solid #ccc; 
+            border: 1px solid #aaa;
         }
 
         #payBtn{
@@ -112,7 +133,7 @@
             box-shadow: none;
         }
 
-        /* --- MODAL STYLES (Kept for reference) --- */
+        /* MODAL STYLES (unchanged) */
         .modal {
             display: none; 
             position: fixed; 
@@ -160,7 +181,7 @@
 </head>
 <body>
     <h2>Tap the table you want</h2>
-    <p class="instructions">Use **Shift + Click** to select multiple tables for large parties.</p>
+    <p class="instructions">Tap once to select a table. Use the button below to select multiple tables for a group reservation.</p>
     
     <div id="datetime-controls">
         <label for="booking-date">Date:</label>
@@ -170,6 +191,8 @@
         <button id="check-availability">Check Availability</button>
     </div>
 
+    <button id="multi-select-toggle" data-active="false">Start Group Selection (Tap Mode)</button>
+
     <div id="container"></div>
 
     <div class="status-legend">
@@ -177,6 +200,7 @@
         <div class="legend-item"><span class="legend-color" style="background-color: #e0e0e0;"></span>Booked (Premium)</div>
         <div class="legend-item"><span class="legend-color" style="background-color: #ffffff;"></span>Staff Use Only (N/A)</div> 
     </div>
+    
     <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
 
     <div id="customer-modal" class="modal">
@@ -190,6 +214,7 @@
             </form>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <script>
@@ -207,24 +232,25 @@
     const payBtn = document.getElementById('payBtn');
     const customerModal = document.getElementById('customer-modal');
     const customerForm = document.getElementById('customer-form');
+    const multiSelectToggle = document.getElementById('multi-select-toggle'); // New DOM element
 
     let selectedTableIds = []; 
     let currentBookings = []; 
     let tableDataMap = new Map(); 
-
+    let isMultiSelectMode = false; // NEW: State for mobile multi-select
+    
     // --- Price Constants in Cents/Pence ---
     const PRICE_2_SEATER = 499; 
     const PRICE_4_SEATER = 998; 
     const PRICE_6_SEATER = 998; 
     // --------------------------------------
 
-    const TABLE_COLOR = '#b7d7a8';      // Available (Light Green)
-    const BOOKED_COLOR = '#e0e0e0';     // Booked (Light Gray)
-    const UNAVAILABLE_COLOR = '#ffffff';// NEW: Permanently Unavailable (White)
+    const TABLE_COLOR = '#b7d7a8';      
+    const BOOKED_COLOR = '#e0e0e0';     
+    const UNAVAILABLE_COLOR = '#ffffff';
     const SEAT_COLOR = '#555'; 
     const HIGHLIGHT_COLOR = '#ffeb3b';
     
-    // List of tables permanently unavailable for customer booking
     const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 17, 1];
     
     // --- Helper Functions ---
@@ -243,10 +269,10 @@
     }
     
     function getTablePrice(w, h) {
-        if (w === 30 && h === 30) return PRICE_2_SEATER; // 2-seater
-        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER; // 4-seater 
-        if (w === 90 && h === 30) return PRICE_6_SEATER; // 6-seater
-        return 0; // Default or unknown size
+        if (w === 30 && h === 30) return PRICE_2_SEATER;
+        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER;
+        if (w === 90 && h === 30) return PRICE_6_SEATER;
+        return 0;
     }
 
     function calculateTotalPence() {
@@ -287,6 +313,7 @@
     // --- Background Loading ---
 
     function loadBackground() {
+        // Start the table loading process
         loadTables();
     }
 
@@ -335,11 +362,9 @@
             const group = tableRect.getParent();
             const tableId = Number(group.id().substring(2)); 
             
-            // 1. Check if table is permanently unavailable
             if (STAFF_USE_TABLE_IDS.includes(tableId)) {
                 tableRect.fill(UNAVAILABLE_COLOR);
             } else {
-                // 2. Check current bookings (only if table is premium)
                 const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
                 tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
             }
@@ -353,7 +378,7 @@
             if (!group) return; 
             const tableRect = group.findOne('.main-table');
 
-            // 3. Re-select only if available AND not permanently unavailable
+            // Re-select only if available AND not permanently unavailable
             if (tableRect.fill() === TABLE_COLOR) {
                 selectedTableIds.push(id);
                 tableRect.stroke(HIGHLIGHT_COLOR);
@@ -388,7 +413,6 @@
             group.y(t.y + tableRect.height()/2);
             group.rotation(t.rotation || 0); 
 
-            // Initial coloring for STAFF USE tables
             if (STAFF_USE_TABLE_IDS.includes(t.id)) {
                 tableRect.fill(UNAVAILABLE_COLOR);
             }
@@ -416,6 +440,7 @@
         });
         group.add(tableRect);
 
+        // Pass event object to selectTable
         group.on('click tap', (e) => selectTable(t.id, e.evt));
 
         // Seat drawing logic (unchanged)
@@ -455,23 +480,24 @@
     function selectTable(id, evt) {
         const group = layer.findOne('#g-' + id);
         const tableRect = group.findOne('.main-table');
+        const idNumber = Number(id);
+        const index = selectedTableIds.indexOf(idNumber);
         
         // 1. Check if table is permanently unavailable OR temporarily booked
         if (tableRect.fill() === UNAVAILABLE_COLOR || tableRect.fill() === BOOKED_COLOR) {
-            alert('This table is not available for online booking.');
+            alert('This table is not available for booking.');
             return;
         }
 
-        const idNumber = Number(id);
-        const index = selectedTableIds.indexOf(idNumber);
+        // Determine if it's a multi-select action (Shift key on desktop OR Toggle mode on mobile)
         const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
+        const isMulti = isShiftPressed || isMultiSelectMode;
 
         if (index === -1) {
             // Table is NOT currently selected: ADD it
-            if (!isShiftPressed) {
-                // Clear all previous selections
+            if (!isMulti) {
+                // Single-select mode: Clear all previous selections
                 stage.find('.main-table').forEach(rect => {
-                    // Only remove highlight from AVAILABLE tables
                     if (rect.fill() === TABLE_COLOR) {
                         rect.stroke('#000');
                         rect.strokeWidth(1);
@@ -480,15 +506,19 @@
                 selectedTableIds = [];
             }
             
+            // Add the new table
             selectedTableIds.push(idNumber);
             tableRect.stroke(HIGHLIGHT_COLOR);
             tableRect.strokeWidth(3);
 
         } else {
             // Table IS currently selected: REMOVE it
-            selectedTableIds.splice(index, 1);
-            tableRect.stroke('#000');
-            tableRect.strokeWidth(1);
+            // Allow removal in both modes if it's already selected
+            if (isMulti || selectedTableIds.length === 1) {
+                selectedTableIds.splice(index, 1);
+                tableRect.stroke('#000');
+                tableRect.strokeWidth(1);
+            }
         }
         
         const totalPence = calculateTotalPence();
@@ -498,6 +528,31 @@
     }
 
     // --- Event Listeners ---
+    
+    // NEW: Toggle Multi-Select Mode for mobile users
+    multiSelectToggle.addEventListener('click', () => {
+        isMultiSelectMode = !isMultiSelectMode;
+        multiSelectToggle.setAttribute('data-active', isMultiSelectMode);
+        multiSelectToggle.classList.toggle('active', isMultiSelectMode);
+        
+        // Clear selection if switching from multi-mode to single mode
+        if (!isMultiSelectMode && selectedTableIds.length > 1) {
+             stage.find('.main-table').forEach(rect => {
+                if (rect.fill() === TABLE_COLOR) {
+                    rect.stroke('#000');
+                    rect.strokeWidth(1);
+                }
+            });
+            selectedTableIds = [];
+            const totalPence = calculateTotalPence();
+            updatePayButton(totalPence);
+            layer.draw();
+        }
+        
+        const modeText = isMultiSelectMode ? "Stop Group Selection (Single Tap)" : "Start Group Selection (Tap Mode)";
+        multiSelectToggle.textContent = modeText;
+    });
+
 
     document.getElementById('check-availability').onclick = async () => {
         // Clear all selection highlights on check
@@ -523,7 +578,6 @@
 
         await loadBookings();
         
-        // Final pre-fetch validation (check if any table turned gray after loadBookings())
         const isAnySelectedTableBooked = selectedTableIds.some(id => {
             const group = layer.findOne('#g-' + id);
             return group.findOne('.main-table').fill() === BOOKED_COLOR;
@@ -552,9 +606,8 @@
             return;
         }
 
-        customerModal.style.display = 'none'; // Hide modal before fetching
+        customerModal.style.display = 'none'; 
 
-        // Retrieve date and time again (safely)
         const selectedDate = document.getElementById('booking-date').value;
         const selectedTime = document.getElementById('booking-time').value;
         
