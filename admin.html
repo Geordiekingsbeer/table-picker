@@ -41,12 +41,18 @@
 			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 		}
 
+		/* UPDATED: Save button matches table color */
 		.admin-controls-top button#save {
-			background-color: #388e3c;
+			background-color: #b7d7a8; /* Table Color */
+			color: #333; /* Darker text for visibility */
 		}
+		
+		/* UPDATED: Rotate button to light baby blue */
 		.admin-controls-top button#rotate {
-			background-color: #1976d2;
+			background-color: #add8e6; /* Light Blue */
+			color: #333; /* Darker text for visibility */
 		}
+		
 		.admin-controls-top button:hover {
 			box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 			opacity: 0.95;
@@ -86,11 +92,11 @@
 			text-align: center;
 		}
 		
-		/* Load Bookings Button - MATCHES CUSTOMER FILE (Check Availability) */
+		/* UPDATED: Load Bookings button matches table color */
 		#load-bookings {
 			padding: 12px 10px;
-			background-color: #789069; /* Dark Olive Green */
-			color: white;
+			background-color: #b7d7a8; /* Table Color */
+			color: #333; /* Darker text for visibility */
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
@@ -101,8 +107,17 @@
 		}
 		
 		#load-bookings:hover {
-			background-color: #6a7f5c;
+			background-color: #a7c598; /* Slightly darker hover for table color */
 		}
+		
+		.admin-controls-top button#save:hover {
+			background-color: #a7c598; /* Slightly darker hover for save button */
+		}
+		
+		.admin-controls-top button#rotate:hover {
+			background-color: #99c2d1; /* Slightly darker hover for rotate button */
+		}
+
 
 		/* Multi-Select Toggle Button - MATCHES CUSTOMER FILE */
 		#multi-select-toggle, #multi-book-button {
@@ -170,7 +185,7 @@
 			height: 15px;
 			border-radius: 3px;
 			margin-right: 5px;
-			border: 1px solid #000; /* UPDATED: Black Border */
+			border: 1px solid #000; 
 		}
 		
 		/* Modal styles */
