@@ -4,6 +4,7 @@
     <meta charset="utf-8"/>
     <title>Admin – Drag Tables</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <style>
@@ -13,10 +14,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; /* Aligned to start to avoid stretching content */
             min-height: 100vh;
             margin: 0; 
-            padding: 20px 0;
+            padding: 20px 10px; /* Added horizontal padding to prevent elements hitting edges */
         }
 
         /* Header container */
@@ -27,9 +28,10 @@
             font-size: 22px;
             font-weight: 700;
             color: #333;
-            margin-bottom: 10px; /* Reduced margin to fit toggle */
+            margin-bottom: 10px;
             flex-wrap: wrap;
             gap: 10px;
+            text-align: center;
         }
 
         h2 .arrow {
@@ -67,13 +69,15 @@
         /* Date/Time Selector */
         #datetime-controls {
             display: flex;
-            gap: 20px;
+            gap: 10px; /* Reduced gap for mobile */
             margin-bottom: 20px;
             align-items: center;
             padding: 10px;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            justify-content: center;
         }
 
         #datetime-controls label {
@@ -86,6 +90,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 16px;
+            max-width: 100px; /* Restrict width for mobile */
         }
         
         #load-bookings {
@@ -102,18 +107,19 @@
             background-color: #e65100;
         }
 
-        /* NEW: Multi-Select Toggle Button */
-        #multi-select-toggle {
+        /* Multi-Select Toggle Button & Multi-Book Button */
+        #multi-select-toggle, #multi-book-button {
             padding: 8px 15px;
             font-size: 14px;
             font-weight: 600;
-            margin-bottom: 15px;
+            margin: 0 5px 15px; /* Added small horizontal margin */
             border-radius: 5px;
             cursor: pointer;
             border: 1px solid #999;
             background-color: #f0f7ff;
             color: #444;
             transition: all 0.2s ease;
+            white-space: nowrap; /* Prevent button text from breaking awkwardly */
         }
         
         #multi-select-toggle.active {
@@ -121,17 +127,25 @@
             color: white;
             border: 1px solid #1976d2;
         }
+        #multi-book-button {
+            background-color: #388e3c;
+            color: white;
+            border: none;
+        }
 
-        /* Floorplan container */
+        /* Floorplan container - RESPONSIVENESS FIX */
         #container-wrapper {
             display: flex;
             justify-content: center;
             width: 100%;
+            /* Enforce max width for desktop */
+            max-width: 500px; 
         }
-
+        
         #container{
-            width:480px;
-            height:480px;
+            /* Use 100% of the wrapper width to force Konva resize */
+            width: 100%; 
+            height: auto; /* Height will be set by Konva */
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             background:#fff;
@@ -159,7 +173,7 @@
             border: 1px solid #ccc;
         }
         
-        /* Modal styles (shared for both modals) */
+        /* Modal styles */
         .modal {
             display: none; 
             position: fixed; 
@@ -174,10 +188,11 @@
 
         .modal-content {
             background-color: #fefefe;
-            margin: 15% auto; 
+            /* Adjust margin for mobile visibility */
+            margin: 10vh auto; 
             padding: 20px;
             border: 1px solid #888;
-            width: 80%; 
+            width: 90%; /* Wider on small screens */
             max-width: 400px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
@@ -227,7 +242,7 @@
             border-radius: 5px;
         }
 
-        /* FIX: Ensures long text strings (like order IDs) wrap correctly */
+        /* Ensures long text strings (like order IDs) wrap correctly */
         #current-booking-info p span {
             word-break: break-all;
         }
@@ -240,6 +255,7 @@
         @media (max-width: 500px) {
             h2 { font-size: 18px; }
             h2 button { padding: 8px 14px; font-size: 14px; }
+            #datetime-controls input { max-width: 80px; }
         }
     </style>
 </head>
@@ -251,7 +267,7 @@
     </h2>
 
     <button id="multi-select-toggle" data-active="false">Start Multi-Select Mode</button>
-    <button id="multi-book-button" style="display:none; padding: 8px 15px; font-size: 14px; font-weight: 600; margin-bottom: 15px; border-radius: 5px; cursor: pointer; border: none; background-color: #388e3c; color: white;">Book Selected Tables</button>
+    <button id="multi-book-button" style="display:none; padding: 8px 15px; font-size: 14px; font-weight: 600; margin-bottom: 15px; border: none; background-color: #388e3c; color: white;">Book Selected Tables</button>
 
 
     <div id="datetime-controls">
@@ -324,14 +340,19 @@
     </div>
 
     <script>
+        // --- Konva Stage Dimensions (These are the fixed dimensions of your floorplan) ---
+        const STAGE_WIDTH = 480;
+        const STAGE_HEIGHT = 480;
+        // ---------------------------------------------------------------------------------
+
         // --- Supabase setup ---
         const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co ';
         const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
         const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-        const STAGE_WIDTH = 480;
-        const STAGE_HEIGHT = 480;
+        const container = document.getElementById('container');
 
+        // Stage is now initialized with fixed ORIGINAL dimensions
         const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
         const backgroundLayer = new Konva.Layer();
         stage.add(backgroundLayer);
@@ -341,7 +362,7 @@
         let tables = [];
         let selectedGroup = null;
         let isMultiSelectMode = false; 
-        let selectedMultiTables = new Set(); // Stores table IDs for multi-select
+        let selectedMultiTables = new Set();
         
         // --- UNIFIED COLOR CONSTANTS ---
         const TABLE_COLOR = '#b7d7a8';       
@@ -389,7 +410,6 @@
             return dateInput;
         }
 
-
         function setDefaultDateTime() {
             const today = new Date();
             const year = today.getFullYear();
@@ -402,17 +422,45 @@
             document.getElementById('booking-date').value = currentSelectedDate;
             document.getElementById('booking-time').value = currentSelectedTime;
         }
+        
+        // --- KONVA RESIZE FUNCTION (The core responsiveness logic) ---
+        function resizeStage() {
+            // Get the current width of the container element
+            const containerWidth = container.offsetWidth;
+            
+            // Calculate the scaling factor based on the container's new width
+            // and the original fixed width of the stage (480px)
+            const scale = containerWidth / STAGE_WIDTH;
+
+            // Set the new Konva stage dimensions and scale the content
+            stage.width(containerWidth);
+            stage.height(STAGE_HEIGHT * scale);
+            stage.scale({ x: scale, y: scale });
+
+            // Ensure the container element reflects the scaled height for layout flow
+            container.style.height = `${STAGE_HEIGHT * scale}px`;
+
+            // Redraw layers to apply changes
+            stage.draw();
+        }
+        // -------------------------------------------------------------
 
         // --- Konva Functions ---
 
         function loadBackground(callback) {
             const imageObj = new Image();
             imageObj.onload = function() {
+                // Background is set to the ORIGINAL dimensions so it scales with the stage
                 const floorplan = new Konva.Image({
                     x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
                 });
                 backgroundLayer.add(floorplan);
                 backgroundLayer.draw();
+                
+                // --- INITIAL RESIZE ---
+                resizeStage(); 
+                // ----------------------
+                
                 if (callback) callback();
             };
             imageObj.src = 'floorplan.png';
@@ -440,7 +488,7 @@
             document.getElementById('multi-select-toggle').dataset.active = 'false';
             document.getElementById('multi-select-toggle').classList.remove('active');
             document.getElementById('multi-select-toggle').textContent = 'Start Multi-Select Mode';
-            multiBookButton.style.display = 'none'; // Hide multi-book button on load
+            multiBookButton.style.display = 'none'; 
 
             await loadBookings(); 
         }
@@ -453,18 +501,15 @@
                 const tableIdNumber = Number(t.id);
                 const isSelected = selectedMultiTables.has(tableIdNumber);
                 
-                // 1. Check if table is permanently unavailable
                 if (STAFF_USE_TABLE_IDS.includes(tableIdNumber)) {
                     tableRect.fill(UNAVAILABLE_COLOR);
                 } else {
-                    // 2. Check current bookings
                     const activeBooking = currentBookings.find(b => 
                         Number(b.table_id) === tableIdNumber 
                     );
                     tableRect.fill(activeBooking ? BOOKED_COLOR : TABLE_COLOR);
                 }
                 
-                // 3. Set stroke based on selection state
                 if (isSelected) {
                      tableRect.stroke(MULTI_SELECT_STROKE); 
                      tableRect.strokeWidth(2);
@@ -480,7 +525,6 @@
             });
             layer.draw();
             
-            // Update multi-book button visibility
             if (isMultiSelectMode && selectedMultiTables.size > 0) {
                 multiBookButton.style.display = 'block';
             } else {
@@ -510,7 +554,7 @@
             });
             group.add(tableRect);
 
-            // ... (Seat drawing logic) ...
+            // ... (Seat drawing logic is unchanged) ...
             const baseSeatSize = 12; 
             const seatHalf = baseSeatSize / 2; 
 
@@ -547,13 +591,11 @@
                 }
                 
                 if (isMultiSelectMode) {
-                    // Multi-select logic
                     const isBooked = group.getAttr('booking_data');
 
                     if (selectedMultiTables.has(tableIdNumber)) {
                         selectedMultiTables.delete(tableIdNumber);
                     } else {
-                        // Prevent selecting a table that is already booked in the current time slot
                         if(isBooked) {
                             alert(`Table ${tableIdNumber} is already booked at this time. Please select an available table.`);
                             return;
@@ -563,8 +605,6 @@
                     updateTableVisuals();
                     selectedGroup = null; 
                 } else {
-                    // Single-select (original) logic
-                    
                     if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
                     
                     selectedGroup = group;
@@ -619,7 +659,6 @@
             updateTableVisuals();
         }
         
-        // Universal function for single booking creation
         async function createBooking(tableId, startTime, endTime, notes) {
             const date = document.getElementById('booking-date').value;
             
@@ -637,7 +676,6 @@
                 return false;
             }
 
-            // Check for overlap against current loaded bookings
             const overlap = currentBookings.some(b => 
                 Number(b.table_id) === tableIdNumber && ( 
                     startTimeMinutes < timeToMinutes(b.end_time) && endTimeMinutes > timeToMinutes(b.start_time)
@@ -649,17 +687,15 @@
                  return false;
             }
             
-            // --- UPDATED BOOKING PAYLOAD ---
             const newBooking = {
                 table_id: tableIdNumber,
                 date: date, 
                 start_time: startTime, 
                 end_time: endTime, 
                 host_notes: notes,
-                // New column for manual admin bookings - set to undefined (NULL in Supabase)
+                // Now includes the new column set to NULL for manual admin bookings
                 stripe_order_id: undefined, 
             };
-            // -------------------------------
 
             const { error } = await _supa.from('premium_slots').insert([newBooking]); 
             
@@ -676,7 +712,6 @@
             let failedTables = [];
 
             for (const tableId of tableIds) {
-                // Bulk booking uses the updated createBooking logic
                 const success = await createBooking(tableId, startTime, endTime, notes);
                 if (success) {
                     successfulBookings++;
@@ -706,23 +741,18 @@
 
         // --- Modal/UI Functions ---
         
-        // --- NEW HELPER FUNCTION TO CLEAN UP NOTES ---
+        // --- HELPER FUNCTION TO CLEAN UP NOTES (for old messy bookings) ---
         function cleanNotes(notes) {
             if (!notes) return 'None';
             
-            // Regex to find and remove Stripe test or live Checkout Session IDs (cs_...)
-            // and the full line they might be on, like "Order: cs_live_..."
-            // Looks for the pattern: [Word]: (cs_live_|cs_test_)[Alphanumeric string 24+ chars]
             const stripeIdRegex = /(Order|Transaction)?\s*:\s*(cs_live_|cs_test_)[a-zA-Z0-9]{24,}/g;
             
             let cleanedNotes = notes.replace(stripeIdRegex, '').trim();
 
-            // Clean up any remaining artifacts like trailing commas or excessive whitespace
             cleanedNotes = cleanedNotes.replace(/,\s*$/, '').trim();
 
             return cleanedNotes || 'None';
         }
-        // ---------------------------------------------
         
         const singleModal = document.getElementById('booking-modal');
         const multiModal = document.getElementById('multi-booking-modal');
@@ -766,9 +796,8 @@
                 document.getElementById('booked-start').textContent = booking.start_time.substring(0, 5);
                 document.getElementById('booked-end').textContent = booking.end_time.substring(0, 5);
                 
-                // --- MODIFIED: USE CLEAN NOTES FOR DISPLAY ---
+                // USE CLEAN NOTES FOR DISPLAY
                 document.getElementById('booked-notes').textContent = cleanNotes(booking.host_notes); 
-                // ---------------------------------------------
                 
                 removeBookingButton.onclick = async () => {
                     if (confirm('Are you sure you want to remove this booking?')) {
@@ -823,6 +852,9 @@
         }
 
         // --- Event Listeners ---
+        
+        // Listen for window resizing to make the stage responsive
+        window.addEventListener('resize', resizeStage);
 
         document.getElementById('multi-select-toggle').onclick = () => {
             const toggleButton = document.getElementById('multi-select-toggle');
@@ -855,12 +887,10 @@
             updateTableVisuals();
         };
 
-        // NEW: Multi-Book Button Event Listener
         document.getElementById('multi-book-button').onclick = () => {
             showMultiBookingModal();
         };
 
-        // NEW: Multi-Booking Form Submission
         document.getElementById('multi-booking-form').onsubmit = async (e) => {
             e.preventDefault();
             
@@ -877,9 +907,7 @@
             await createBulkBooking(tableIds, startTime, endTime, notes);
             multiModal.style.display = 'none';
             
-            // Clear multi-select after bulk booking (either successful or failed)
             selectedMultiTables.clear();
-            // Exit multi-select mode automatically
             document.getElementById('multi-select-toggle').click(); 
         };
 
