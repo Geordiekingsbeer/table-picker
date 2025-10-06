@@ -148,6 +148,7 @@
             height:480px;
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            /* REMOVED background:url('floorplan.png') */
             background:#fff;
         }
 
@@ -397,17 +398,10 @@
 
         // --- Konva Functions ---
 
+        // NOTE: loadBackground is now simplified to just call loadTables
         function loadBackground(callback) {
-            const imageObj = new Image();
-            imageObj.onload = function() {
-                const floorplan = new Konva.Image({
-                    x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
-                });
-                backgroundLayer.add(floorplan);
-                backgroundLayer.draw();
-                if (callback) callback();
-            };
-            imageObj.src = 'floorplan.png';
+            // No longer relying on unreliable image object loading
+            if (callback) callback();
         }
 
         async function loadTables() {
@@ -452,6 +446,8 @@
                 const index = adminSelectedIds.indexOf(tableIdNumber);
                 if (index !== -1) {
                     tableRect.stroke('#ffeb3b');
+                } else if (selectedGroup && selectedGroup.id() === group.id()) {
+                     tableRect.stroke('#ffeb3b');
                 } else {
                     tableRect.stroke('#000');
                 }
@@ -517,7 +513,7 @@
                 const tableIdNumber = Number(t.id);
                 const tableRect = group.findOne('.main-table');
 
-                // 1. Clear highlight from previously selected SINGLE group
+                // Clear highlight from previously selected SINGLE group
                 if (selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
                 
                 // --- MULTI-SELECT MODE LOGIC ---
@@ -536,13 +532,10 @@
                     
                     // Update the currently selected SINGLE group for rotation/booking
                     if (adminSelectedIds.length === 1) {
-                        selectedGroup = group;
-                        currentSelectedTableId = tableIdNumber;
-                    } else if (adminSelectedIds.length === 0) {
-                        selectedGroup = null;
-                        currentSelectedTableId = null;
+                        selectedGroup = layer.findOne('#g-' + adminSelectedIds[0]); // Point selectedGroup to the single item
+                        currentSelectedTableId = adminSelectedIds[0];
                     } else {
-                        selectedGroup = null; // More than one selected, no single selection for rotate
+                        selectedGroup = null; // More than one or zero selected
                         currentSelectedTableId = null;
                     }
                     
@@ -558,10 +551,11 @@
                 // Set new selection
                 selectedGroup = group;
                 tableRect.stroke('#ffeb3b');
-                layer.draw();
                 
                 currentSelectedTableId = t.id;
                 showBookingModal(t.id, group.getAttr('booking_data'));
+
+                layer.draw();
             });
 
             group.on('dblclick', (e) => {
