@@ -99,8 +99,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             margin:20px auto;
             background-color: #fff;
-            
-            /* Remove the old CSS background image/size lines, Konva handles it now */
         }
         /* END CONTAINER FIXES */
         
@@ -353,10 +351,26 @@
     // -------------------------------------------------------------
 
     // --- Background Loading (Triggers Table Load) ---
-
-    function loadBackground() {
-        // Since we removed the CSS background image, we still need to call resizeStage
-        loadTables();
+    
+    // Function to load the floorplan image as a Konva Image
+    function loadFloorplan(callback) {
+        const imageObj = new Image();
+        imageObj.onload = function() {
+            const floorplan = new Konva.Image({
+                x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
+            });
+            layer.add(floorplan);
+            
+            // Send the floorplan to the very bottom
+            floorplan.zIndex(0);
+            
+            // Draw initially and call resize
+            stage.draw();
+            resizeStage(); 
+            
+            if (callback) callback();
+        };
+        imageObj.src = 'floorplan.png';
     }
 
     // --- Booking Logic ---
@@ -367,7 +381,7 @@
 
         if (!selectedDateSupabase || !selectedTime) {
             currentBookings = []; 
-            updateTableVisuals(); // Update visuals even if empty to clear highlights
+            updateTableVisuals();
             return false;
         }
 
@@ -443,7 +457,7 @@
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
         if (error) { console.error(error); return; }
         
-        layer.destroyChildren();
+        layer.find('.selectable-table').destroy(); // Destroy old tables, keep floorplan
         tableDataMap = new Map(); 
         
         data.forEach(t => {
@@ -463,20 +477,7 @@
             }
         });
         
-        // Add a single Konva Image for the floorplan background
-        const imageObj = new Image();
-        imageObj.onload = function() {
-            const floorplan = new Konva.Image({
-                x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
-            });
-            layer.add(floorplan); // Add to the main layer for visibility over background image
-            stage.draw(); // Initial draw with background
-        };
-        imageObj.src = 'floorplan.png';
-        
-        // Call resize stage after all elements are loaded
-        resizeStage(); 
-        
+        // The loadFloorplan function is now responsible for initial draw and resize
         await loadBookings();
     }
     
@@ -682,9 +683,8 @@
         }
 
         try {
-            // Note: This API endpoint handles payment and saves the booking to Supabase.
-            // You MUST ensure the API code is updated to save the Stripe ID to the 
-            // new 'stripe_order_id' column, and send clean notes to 'host_notes'.
+            // This endpoint needs to be updated to save Stripe ID to 'stripe_order_id' 
+            // and clean notes to 'host_notes' in your Supabase table.
             const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -715,7 +715,8 @@
 
     // --- Initialization ---
     setDefaultDateTime(); 
-    loadTables(); // This function now handles Konva loading and initial resize
+    // Load the floorplan image, then load table data
+    loadFloorplan(loadTables); 
 </script>
 </body>
 </html>
