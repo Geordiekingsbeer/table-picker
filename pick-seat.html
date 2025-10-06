@@ -12,8 +12,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start; /* Aligned to start to avoid stretching content */
-            padding: 20px 10px; /* Added horizontal padding for small screens */
+            justify-content: flex-start;
+            padding: 20px 10px;
             background: #f7f7f7;
             min-height: 100vh;
         }
@@ -24,7 +24,6 @@
             margin-bottom: 20px;
         }
 
-        /* Instructions added for clarity */
         .instructions {
             font-size: 14px;
             color: #666;
@@ -37,7 +36,7 @@
         /* Date/Time Selector */
         #datetime-controls {
             display: flex;
-            gap: 10px; /* Reduced gap for mobile */
+            gap: 10px;
             margin-bottom: 20px;
             align-items: center;
             padding: 10px;
@@ -52,7 +51,7 @@
             font-weight: 600;
             color: #555;
         }
-
+        
         #datetime-controls input {
             padding: 6px;
             border: 1px solid #ccc;
@@ -74,7 +73,7 @@
             background-color: #1565c0;
         }
         
-        /* NEW: Multi-Select Toggle Button */
+        /* Multi-Select Toggle Button */
         #multi-select-toggle {
             padding: 8px 15px;
             font-size: 14px;
@@ -96,11 +95,9 @@
 
         /* CONTAINER FIXES FOR RESPONSIVENESS */
         #container{
-            /* Base dimensions are now relative/flexible */
-            width: 90vw; /* Takes 90% of viewport width */
-            max-width: 480px; /* Maximum size remains 480px */
-            height: auto; /* Height will be dynamically set by JavaScript */
-            
+            width: 90vw;
+            max-width: 480px;
+            height: auto;
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             margin:20px auto;
@@ -149,7 +146,7 @@
             box-shadow: none;
         }
 
-        /* MODAL STYLES (Adjusted for mobile) */
+        /* MODAL STYLES */
         .modal {
             display: none; 
             position: fixed; 
@@ -350,21 +347,22 @@
     }
     // -------------------------------------------------------------
 
-    // --- Background Loading (Triggers Table Load) ---
+    // --- Background/Floorplan Loading (FIXED) ---
     
     // Function to load the floorplan image as a Konva Image
+    let floorplanImage = null;
+
     function loadFloorplan(callback) {
         const imageObj = new Image();
         imageObj.onload = function() {
-            const floorplan = new Konva.Image({
+            floorplanImage = new Konva.Image({
                 x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
             });
-            layer.add(floorplan);
+            layer.add(floorplanImage);
             
-            // Send the floorplan to the very bottom
-            floorplan.zIndex(0);
+            // Set Z-index to 0 to keep it below tables
+            floorplanImage.zIndex(0); 
             
-            // Draw initially and call resize
             stage.draw();
             resizeStage(); 
             
@@ -457,8 +455,10 @@
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
         if (error) { console.error(error); return; }
         
-        // Remove old table groups but preserve the floorplan image (which is at zIndex 0)
+        // FIX: ONLY DESTROY THE SELECTABLE TABLE GROUPS, NOT THE FLOORPLAN IMAGE.
+        // The tables are all named 'selectable-table' in the drawTable function.
         layer.find('.selectable-table').destroy(); 
+        
         tableDataMap = new Map(); 
         
         data.forEach(t => {
@@ -478,15 +478,17 @@
             }
         });
         
+        layer.draw(); // Draw the newly loaded tables
         await loadBookings();
     }
     
     function drawTable(t) {
+        // Renamed group to selectable-table (as intended in the original code)
         const group = new Konva.Group({ 
             x: t.x, 
             y: t.y, 
             id: 'g-' + t.id,
-            name: 'selectable-table'
+            name: 'selectable-table' 
         });
         layer.add(group);
 
@@ -540,7 +542,6 @@
         const group = layer.findOne('#g-' + id);
         const tableRect = group.findOne('.main-table');
         
-        // 1. Check if table is permanently unavailable OR temporarily booked
         if (tableRect.fill() === UNAVAILABLE_COLOR || tableRect.fill() === BOOKED_COLOR) {
             alert('This table is not available for online booking.');
             return;
@@ -549,14 +550,11 @@
         const idNumber = Number(id);
         const index = selectedTableIds.indexOf(idNumber);
         
-        // Determine if it's a multi-select action (Shift key on desktop OR Toggle mode on mobile)
         const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
         const isMulti = isShiftPressed || isMultiSelectMode;
 
         if (index === -1) {
-            // Table is NOT currently selected: ADD it
             if (!isMulti) {
-                // Single-select mode: Clear all previous selections
                 stage.find('.main-table').forEach(rect => {
                     if (rect.fill() === TABLE_COLOR) {
                         rect.stroke('#000');
@@ -566,14 +564,11 @@
                 selectedTableIds = [];
             }
             
-            // Add the new table
             selectedTableIds.push(idNumber);
             tableRect.stroke(HIGHLIGHT_COLOR);
             tableRect.strokeWidth(3);
 
         } else {
-            // Table IS currently selected: REMOVE it
-            // Allow removal in both modes if it's already selected
             if (isMulti || selectedTableIds.length === 1) {
                 selectedTableIds.splice(index, 1);
                 tableRect.stroke('#000');
@@ -598,7 +593,6 @@
         multiSelectToggle.setAttribute('data-active', isMultiSelectMode);
         multiSelectToggle.classList.toggle('active', isMultiSelectMode);
         
-        // Clear selection if switching from multi-mode to single mode
         if (!isMultiSelectMode && selectedTableIds.length > 1) {
              stage.find('.main-table').forEach(rect => {
                  if (rect.fill() === TABLE_COLOR) {
@@ -618,7 +612,6 @@
 
 
     document.getElementById('check-availability').onclick = async () => {
-        // Clear all selection highlights on check
         stage.find('.main-table').forEach(rect => {
             rect.stroke('#000');
             rect.strokeWidth(1);
@@ -639,7 +632,6 @@
             return;
         }
 
-        // Re-check bookings before opening modal to prevent double booking
         await loadBookings();
         
         const isAnySelectedTableBooked = selectedTableIds.some(id => {
@@ -653,7 +645,6 @@
             return;
         }
 
-        // Show customer details modal
         customerModal.style.display = 'flex';
     };
     
@@ -683,8 +674,6 @@
         }
 
         try {
-            // This endpoint needs to be updated to save Stripe ID to 'stripe_order_id' 
-            // and clean notes to 'host_notes' in your Supabase table.
             const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
