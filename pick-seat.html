@@ -12,8 +12,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px 0;
+            padding: 20px 10px; /* Added horizontal padding for small screens */
             background: #f7f7f7;
+            min-height: 100vh;
         }
         
         h2 {
@@ -35,19 +36,22 @@
         /* Date/Time Selector */
         #datetime-controls {
             display: flex;
-            gap: 15px;
+            gap: 10px; /* Reduced gap for mobile */
             margin-bottom: 20px;
             align-items: center;
             padding: 10px;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         #datetime-controls input {
             padding: 6px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            max-width: 90px; /* Constraint on input width */
         }
         
         #check-availability {
@@ -76,6 +80,7 @@
             background-color: #f0f7ff;
             color: #1976d2;
             transition: all 0.2s ease;
+            white-space: nowrap;
         }
         
         #multi-select-toggle.active {
@@ -83,16 +88,21 @@
             color: white;
         }
 
+        /* CONTAINER FIXES FOR RESPONSIVENESS */
         #container{
-            background:url('floorplan.png') no-repeat center center;
-            background-size:contain;
+            /* Base dimensions are now relative/flexible */
+            width: 90vw; /* Takes 90% of viewport width */
+            max-width: 480px; /* Maximum size remains 480px */
+            height: auto; /* Height will be dynamically set by JavaScript */
+            
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             margin:20px auto;
-            width:480px;
-            height:480px;
-            background-color: #fff; 
+            background-color: #fff;
+            
+            /* Remove the old CSS background image/size lines, Konva handles it now */
         }
+        /* END CONTAINER FIXES */
         
         /* Table Status Indicators */
         .status-legend {
@@ -126,6 +136,8 @@
             border-radius:4px;
             cursor:pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 90vw;
+            max-width: 480px;
         }
         #payBtn:disabled{
             background:#bbb;
@@ -133,7 +145,7 @@
             box-shadow: none;
         }
 
-        /* MODAL STYLES (unchanged) */
+        /* MODAL STYLES */
         .modal {
             display: none; 
             position: fixed; 
@@ -156,6 +168,7 @@
             max-width: 400px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin: 10vh auto; /* Adjusted margin for mobile */
         }
         
         .modal-content h3 { margin-top: 0; }
@@ -220,24 +233,32 @@
     <script>
     // --- START OF JAVASCRIPT ---
 
+    // --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
+    const STAGE_WIDTH = 480;
+    const STAGE_HEIGHT = 480;
+    // ---------------------------------------------------------------------------------
+
     // Supabase setup
     const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
     const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
-    const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
+    const container = document.getElementById('container');
+
+    // Stage is initialized with fixed ORIGINAL dimensions
+    const stage = new Konva.Stage({ container: 'container', width: STAGE_WIDTH, height: STAGE_HEIGHT });
     const layer = new Konva.Layer(); 
     stage.add(layer);
     
     const payBtn = document.getElementById('payBtn');
     const customerModal = document.getElementById('customer-modal');
     const customerForm = document.getElementById('customer-form');
-    const multiSelectToggle = document.getElementById('multi-select-toggle'); // New DOM element
+    const multiSelectToggle = document.getElementById('multi-select-toggle'); 
 
     let selectedTableIds = []; 
     let currentBookings = []; 
     let tableDataMap = new Map(); 
-    let isMultiSelectMode = false; // State for multi-select
+    let isMultiSelectMode = false; 
 
     // --- Price Constants in Cents/Pence ---
     const PRICE_2_SEATER = 499; 
@@ -309,10 +330,32 @@
         document.getElementById('booking-date').value = defaultDate;
         document.getElementById('booking-time').value = defaultTime;
     }
+    
+    // --- KONVA RESIZE FUNCTION (The core responsiveness logic) ---
+    function resizeStage() {
+        // Get the current width of the container element
+        const containerWidth = container.offsetWidth;
+        
+        // Calculate the scaling factor based on the container's new width
+        const scale = containerWidth / STAGE_WIDTH;
+
+        // Set the new Konva stage dimensions and scale the content
+        stage.width(containerWidth);
+        stage.height(STAGE_HEIGHT * scale);
+        stage.scale({ x: scale, y: scale });
+
+        // Ensure the container element reflects the scaled height for layout flow
+        container.style.height = `${STAGE_HEIGHT * scale}px`;
+
+        // Redraw layers to apply changes
+        stage.draw();
+    }
+    // -------------------------------------------------------------
 
     // --- Background Loading (Triggers Table Load) ---
 
     function loadBackground() {
+        // Since we removed the CSS background image, we still need to call resizeStage
         loadTables();
     }
 
@@ -324,6 +367,7 @@
 
         if (!selectedDateSupabase || !selectedTime) {
             currentBookings = []; 
+            updateTableVisuals(); // Update visuals even if empty to clear highlights
             return false;
         }
 
@@ -368,16 +412,18 @@
                 tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
             }
             
+            // Reset stroke
             tableRect.stroke('#000'); 
             tableRect.strokeWidth(1);
         });
         
+        // Re-apply selection highlights for available tables
         currentSelection.forEach(id => {
             const group = layer.findOne('#g-' + id);
             if (!group) return; 
             const tableRect = group.findOne('.main-table');
 
-            // Re-select only if available AND not permanently unavailable
+            // Re-select only if available
             if (tableRect.fill() === TABLE_COLOR) {
                 selectedTableIds.push(id);
                 tableRect.stroke(HIGHLIGHT_COLOR);
@@ -391,7 +437,7 @@
         layer.draw();
     }
 
-    // --- Konva Table Drawing (unchanged) ---
+    // --- Konva Table Drawing ---
     
     async function loadTables() {
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
@@ -416,6 +462,20 @@
                 tableRect.fill(UNAVAILABLE_COLOR);
             }
         });
+        
+        // Add a single Konva Image for the floorplan background
+        const imageObj = new Image();
+        imageObj.onload = function() {
+            const floorplan = new Konva.Image({
+                x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
+            });
+            layer.add(floorplan); // Add to the main layer for visibility over background image
+            stage.draw(); // Initial draw with background
+        };
+        imageObj.src = 'floorplan.png';
+        
+        // Call resize stage after all elements are loaded
+        resizeStage(); 
         
         await loadBookings();
     }
@@ -451,25 +511,25 @@
         
         if (t.w === 30 && t.h === 30) {
             const seatW = baseSeatSize; 
-            const seatH = seatHalf;     
+            const seatH = seatHalf;      
             makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);            
-            makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);                 
+            makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);                  
         } else if (t.w === 30 && t.h === 50) {
-            const seatW = seatHalf;     
+            const seatW = seatHalf;      
             const seatH = baseSeatSize; 
             const v_spacing = (t.h - 2 * seatH) / 3; 
             makeSeat(-seatW, v_spacing, seatW, seatH);                  
             makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);       
-            makeSeat(t.w, v_spacing, seatW, seatH);                   
-            makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);           
+            makeSeat(t.w, v_spacing, seatW, seatH);                     
+            makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);          
         } else if (t.w === 90 && t.h === 30) {
             const seatW = baseSeatSize; 
-            const seatH = seatHalf;     
+            const seatH = seatHalf;      
             const h_spacing = t.w / 4; 
             for(let i=0; i<3; i++){
                 const x_pos = h_spacing * (i+1) - seatW/2;
                 makeSeat(x_pos, -seatH, seatW, seatH);                      
-                makeSeat(x_pos, t.h, seatW, seatH);                        
+                makeSeat(x_pos, t.h, seatW, seatH);                         
             }
         }
         return group;
@@ -528,6 +588,9 @@
 
     // --- Event Listeners ---
     
+    // Listen for window resizing to make the stage responsive
+    window.addEventListener('resize', resizeStage);
+    
     // Toggle Multi-Select Mode for mobile users
     multiSelectToggle.addEventListener('click', () => {
         isMultiSelectMode = !isMultiSelectMode;
@@ -537,15 +600,15 @@
         // Clear selection if switching from multi-mode to single mode
         if (!isMultiSelectMode && selectedTableIds.length > 1) {
              stage.find('.main-table').forEach(rect => {
-                if (rect.fill() === TABLE_COLOR) {
-                    rect.stroke('#000');
-                    rect.strokeWidth(1);
-                }
-            });
-            selectedTableIds = [];
-            const totalPence = calculateTotalPence();
-            updatePayButton(totalPence);
-            layer.draw();
+                 if (rect.fill() === TABLE_COLOR) {
+                     rect.stroke('#000');
+                     rect.strokeWidth(1);
+                 }
+             });
+             selectedTableIds = [];
+             const totalPence = calculateTotalPence();
+             updatePayButton(totalPence);
+             layer.draw();
         }
         
         const modeText = isMultiSelectMode ? "Stop Group Selection (Single Tap)" : "Start Group Selection (Tap Mode)";
@@ -575,6 +638,7 @@
             return;
         }
 
+        // Re-check bookings before opening modal to prevent double booking
         await loadBookings();
         
         const isAnySelectedTableBooked = selectedTableIds.some(id => {
@@ -588,7 +652,7 @@
             return;
         }
 
-        // Show modal instead of prompts
+        // Show customer details modal
         customerModal.style.display = 'flex';
     };
     
@@ -618,6 +682,9 @@
         }
 
         try {
+            // Note: This API endpoint handles payment and saves the booking to Supabase.
+            // You MUST ensure the API code is updated to save the Stripe ID to the 
+            // new 'stripe_order_id' column, and send clean notes to 'host_notes'.
             const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -648,7 +715,7 @@
 
     // --- Initialization ---
     setDefaultDateTime(); 
-    loadBackground(); // The function that calls loadTables
+    loadTables(); // This function now handles Konva loading and initial resize
 </script>
 </body>
 </html>
