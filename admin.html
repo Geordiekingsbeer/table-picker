@@ -331,7 +331,7 @@
         let adminSelectedIds = []; // Array to hold multiple selected IDs in admin view
         let isMultiSelectMode = false; // Multi-select state
         
-        // --- DOM Elements (Defined once globally) ---
+        // --- DOM Elements ---
         const BOOK_SELECTED_BTN = document.getElementById('book-selected-btn');
         const multiSelectToggle = document.getElementById('multi-select-toggle');
 
@@ -509,7 +509,7 @@
                 const tableRect = group.findOne('.main-table');
 
                 // Clear highlight from previously selected SINGLE group
-                if (selectedGroup && !isMultiSelectMode) selectedGroup.findOne('.main-table').stroke('#000');
+                if (selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
                 
                 // --- MULTI-SELECT MODE LOGIC ---
                 if (isMultiSelectMode) {
