@@ -2,10 +2,11 @@
 <html>
 <head>
     <meta charset="utf-8"/>
-    <title>Pick Your Table</title>
+    <title>Reserve Your Table</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     <style>
+        /* NEW: Gray Background */
         body{
             font-family: Arial, Helvetica, sans-serif;
             text-align: center;
@@ -14,86 +15,108 @@
             align-items: center;
             justify-content: flex-start;
             padding: 20px 10px;
-            background: #f7f7f7;
+            background: #e3e3e3; /* Gray background from image */
             min-height: 100vh;
         }
         
-        h2 {
-            font-size: 20px;
+        /* NEW: Header Styling */
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
         }
 
         .instructions {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 10px;
-            padding: 0 10px;
-            max-width: 480px;
-            width: 100%;
+            display: none; /* Hide original instructions */
         }
 
         /* Date/Time Selector */
         #datetime-controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             align-items: center;
-            padding: 10px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            flex-wrap: wrap;
-            justify-content: center;
+            padding: 0; /* Remove padding from control wrapper */
+            background: none;
+            box-shadow: none;
+            flex-wrap: nowrap; /* Keep fields in one row */
+            max-width: 480px;
+            width: 100%;
         }
 
         #datetime-controls label {
-            font-weight: 600;
-            color: #555;
+            display: none; /* Hide labels */
         }
         
+        /* New Select/Input Styling */
         #datetime-controls input {
-            padding: 6px;
+            flex-grow: 1;
+            padding: 12px 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            max-width: 90px;
+            /* Match the appearance of a <select> box */
+            background: white url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-25.7-1.1L146.2%20172.1%2031.1%2068.3a17.6%2017.6%200%200%200-25.7%201.1%2017.6%2017.6%200%200%200%201.1%2025.7l130%20128c1.3%201.2%202.7%202.1%204.3%202.7%201.6%20.6%203.2%20.9%204.8%20.9s3.2-.3%204.8-.9c1.6-.6%203.1-1.5%204.3-2.7l130-128a17.6%2017.6%200%200%200%201.1-25.7z%22%2F%3E%3C%2Fsvg%3E') no-repeat right 8px center;
+            background-size: 10px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #333;
+            max-width: none;
+            font-weight: 500;
         }
         
+        /* Check Availability Button */
         #check-availability {
-            padding: 6px 12px;
-            background-color: #1976d2; 
+            padding: 12px 10px;
+            background-color: #789069; /* Dark Olive Green */
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 500;
+            flex-grow: 1;
+            box-shadow: none;
         }
         
         #check-availability:hover {
-            background-color: #1565c0;
+            background-color: #6a7f5c;
         }
         
         /* Multi-Select Toggle Button */
         #multi-select-toggle {
-            padding: 8px 15px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            border-radius: 4px;
             cursor: pointer;
-            border: 1px solid #1976d2;
-            background-color: #f0f7ff;
-            color: #1976d2;
+            border: 1px solid #666;
+            background-color: transparent;
+            color: #333;
             transition: all 0.2s ease;
             white-space: nowrap;
+            /* New placement below the control group */
+            width: 90vw;
+            max-width: 480px;
+            text-align: center;
         }
         
         #multi-select-toggle.active {
             background-color: #1976d2;
             color: white;
+            border: 1px solid #1976d2;
         }
 
-        /* CONTAINER FIXES FOR RESPONSIVENESS (ADMIN STYLE) */
+        /* CONTAINER FIXES */
         #container-wrapper {
             display: flex;
             justify-content: center;
@@ -121,6 +144,7 @@
             flex-wrap: wrap;
             justify-content: center;
         }
+        /* ... (rest of CSS for legend and modals) */
         .legend-item {
             display: flex;
             align-items: center;
@@ -200,8 +224,8 @@
     </style>
 </head>
 <body>
-    <h2>Tap the table you want</h2>
-    <p class="instructions">Tap once to select a table. Use the button below to select multiple tables for a group reservation.</p>
+    <h1 class="header-title">Reserve Your Table</h1>
+    <p class="subtitle">Select your preferred seating</p>
     
     <div id="datetime-controls">
         <label for="booking-date">Date:</label>
@@ -275,7 +299,7 @@
     // --- Price Constants in Cents/Pence ---
     const PRICE_2_SEATER = 499;  // £4.99
     const PRICE_4_SEATER = 998;  // £9.98
-    const PRICE_6_SEATER = 1497; // £14.97 <--- CORRECTED PRICE
+    const PRICE_6_SEATER = 1497; // £14.97
     // --------------------------------------
 
     const TABLE_COLOR = '#b7d7a8';      
@@ -284,7 +308,7 @@
     const SEAT_COLOR = '#555'; 
     const HIGHLIGHT_COLOR = '#ffeb3b';
     
-    // --- FIXED: Table 17 is removed and is now available for booking ---
+    // Table 17 is available for booking
     const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
     
     // --- Helper Functions ---
@@ -375,13 +399,14 @@
             
             if (callback) callback();
         };
-        imageObj.src = 'floorplan.png';
+        // Add cache buster to force new image load
+        imageObj.src = 'floorplan.png?v=' + new Date().getTime(); 
     }
 
     // --- Booking Logic ---
 
     async function loadBookings() {
-        const selectedDateSupabase = getSupabaseDate();
+        const selectedDateSupabase = document.getElementById('booking-date').value;
         const selectedTime = document.getElementById('booking-time').value;
 
         if (!selectedDateSupabase || !selectedTime) {
@@ -587,7 +612,6 @@
 
     // --- Event Listeners ---
     
-    // Listen for window resizing to make the stage responsive
     window.addEventListener('resize', resizeStage);
     
     // Toggle Multi-Select Mode for mobile users
@@ -677,8 +701,6 @@
         }
 
         try {
-            // Ensure your external serverless function (create-checkout) saves the 
-            // Stripe ID to the 'stripe_order_id' column for future bookings.
             const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -709,7 +731,6 @@
 
     // --- Initialization ---
     setDefaultDateTime(); 
-    // Load the floorplan image into the background layer, then load table data
     loadFloorplan(loadTables); 
 </script>
 </body>
