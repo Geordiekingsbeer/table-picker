@@ -76,6 +76,8 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             flex-wrap: wrap;
             justify-content: center;
+            max-width: 700px; /* Updated to match new floorplan width */
+            width: 100%;
         }
 
         #datetime-controls label {
@@ -118,6 +120,8 @@
             color: #444;
             transition: all 0.2s ease;
             white-space: nowrap;
+            max-width: 700px; /* Updated to match new floorplan width */
+            width: 100%;
         }
         
         #multi-select-toggle.active {
@@ -129,6 +133,8 @@
             background-color: #388e3c;
             color: white;
             border: none;
+            width: 90vw;
+            max-width: 700px; /* Updated to match new floorplan width */
         }
 
         /* Floorplan container - STYLING CHANGES HERE */
@@ -136,7 +142,7 @@
             display: flex;
             justify-content: center;
             width: 100%;
-            max-width: 500px; 
+            max-width: 700px; /* Updated to increase floorplan width */
         }
 
         #container{
@@ -157,6 +163,8 @@
             color: #555;
             flex-wrap: wrap;
             justify-content: center;
+            max-width: 700px; /* Updated to match new floorplan width */
+            width: 100%;
         }
         .legend-item {
             display: flex;
@@ -336,8 +344,8 @@
 
     <script>
         // --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
-        const STAGE_WIDTH = 480;
-        const STAGE_HEIGHT = 480;
+        const STAGE_WIDTH = 700; // UPDATED: Upscaled width for the floorplan
+        const STAGE_HEIGHT = 700; // UPDATED: Keep aspect ratio or adjust as needed
         // ---------------------------------------------------------------------------------
         
         // --- Supabase setup ---
@@ -448,7 +456,8 @@
                 
                 if (callback) callback();
             };
-            imageObj.src = 'floorplan.png';
+            // Ensure the image URL matches your upscaled floorplan image
+            imageObj.src = 'floorplan.png'; 
         }
 
         async function loadTables() {
