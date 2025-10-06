@@ -148,8 +148,9 @@
             height:480px;
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            background:#fff;
-            /* No background image necessary in Admin view */
+            /* Added CSS background image back for visual context */
+            background: url('floorplan.png') no-repeat center center; 
+            background-size: cover;
         }
 
         /* Status Legend */
@@ -398,8 +399,9 @@
 
         // --- Konva Functions ---
 
-        // NOTE: loadBackground removed for stable loading. The background is simple white/CSS.
+        // NOTE: loadBackground is now simplified to just call loadTables
         function loadBackground(callback) {
+            // No longer relying on unreliable image object loading
             if (callback) callback();
         }
 
@@ -522,7 +524,7 @@
                     if (index === -1) {
                         // Add to selection
                         adminSelectedIds.push(tableIdNumber);
-                        tableRect.stroke(HIGHLIGHT_COLOR);
+                        tableRect.stroke('#ffeb3b');
                     } else {
                         // Remove from selection
                         adminSelectedIds.splice(index, 1);
@@ -764,6 +766,7 @@
         };
 
         // --- Multi-Select Toggle Listener ---
+        const multiSelectToggle = document.getElementById('multi-select-toggle');
 
         multiSelectToggle.addEventListener('click', () => {
             isMultiSelectMode = !isMultiSelectMode;
