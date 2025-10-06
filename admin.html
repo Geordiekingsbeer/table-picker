@@ -9,7 +9,7 @@
     <style>
         body{
             font-family: Arial, Helvetica, sans-serif;
-            background:#e3e3e3; /* MATCHING NEW GRAY BACKGROUND */
+            background:#e3e3e3; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -148,7 +148,6 @@
         #container{
             width: 100%;
             height: auto;
-            /* REMOVED VISUAL BOUNDARIES TO BLEND WITH PAGE */
             border: none; 
             box-shadow: none;
             background-color: transparent;
@@ -344,8 +343,8 @@
 
     <script>
         // --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
-        const STAGE_WIDTH = 700;
-        const STAGE_HEIGHT = 700;
+        const STAGE_WIDTH = 480; // REVERTED TO ORIGINAL WORKING SIZE
+        const STAGE_HEIGHT = 480; // REVERTED TO ORIGINAL WORKING SIZE
         // ---------------------------------------------------------------------------------
         
         // --- Supabase setup ---
