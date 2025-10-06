@@ -335,11 +335,11 @@
 
 
         // --- UNIFIED COLOR CONSTANTS ---
-        const TABLE_COLOR = '#b7d7a8';          
-        const BOOKED_COLOR = '#e0e0e0';         
-        const UNAVAILABLE_COLOR = '#ffffff';    
-        const SEAT_COLOR = '#555';              
-        const HIGHLIGHT_COLOR = '#ffeb3b'; // Selection color
+        const TABLE_COLOR = '#b7d7a8';          // Available (Light Green)
+        const BOOKED_COLOR = '#e0e0e0';         // Booked (Light Gray - MATCHES CUSTOMER)
+        const UNAVAILABLE_COLOR = '#ffffff';    // Staff Use Only (White - MATCHES CUSTOMER)
+        const SEAT_COLOR = '#555';              // Seat Color
+        const HIGHLIGHT_COLOR = '#ffeb3b';
 
         const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 17, 1];
         // -------------------------------
@@ -535,7 +535,6 @@
                     }
                     
                     // Update the currently selected SINGLE group for rotation/booking
-                    // If one item is selected, that becomes the new selectedGroup
                     if (adminSelectedIds.length === 1) {
                         selectedGroup = group;
                         currentSelectedTableId = tableIdNumber;
@@ -544,6 +543,7 @@
                         currentSelectedTableId = null;
                     } else {
                         selectedGroup = null; // More than one selected, no single selection for rotate
+                        currentSelectedTableId = null;
                     }
                     
                     // Update button visibility based on logic: only show book button for ONE selected table
@@ -558,11 +558,10 @@
                 // Set new selection
                 selectedGroup = group;
                 tableRect.stroke('#ffeb3b');
+                layer.draw();
                 
                 currentSelectedTableId = t.id;
                 showBookingModal(t.id, group.getAttr('booking_data'));
-
-                layer.draw();
             });
 
             group.on('dblclick', (e) => {
@@ -727,6 +726,15 @@
             await loadBookings();
         };
 
+        document.getElementById('book-selected-btn').onclick = () => {
+             if (adminSelectedIds.length === 1) {
+                const tableId = adminSelectedIds[0];
+                const group = layer.findOne('#g-' + tableId);
+                const bookingData = group ? group.getAttr('booking_data') : null;
+                showBookingModal(tableId, bookingData);
+            }
+        };
+
         document.getElementById('booking-form').onsubmit = async (e) => {
             e.preventDefault();
             const tableId = document.getElementById('modal-table-id').value;
@@ -764,8 +772,6 @@
 
         // --- Multi-Select Toggle Listener ---
         const multiSelectToggle = document.getElementById('multi-select-toggle');
-        const bookSelectedBtn = document.getElementById('book-selected-btn');
-
 
         multiSelectToggle.addEventListener('click', () => {
             isMultiSelectMode = !isMultiSelectMode;
@@ -784,16 +790,6 @@
             // Hide the explicit book button
             BOOK_SELECTED_BTN.style.display = 'none';
             layer.draw();
-        });
-        
-        // --- Book Selected Button Listener ---
-        bookSelectedBtn.addEventListener('click', () => {
-            if (adminSelectedIds.length === 1) {
-                const tableId = adminSelectedIds[0];
-                const group = layer.findOne('#g-' + tableId);
-                const bookingData = group ? group.getAttr('booking_data') : null;
-                showBookingModal(tableId, bookingData);
-            }
         });
 
 
