@@ -148,7 +148,6 @@
             height:480px;
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            /* Added CSS background image back for visual context */
             background: url('floorplan.png') no-repeat center center; 
             background-size: cover;
         }
@@ -520,7 +519,7 @@
                     if (index === -1) {
                         // Add to selection
                         adminSelectedIds.push(tableIdNumber);
-                        tableRect.stroke('#ffeb3b');
+                        tableRect.stroke(HIGHLIGHT_COLOR);
                     } else {
                         // Remove from selection
                         adminSelectedIds.splice(index, 1);
