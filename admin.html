@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <style>
-        /* NEW: Gray Background */
         body{
             font-family: Arial, Helvetica, sans-serif;
             background:#e3e3e3; 
@@ -455,7 +454,6 @@
         }
 
         async function loadTables() {
-            // NOTE: HARDCODING TABLE DATA HERE TO INCLUDE 4 NEW TABLES
             const initialTables = [
                 { id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
                 { id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
@@ -475,26 +473,21 @@
                 { id: 16, x: 30, y: 400, w: 30, h: 30, rotation: 0 },
                 { id: 17, x: 200, y: 30, w: 90, h: 30, rotation: 0 },
                 // --- NEW TABLES ADDED ---
-                { id: 18, x: 150, y: 10, w: 30, h: 30, rotation: 0 }, // New 2-seater (Top Left)
-                { id: 19, x: 300, y: 120, w: 30, h: 30, rotation: 0 }, // New 2-seater (Middle Right)
-                { id: 20, x: 40, y: 250, w: 30, h: 30, rotation: 0 }, // New 2-seater (Mid Left)
-                { id: 21, x: 180, y: 160, w: 50, h: 30, rotation: 90 }, // New 4-seater (Center)
+                { id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
+                { id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
+                { id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
+                { id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater
             ];
             
-            // NOTE: In a real environment, you would fetch the positions from Supabase:
-            // const { data, error } = await _supa.from('tables').select('*, rotation').order('id');
-            // tables = data;
-
-            // Simulate fetching and merging:
             let { data: dbData, error } = await _supa.from('tables').select('id, x, y, w, h, rotation').order('id');
 
             if (error) {
                 console.error("Error fetching table positions from Supabase:", error);
-                // Fallback to hardcoded positions if fetch fails
                 tables = initialTables;
             } else {
-                // Merge database positions with the full set of initial table definitions
                 const positionMap = new Map(dbData.map(t => [t.id, t]));
+                
+                // Use the initial table list, updating positions from the DB if available
                 tables = initialTables.map(t => {
                     const dbPos = positionMap.get(t.id);
                     if (dbPos) {
@@ -502,22 +495,26 @@
                             id: t.id, 
                             x: dbPos.x, 
                             y: dbPos.y, 
-                            w: t.w, 
-                            h: t.h, 
+                            w: dbPos.w || t.w, // Use hardcoded size if DB lacks it
+                            h: dbPos.h || t.h, // Use hardcoded size if DB lacks it
                             rotation: dbPos.rotation 
                         };
                     }
                     return t;
                 });
                 
-                // Add any new tables not yet in the DB to the list
-                const maxDbId = dbData.length > 0 ? Math.max(...dbData.map(t => t.id)) : 0;
-                tables = tables.concat(initialTables.filter(t => t.id > maxDbId && !positionMap.has(t.id)));
-
-                // If no data was fetched but initialTables exists, use initialTables
-                if (tables.length === 0 && initialTables.length > 0) {
-                     tables = initialTables;
-                }
+                // Add tables found in the DB but missing from the hardcoded list (safety measure)
+                const initialIds = new Set(initialTables.map(t => t.id));
+                dbData.forEach(dbPos => {
+                    if (!initialIds.has(dbPos.id)) {
+                        tables.push(dbPos);
+                    }
+                });
+                
+                // Filter out any duplicates and sort by ID
+                tables = tables.filter((t, index, self) => 
+                    index === self.findIndex((tt) => (tt.id === t.id))
+                ).sort((a, b) => a.id - b.id);
             }
             
             layer.destroyChildren(); 
@@ -603,7 +600,7 @@
             });
             group.add(tableRect);
 
-            // Seat drawing logic 
+            // Seat drawing logic (unchanged)
             const baseSeatSize = 12; 
             const seatHalf = baseSeatSize / 2; 
 
