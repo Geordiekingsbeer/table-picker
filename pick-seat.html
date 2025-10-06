@@ -109,6 +109,51 @@
             cursor: not-allowed;
             box-shadow: none;
         }
+
+        /* --- MODAL STYLES --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1001; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.4); 
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 90%; 
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-content h3 { margin-top: 0; }
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        #confirm-booking-btn {
+            background-color: #388e3c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -133,6 +178,17 @@
     
     <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
 
+    <div id="customer-modal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Reservation Details</h3>
+            <form id="customer-form">
+                <input type="text" id="customer-name" placeholder="Full Name" required>
+                <input type="number" id="party-size" placeholder="Party Size (e.g., 4)" min="1" required>
+                <input type="email" id="customer-email" placeholder="Email for Receipt" required>
+                <button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
+            </form>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <script>
@@ -148,6 +204,9 @@
     stage.add(layer);
     
     const payBtn = document.getElementById('payBtn');
+    const customerModal = document.getElementById('customer-modal');
+    const customerForm = document.getElementById('customer-form');
+
     let selectedTableIds = []; 
     let currentBookings = []; 
     let tableDataMap = new Map(); 
@@ -223,8 +282,6 @@
     // --- Background Loading (Uses simple sequential load) ---
 
     function loadBackground() {
-        // Since the CSS handles the image, we call loadTables directly 
-        // to start the Supabase fetch after a slight delay for Konva rendering.
         loadTables();
     }
 
@@ -235,7 +292,8 @@
         const selectedTime = document.getElementById('booking-time').value;
 
         if (!selectedDateSupabase || !selectedTime) {
-            alert('Please select a valid date and time.');
+            // No alert needed on initial load
+            currentBookings = []; 
             return false;
         }
 
@@ -462,12 +520,31 @@
             updateTableVisuals();
             return;
         }
+        
+        // Show modal instead of prompts
+        customerModal.style.display = 'flex';
+    };
+    
+    // --- FINAL SUBMIT LOGIC FROM MODAL ---
+    customerForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
 
-        const email = prompt('Enter your email for confirmation:');
-        if (!email) return alert('Email is required');
+        const customerName = document.getElementById('customer-name').value;
+        const partySize = parseInt(document.getElementById('party-size').value);
+        const email = document.getElementById('customer-email').value;
+
+        if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
+            alert('Please fill out all fields correctly.');
+            return;
+        }
+
+        customerModal.style.display = 'none'; // Hide modal before fetching
+
+        // Retrieve date and time again (safely)
+        const selectedDate = document.getElementById('booking-date').value;
+        const selectedTime = document.getElementById('booking-time').value;
         
         const totalPence = calculateTotalPence(); 
-        console.log('Final Calculated Pence Sent:', totalPence); 
         
         if (totalPence === 0) {
             alert("Error: Selected tables have no defined price (Total is 0).");
@@ -483,7 +560,9 @@
                     email: email,
                     booking_date: selectedDate,
                     booking_time: selectedTime,
-                    total_pence: totalPence 
+                    total_pence: totalPence,
+                    customer_name: customerName,
+                    party_size: partySize
                 })
             });
             
@@ -498,7 +577,8 @@
             console.error(err);
             alert('Checkout creation failed. See console for details.');
         }
-    };
+    });
+    // ------------------------------------
 
     // --- Initialization ---
     setDefaultDateTime(); 
