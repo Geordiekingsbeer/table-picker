@@ -226,6 +226,11 @@
             background-color: #fff3e0;
             border-radius: 5px;
         }
+
+        /* FIX: Ensures long text strings (like order IDs) wrap correctly */
+        #current-booking-info p span {
+            word-break: break-all;
+        }
         
         #remove-booking {
             background-color: #d32f2f;
