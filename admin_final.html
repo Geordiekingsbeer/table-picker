@@ -509,7 +509,7 @@
                 const tableRect = group.findOne('.main-table');
 
                 // Clear highlight from previously selected SINGLE group
-                if (selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
+                if (selectedGroup && !isMultiSelectMode) selectedGroup.findOne('.main-table').stroke('#000');
                 
                 // --- MULTI-SELECT MODE LOGIC ---
                 if (isMultiSelectMode) {
