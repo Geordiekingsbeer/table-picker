@@ -62,7 +62,6 @@
         }
 
         #container{
-            /* RESTORED CSS BACKGROUND FOR RELIABILITY */
             background:url('floorplan.png') no-repeat center center;
             background-size:contain;
             border:1px solid #ccc;
@@ -80,7 +79,7 @@
             color: #555;
             display: flex;
             gap: 15px;
-            flex-wrap: wrap; /* Added wrap for small screens */
+            flex-wrap: wrap;
             justify-content: center;
         }
         .legend-item {
@@ -92,14 +91,15 @@
             height: 15px;
             border-radius: 3px;
             margin-right: 5px;
-            border: 1px solid #aaa;
+            /* Ensure all legend colors have a light border for contrast */
+            border: 1px solid #ccc; 
         }
 
         #payBtn{
             margin-top:20px;
             padding:12px 24px;
             font-size:16px;
-            background:#388e3c; /* Green for payment */
+            background:#388e3c;
             color:#fff;
             border:none;
             border-radius:4px;
@@ -174,8 +174,8 @@
 
     <div class="status-legend">
         <div class="legend-item"><span class="legend-color" style="background-color: #b7d7a8;"></span>Premium Available</div>
-        <div class="legend-item"><span class="legend-color" style="background-color: #e0e0e0; border: none;"></span>Booked (Premium)</div>
-        <div class="legend-item"><span class="legend-color" style="background-color: #424242;"></span>Staff Use Only (N/A)</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #e0e0e0;"></span>Booked (Premium)</div>
+        <div class="legend-item"><span class="legend-color" style="background-color: #ffffff;"></span>Staff Use Only (N/A)</div> 
     </div>
     <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
 
@@ -212,20 +212,20 @@
     let currentBookings = []; 
     let tableDataMap = new Map(); 
 
-    // --- Price and Color Constants ---
+    // --- Price Constants in Cents/Pence ---
     const PRICE_2_SEATER = 499; 
     const PRICE_4_SEATER = 998; 
     const PRICE_6_SEATER = 998; 
+    // --------------------------------------
 
     const TABLE_COLOR = '#b7d7a8';      // Available (Light Green)
-    const BOOKED_COLOR = '#e0e0e0';     // NEW: Booked (Light Gray)
-    const UNAVAILABLE_COLOR = '#424242';// NEW: Permanently Unavailable (Dark Gray)
+    const BOOKED_COLOR = '#e0e0e0';     // Booked (Light Gray)
+    const UNAVAILABLE_COLOR = '#ffffff';// NEW: Permanently Unavailable (White)
     const SEAT_COLOR = '#555'; 
     const HIGHLIGHT_COLOR = '#ffeb3b';
-
+    
     // List of tables permanently unavailable for customer booking
     const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 17, 1];
-    // --------------------------------------
     
     // --- Helper Functions ---
 
@@ -243,10 +243,10 @@
     }
     
     function getTablePrice(w, h) {
-        if (w === 30 && h === 30) return PRICE_2_SEATER;
-        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER;
-        if (w === 90 && h === 30) return PRICE_6_SEATER;
-        return 0;
+        if (w === 30 && h === 30) return PRICE_2_SEATER; // 2-seater
+        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return PRICE_4_SEATER; // 4-seater 
+        if (w === 90 && h === 30) return PRICE_6_SEATER; // 6-seater
+        return 0; // Default or unknown size
     }
 
     function calculateTotalPence() {
@@ -287,7 +287,6 @@
     // --- Background Loading ---
 
     function loadBackground() {
-        // Start the table loading process
         loadTables();
     }
 
@@ -457,15 +456,9 @@
         const group = layer.findOne('#g-' + id);
         const tableRect = group.findOne('.main-table');
         
-        // 1. Check if table is permanently unavailable
-        if (STAFF_USE_TABLE_IDS.includes(id)) {
-            alert('This table is reserved for staff walk-ins and is not available for online booking.');
-            return;
-        }
-
-        // 2. Check if table is temporarily booked
-        if (tableRect.fill() === BOOKED_COLOR) {
-            alert('Sorry, this table is booked for the selected time slot.');
+        // 1. Check if table is permanently unavailable OR temporarily booked
+        if (tableRect.fill() === UNAVAILABLE_COLOR || tableRect.fill() === BOOKED_COLOR) {
+            alert('This table is not available for online booking.');
             return;
         }
 
@@ -478,7 +471,8 @@
             if (!isShiftPressed) {
                 // Clear all previous selections
                 stage.find('.main-table').forEach(rect => {
-                    if (rect.fill() !== BOOKED_COLOR && rect.fill() !== UNAVAILABLE_COLOR) {
+                    // Only remove highlight from AVAILABLE tables
+                    if (rect.fill() === TABLE_COLOR) {
                         rect.stroke('#000');
                         rect.strokeWidth(1);
                     }
@@ -503,7 +497,7 @@
         layer.draw();
     }
 
-    // --- Event Listeners and Initialization ---
+    // --- Event Listeners ---
 
     document.getElementById('check-availability').onclick = async () => {
         // Clear all selection highlights on check
@@ -560,6 +554,7 @@
 
         customerModal.style.display = 'none'; // Hide modal before fetching
 
+        // Retrieve date and time again (safely)
         const selectedDate = document.getElementById('booking-date').value;
         const selectedTime = document.getElementById('booking-time').value;
         
