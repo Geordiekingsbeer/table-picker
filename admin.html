@@ -269,7 +269,7 @@
 
     <div id="multi-booking-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button multi-close-button">&times;</span>
+            <span class="close-button" id="multi-close-button-span">&times;</span>
             <h3 id="multi-modal-title">Bulk Booking</h3>
             <p>Selected Tables: <span id="selected-table-list"></span></p>
             <form id="multi-booking-form">
@@ -289,7 +289,7 @@
 
     <div id="booking-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
+            <span class="close-button" id="single-close-button-span">&times;</span>
             <h3 id="modal-title">Table Booking</h3>
             <form id="booking-form">
                 <input type="hidden" id="modal-table-id">
@@ -698,12 +698,20 @@
         
         const singleModal = document.getElementById('booking-modal');
         const multiModal = document.getElementById('multi-booking-modal');
-        const singleCloseButton = document.querySelector('.close-button');
-        const multiCloseButton = document.querySelector('.multi-close-button');
         const removeBookingButton = document.getElementById('remove-booking');
         
-        singleCloseButton.onclick = () => { singleModal.style.display = 'none'; };
-        multiCloseButton.onclick = () => { multiModal.style.display = 'none'; };
+        // FIX: Select ALL close buttons and assign the correct modal closing function
+        const closeButtons = document.querySelectorAll('.close-button'); 
+
+        closeButtons.forEach(button => {
+            if (button.closest('#booking-modal')) {
+                button.onclick = () => { singleModal.style.display = 'none'; };
+            } else if (button.closest('#multi-booking-modal')) {
+                button.onclick = () => { multiModal.style.display = 'none'; };
+            }
+        });
+        
+        // Window click handler for background closing
         window.onclick = (event) => { 
             if (event.target == singleModal) { singleModal.style.display = 'none'; } 
             if (event.target == multiModal) { multiModal.style.display = 'none'; } 
