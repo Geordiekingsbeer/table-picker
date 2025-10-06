@@ -4,7 +4,6 @@
     <meta charset="utf-8"/>
     <title>Admin – Drag Tables</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <style>
@@ -14,10 +13,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start; /* Aligned to start to avoid stretching content */
+            justify-content: flex-start;
             min-height: 100vh;
             margin: 0; 
-            padding: 20px 10px; /* Added horizontal padding to prevent elements hitting edges */
+            padding: 20px 10px;
         }
 
         /* Header container */
@@ -31,7 +30,6 @@
             margin-bottom: 10px;
             flex-wrap: wrap;
             gap: 10px;
-            text-align: center;
         }
 
         h2 .arrow {
@@ -69,14 +67,14 @@
         /* Date/Time Selector */
         #datetime-controls {
             display: flex;
-            gap: 10px; /* Reduced gap for mobile */
+            gap: 10px;
             margin-bottom: 20px;
             align-items: center;
             padding: 10px;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-wrap: wrap;
             justify-content: center;
         }
 
@@ -90,7 +88,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 16px;
-            max-width: 100px; /* Restrict width for mobile */
+            max-width: 100px;
         }
         
         #load-bookings {
@@ -107,19 +105,19 @@
             background-color: #e65100;
         }
 
-        /* Multi-Select Toggle Button & Multi-Book Button */
+        /* NEW: Multi-Select Toggle Button & Multi-Book Button */
         #multi-select-toggle, #multi-book-button {
             padding: 8px 15px;
             font-size: 14px;
             font-weight: 600;
-            margin: 0 5px 15px; /* Added small horizontal margin */
+            margin: 0 5px 15px;
             border-radius: 5px;
             cursor: pointer;
             border: 1px solid #999;
             background-color: #f0f7ff;
             color: #444;
             transition: all 0.2s ease;
-            white-space: nowrap; /* Prevent button text from breaking awkwardly */
+            white-space: nowrap;
         }
         
         #multi-select-toggle.active {
@@ -138,14 +136,12 @@
             display: flex;
             justify-content: center;
             width: 100%;
-            /* Enforce max width for desktop */
             max-width: 500px; 
         }
-        
+
         #container{
-            /* Use 100% of the wrapper width to force Konva resize */
-            width: 100%; 
-            height: auto; /* Height will be set by Konva */
+            width: 100%;
+            height: auto;
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             background:#fff;
@@ -188,11 +184,10 @@
 
         .modal-content {
             background-color: #fefefe;
-            /* Adjust margin for mobile visibility */
-            margin: 10vh auto; 
+            margin: 10vh auto;
             padding: 20px;
             border: 1px solid #888;
-            width: 90%; /* Wider on small screens */
+            width: 90%;
             max-width: 400px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
@@ -255,7 +250,6 @@
         @media (max-width: 500px) {
             h2 { font-size: 18px; }
             h2 button { padding: 8px 14px; font-size: 14px; }
-            #datetime-controls input { max-width: 80px; }
         }
     </style>
 </head>
@@ -267,7 +261,7 @@
     </h2>
 
     <button id="multi-select-toggle" data-active="false">Start Multi-Select Mode</button>
-    <button id="multi-book-button" style="display:none; padding: 8px 15px; font-size: 14px; font-weight: 600; margin-bottom: 15px; border: none; background-color: #388e3c; color: white;">Book Selected Tables</button>
+    <button id="multi-book-button" style="display:none; padding: 8px 15px; font-size: 14px; font-weight: 600; margin-bottom: 15px; border-radius: 5px; cursor: pointer; border: none; background-color: #388e3c; color: white;">Book Selected Tables</button>
 
 
     <div id="datetime-controls">
@@ -340,44 +334,44 @@
     </div>
 
     <script>
-        // --- Konva Stage Dimensions (These are the fixed dimensions of your floorplan) ---
+        // --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
         const STAGE_WIDTH = 480;
         const STAGE_HEIGHT = 480;
         // ---------------------------------------------------------------------------------
-
+        
         // --- Supabase setup ---
         const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co ';
         const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
         const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
         const container = document.getElementById('container');
-
-        // Stage is now initialized with fixed ORIGINAL dimensions
+        
         const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
         const backgroundLayer = new Konva.Layer();
         stage.add(backgroundLayer);
-        const layer = new Konva.Layer(); 
+        const layer = new Konva.Layer();
         stage.add(layer);
 
         let tables = [];
         let selectedGroup = null;
-        let isMultiSelectMode = false; 
+        let isMultiSelectMode = false;
         let selectedMultiTables = new Set();
         
         // --- UNIFIED COLOR CONSTANTS ---
-        const TABLE_COLOR = '#b7d7a8';       
-        const BOOKED_COLOR = '#e0e0e0';      
-        const UNAVAILABLE_COLOR = '#ffffff'; 
-        const SEAT_COLOR = '#555';           
-        const MULTI_SELECT_STROKE = '#ff6347'; 
-        const SINGLE_SELECT_STROKE = '#ffeb3b'; 
+        const TABLE_COLOR = '#b7d7a8';
+        const BOOKED_COLOR = '#e0e0e0';
+        const UNAVAILABLE_COLOR = '#ffffff';
+        const SEAT_COLOR = '#555';
+        const MULTI_SELECT_STROKE = '#ff6347';
+        const SINGLE_SELECT_STROKE = '#ffeb3b';
 
+        // --- FIXED: Table 17 is removed and is now available for booking ---
         const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
         
-        let currentBookings = []; 
-        let currentSelectedDate = ''; 
-        let currentSelectedTime = ''; 
-        let currentSelectedTableId = null; 
+        let currentBookings = [];
+        let currentSelectedDate = '';
+        let currentSelectedTime = '';
+        let currentSelectedTableId = null;
         const multiBookButton = document.getElementById('multi-book-button');
 
         function timeToMinutes(timeStr) {
@@ -417,30 +411,23 @@
             const day = String(today.getDate()).padStart(2, '0');
             
             currentSelectedDate = `${year}-${month}-${day}`;
-            currentSelectedTime = '19:00'; 
+            currentSelectedTime = '19:00';
 
             document.getElementById('booking-date').value = currentSelectedDate;
             document.getElementById('booking-time').value = currentSelectedTime;
         }
-        
-        // --- KONVA RESIZE FUNCTION (The core responsiveness logic) ---
+
+        // --- KONVA RESIZE FUNCTION (Admin & Customer Responsive Logic) ---
         function resizeStage() {
-            // Get the current width of the container element
             const containerWidth = container.offsetWidth;
-            
-            // Calculate the scaling factor based on the container's new width
-            // and the original fixed width of the stage (480px)
             const scale = containerWidth / STAGE_WIDTH;
 
-            // Set the new Konva stage dimensions and scale the content
             stage.width(containerWidth);
             stage.height(STAGE_HEIGHT * scale);
             stage.scale({ x: scale, y: scale });
 
-            // Ensure the container element reflects the scaled height for layout flow
             container.style.height = `${STAGE_HEIGHT * scale}px`;
 
-            // Redraw layers to apply changes
             stage.draw();
         }
         // -------------------------------------------------------------
@@ -450,16 +437,13 @@
         function loadBackground(callback) {
             const imageObj = new Image();
             imageObj.onload = function() {
-                // Background is set to the ORIGINAL dimensions so it scales with the stage
                 const floorplan = new Konva.Image({
                     x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
                 });
                 backgroundLayer.add(floorplan);
                 backgroundLayer.draw();
                 
-                // --- INITIAL RESIZE ---
                 resizeStage(); 
-                // ----------------------
                 
                 if (callback) callback();
             };
@@ -488,7 +472,7 @@
             document.getElementById('multi-select-toggle').dataset.active = 'false';
             document.getElementById('multi-select-toggle').classList.remove('active');
             document.getElementById('multi-select-toggle').textContent = 'Start Multi-Select Mode';
-            multiBookButton.style.display = 'none'; 
+            multiBookButton.style.display = 'none';
 
             await loadBookings(); 
         }
@@ -554,7 +538,7 @@
             });
             group.add(tableRect);
 
-            // ... (Seat drawing logic is unchanged) ...
+            // Seat drawing logic (unchanged)
             const baseSeatSize = 12; 
             const seatHalf = baseSeatSize / 2; 
 
@@ -562,7 +546,6 @@
                 group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
             }
 
-            // Seat positions
             if (t.w === 30 && t.h === 30) {
                 makeSeat(t.w/2 - baseSeatSize/2, -seatHalf, baseSeatSize, seatHalf);
                 makeSeat(t.w/2 - baseSeatSize/2, t.h, baseSeatSize, seatHalf);
@@ -693,7 +676,6 @@
                 start_time: startTime, 
                 end_time: endTime, 
                 host_notes: notes,
-                // Now includes the new column set to NULL for manual admin bookings
                 stripe_order_id: undefined, 
             };
 
@@ -741,7 +723,6 @@
 
         // --- Modal/UI Functions ---
         
-        // --- HELPER FUNCTION TO CLEAN UP NOTES (for old messy bookings) ---
         function cleanNotes(notes) {
             if (!notes) return 'None';
             
@@ -758,7 +739,6 @@
         const multiModal = document.getElementById('multi-booking-modal');
         const removeBookingButton = document.getElementById('remove-booking');
         
-        // Select ALL close buttons and assign the correct modal closing function
         const closeButtons = document.querySelectorAll('.close-button'); 
 
         closeButtons.forEach(button => {
@@ -769,7 +749,6 @@
             }
         });
         
-        // Window click handler for background closing
         window.onclick = (event) => { 
             if (event.target == singleModal) { singleModal.style.display = 'none'; } 
             if (event.target == multiModal) { multiModal.style.display = 'none'; } 
@@ -796,7 +775,6 @@
                 document.getElementById('booked-start').textContent = booking.start_time.substring(0, 5);
                 document.getElementById('booked-end').textContent = booking.end_time.substring(0, 5);
                 
-                // USE CLEAN NOTES FOR DISPLAY
                 document.getElementById('booked-notes').textContent = cleanNotes(booking.host_notes); 
                 
                 removeBookingButton.onclick = async () => {
@@ -833,7 +811,6 @@
             const tableIds = Array.from(selectedMultiTables).sort((a, b) => a - b).join(', ');
             document.getElementById('selected-table-list').textContent = tableIds;
             
-            // Populate default times
             document.getElementById('multi-start-time').value = currentSelectedTime;
             
             const [h, m] = currentSelectedTime.split(':').map(Number);
@@ -853,7 +830,6 @@
 
         // --- Event Listeners ---
         
-        // Listen for window resizing to make the stage responsive
         window.addEventListener('resize', resizeStage);
 
         document.getElementById('multi-select-toggle').onclick = () => {
