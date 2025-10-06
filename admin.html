@@ -450,11 +450,12 @@
                 
                 if (callback) callback();
             };
-            imageObj.src = 'floorplan.png?v=' + new Date().getTime(); // CACHE BUSTER
+            imageObj.src = 'floorplan.png?v=' + new Date().getTime(); 
         }
 
         async function loadTables() {
-            const initialTables = [
+            // BASE TABLES (IDs 1-17) WITH CORRECT SIZES
+            const baseTables = [
                 { id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
                 { id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
                 { id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
@@ -472,49 +473,36 @@
                 { id: 15, x: 330, y: 30, w: 90, h: 30, rotation: 0 },
                 { id: 16, x: 30, y: 400, w: 30, h: 30, rotation: 0 },
                 { id: 17, x: 200, y: 30, w: 90, h: 30, rotation: 0 },
-                // --- NEW TABLES ADDED ---
+                // --- NEW TABLES ADDED (IDs 18-21) ---
                 { id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
                 { id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
                 { id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
-                { id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater
+                { id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater (50x30, rotated)
             ];
             
-            let { data: dbData, error } = await _supa.from('tables').select('id, x, y, w, h, rotation').order('id');
+            let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
 
             if (error) {
-                console.error("Error fetching table positions from Supabase:", error);
-                tables = initialTables;
+                console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
+                tables = baseTables;
             } else {
                 const positionMap = new Map(dbData.map(t => [t.id, t]));
                 
-                // Use the initial table list, updating positions from the DB if available
-                tables = initialTables.map(t => {
+                // Merge database positions with the full set of table definitions
+                tables = baseTables.map(t => {
                     const dbPos = positionMap.get(t.id);
                     if (dbPos) {
                         return { 
                             id: t.id, 
                             x: dbPos.x, 
                             y: dbPos.y, 
-                            w: dbPos.w || t.w, // Use hardcoded size if DB lacks it
-                            h: dbPos.h || t.h, // Use hardcoded size if DB lacks it
+                            w: t.w, 
+                            h: t.h, 
                             rotation: dbPos.rotation 
                         };
                     }
-                    return t;
+                    return t; // Use hardcoded new table positions if not in DB yet
                 });
-                
-                // Add tables found in the DB but missing from the hardcoded list (safety measure)
-                const initialIds = new Set(initialTables.map(t => t.id));
-                dbData.forEach(dbPos => {
-                    if (!initialIds.has(dbPos.id)) {
-                        tables.push(dbPos);
-                    }
-                });
-                
-                // Filter out any duplicates and sort by ID
-                tables = tables.filter((t, index, self) => 
-                    index === self.findIndex((tt) => (tt.id === t.id))
-                ).sort((a, b) => a.id - b.id);
             }
             
             layer.destroyChildren(); 
@@ -617,6 +605,12 @@
                 makeSeat(-seatHalf, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
                 makeSeat(t.w, v_spacing, seatHalf, baseSeatSize);
                 makeSeat(t.w, v_spacing*2 + baseSeatSize, seatHalf, baseSeatSize);
+            } else if (t.w === 50 && t.h === 30) { // Added specific case for 4-seater 50x30
+                const h_spacing = (t.w - 2 * baseSeatSize) / 3;
+                makeSeat(h_spacing, -seatHalf, baseSeatSize, seatHalf);
+                makeSeat(h_spacing * 2 + baseSeatSize, -seatHalf, baseSeatSize, seatHalf);
+                makeSeat(h_spacing, t.h, baseSeatSize, seatHalf);
+                makeSeat(h_spacing * 2 + baseSeatSize, t.h, baseSeatSize, seatHalf);
             } else if (t.w === 90 && t.h === 30) {
                 const h_spacing = t.w / 4;
                 for(let i=0; i<3; i++){
