@@ -237,8 +237,8 @@
     let selectedTableIds = []; 
     let currentBookings = []; 
     let tableDataMap = new Map(); 
-    let isMultiSelectMode = false; // NEW: State for mobile multi-select
-    
+    let isMultiSelectMode = false; // State for multi-select
+
     // --- Price Constants in Cents/Pence ---
     const PRICE_2_SEATER = 499; 
     const PRICE_4_SEATER = 998; 
@@ -310,10 +310,9 @@
         document.getElementById('booking-time').value = defaultTime;
     }
 
-    // --- Background Loading ---
+    // --- Background Loading (Triggers Table Load) ---
 
     function loadBackground() {
-        // Start the table loading process
         loadTables();
     }
 
@@ -392,7 +391,7 @@
         layer.draw();
     }
 
-    // --- Konva Table Drawing ---
+    // --- Konva Table Drawing (unchanged) ---
     
     async function loadTables() {
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
@@ -440,7 +439,6 @@
         });
         group.add(tableRect);
 
-        // Pass event object to selectTable
         group.on('click tap', (e) => selectTable(t.id, e.evt));
 
         // Seat drawing logic (unchanged)
@@ -480,15 +478,16 @@
     function selectTable(id, evt) {
         const group = layer.findOne('#g-' + id);
         const tableRect = group.findOne('.main-table');
-        const idNumber = Number(id);
-        const index = selectedTableIds.indexOf(idNumber);
         
         // 1. Check if table is permanently unavailable OR temporarily booked
         if (tableRect.fill() === UNAVAILABLE_COLOR || tableRect.fill() === BOOKED_COLOR) {
-            alert('This table is not available for booking.');
+            alert('This table is not available for online booking.');
             return;
         }
 
+        const idNumber = Number(id);
+        const index = selectedTableIds.indexOf(idNumber);
+        
         // Determine if it's a multi-select action (Shift key on desktop OR Toggle mode on mobile)
         const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
         const isMulti = isShiftPressed || isMultiSelectMode;
@@ -529,7 +528,7 @@
 
     // --- Event Listeners ---
     
-    // NEW: Toggle Multi-Select Mode for mobile users
+    // Toggle Multi-Select Mode for mobile users
     multiSelectToggle.addEventListener('click', () => {
         isMultiSelectMode = !isMultiSelectMode;
         multiSelectToggle.setAttribute('data-active', isMultiSelectMode);
@@ -649,7 +648,7 @@
 
     // --- Initialization ---
     setDefaultDateTime(); 
-    loadBackground();
+    loadBackground(); // The function that calls loadTables
 </script>
 </body>
 </html>
