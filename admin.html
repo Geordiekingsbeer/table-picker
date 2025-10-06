@@ -148,8 +148,8 @@
             height:480px;
             border:1px solid #ccc;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            /* REMOVED background:url('floorplan.png') */
             background:#fff;
+            /* No background image necessary in Admin view */
         }
 
         /* Status Legend */
@@ -398,9 +398,8 @@
 
         // --- Konva Functions ---
 
-        // NOTE: loadBackground is now simplified to just call loadTables
+        // NOTE: loadBackground removed for stable loading. The background is simple white/CSS.
         function loadBackground(callback) {
-            // No longer relying on unreliable image object loading
             if (callback) callback();
         }
 
@@ -445,9 +444,9 @@
                 // Restore highlight if currently selected (for single or multi-mode)
                 const index = adminSelectedIds.indexOf(tableIdNumber);
                 if (index !== -1) {
-                    tableRect.stroke('#ffeb3b');
+                    tableRect.stroke(HIGHLIGHT_COLOR);
                 } else if (selectedGroup && selectedGroup.id() === group.id()) {
-                     tableRect.stroke('#ffeb3b');
+                     tableRect.stroke(HIGHLIGHT_COLOR);
                 } else {
                     tableRect.stroke('#000');
                 }
@@ -457,7 +456,7 @@
             });
             
             // Update the state of the "Book Selected Table" button
-            BOOK_SELECTED_BTN.style.display = (adminSelectedIds.length === 1 && isMultiSelectMode) ? 'inline-block' : 'none';
+            BOOK_SELECTED_BTN.style.display = (adminSelectedIds.length === 1) ? 'inline-block' : 'none';
         }
 
         function drawTable(t){
@@ -523,7 +522,7 @@
                     if (index === -1) {
                         // Add to selection
                         adminSelectedIds.push(tableIdNumber);
-                        tableRect.stroke('#ffeb3b');
+                        tableRect.stroke(HIGHLIGHT_COLOR);
                     } else {
                         // Remove from selection
                         adminSelectedIds.splice(index, 1);
@@ -765,7 +764,6 @@
         };
 
         // --- Multi-Select Toggle Listener ---
-        const multiSelectToggle = document.getElementById('multi-select-toggle');
 
         multiSelectToggle.addEventListener('click', () => {
             isMultiSelectMode = !isMultiSelectMode;
