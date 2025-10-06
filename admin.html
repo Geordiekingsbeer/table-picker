@@ -83,6 +83,19 @@
             color: white;
             border: 1px solid #1976d2;
         }
+        
+        /* NEW: Book Selected Button */
+        #book-selected-btn {
+            background-color: #f57c00;
+            color: white;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            display: none; /* Hide by default */
+        }
 
         /* Date/Time Selector */
         #datetime-controls {
@@ -232,7 +245,7 @@
             background-color: #d32f2f;
         }
         
-        /* Responsive for small screens */
+        /* Responsive for small screens (unchanged) */
         @media (max-width: 500px) {
             h2 { font-size: 18px; }
             h2 button { padding: 8px 14px; font-size: 14px; }
@@ -247,6 +260,7 @@
     </h2>
 
     <button id="multi-select-toggle" data-active="false">Start Multi-Select Mode</button>
+    <button id="book-selected-btn" style="display:none;">Book Selected Table</button>
 
     <div id="datetime-controls">
         <label for="booking-date">Date:</label>
@@ -313,15 +327,17 @@
 
         let tables = [];
         let selectedGroup = null;
-        let isMultiSelectMode = false; // NEW: Multi-select state
+        let adminSelectedIds = []; // NEW: Array to hold multiple selected IDs in admin view
+        let isMultiSelectMode = false; 
         
+        const BOOK_SELECTED_BTN = document.getElementById('book-selected-btn');
+
         // --- UNIFIED COLOR CONSTANTS ---
         const TABLE_COLOR = '#b7d7a8';          
         const BOOKED_COLOR = '#e0e0e0';         
         const UNAVAILABLE_COLOR = '#ffffff';    
         const SEAT_COLOR = '#555';              
 
-        // List of tables permanently unavailable for customer booking (to be colored white)
         const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 17, 1];
         // -------------------------------
         
@@ -429,8 +445,9 @@
                     tableRect.fill(activeBooking ? BOOKED_COLOR : TABLE_COLOR);
                 }
 
-                // If the table was previously selected, restore highlight
-                if (selectedGroup && selectedGroup.id() === group.id()) {
+                // Restore highlight if currently selected (for single or multi-mode)
+                const index = adminSelectedIds.indexOf(tableIdNumber);
+                if (index !== -1) {
                     tableRect.stroke('#ffeb3b');
                 } else {
                     tableRect.stroke('#000');
@@ -439,6 +456,9 @@
                 group.setAttr('booking_data', currentBookings.find(b => Number(b.table_id) === tableIdNumber) || null);
                 layer.draw();
             });
+            
+            // Update the state of the "Book Selected Table" button
+            BOOK_SELECTED_BTN.style.display = (isMultiSelectMode && adminSelectedIds.length === 1) ? 'inline-block' : 'none';
         }
 
         function drawTable(t){
@@ -447,7 +467,7 @@
                 y:t.y, 
                 id:'g-'+t.id, 
                 table_id: Number(t.id),
-                draggable:true // Drag enabled for all tables
+                draggable:true 
             });
             layer.add(group);
 
@@ -456,7 +476,6 @@
             const tableRect = new Konva.Rect({ 
                 width:t.w, 
                 height:t.h, 
-                // Initial fill color based on permanent availability
                 fill: isStaffUseOnly ? UNAVAILABLE_COLOR : TABLE_COLOR,
                 stroke:'#000', 
                 strokeWidth:1,
@@ -494,25 +513,33 @@
             group.on('click', () => {
                 const tableIdNumber = Number(t.id);
                 const tableRect = group.findOne('.main-table');
-
-                // If Multi-select mode is ON, treat it as a selection/deselection toggle
+                
+                // 1. --- MULTI-SELECT MODE LOGIC ---
                 if (isMultiSelectMode) {
-                    if (selectedGroup && selectedGroup.id() === group.id()) {
-                        // Deselect current if already selected
-                        selectedGroup = null;
-                        tableRect.stroke('#000');
-                    } else {
-                        // Clear previous highlight if it exists
-                        if (selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
-                        selectedGroup = group;
+                    const index = adminSelectedIds.indexOf(tableIdNumber);
+                    
+                    if (index === -1) {
+                        // Add to selection
+                        adminSelectedIds.push(tableIdNumber);
                         tableRect.stroke('#ffeb3b');
+                    } else {
+                        // Remove from selection
+                        adminSelectedIds.splice(index, 1);
+                        tableRect.stroke('#000');
                     }
-                    currentSelectedTableId = selectedGroup ? t.id : null;
+                    
+                    // Update the currently selected single item for booking/rotation if only one is left
+                    selectedGroup = adminSelectedIds.length === 1 ? group : null;
+                    currentSelectedTableId = adminSelectedIds.length === 1 ? tableIdNumber : null;
+                    
+                    // Update button visibility
+                    BOOK_SELECTED_BTN.style.display = (adminSelectedIds.length === 1) ? 'inline-block' : 'none';
+                    
                     layer.draw();
-                    return; // Skip modal entirely in multi-select mode
+                    return; // EXIT before opening modal
                 }
 
-                // --- SINGLE SELECT MODE (Modal Logic) ---
+                // 2. --- SINGLE SELECT MODE (Default Modal Logic) ---
                 
                 // Clear previous highlight
                 if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
@@ -630,8 +657,9 @@
         const modal = document.getElementById('booking-modal');
         const closeModal = document.querySelector('.close-button');
         const removeBookingButton = document.getElementById('remove-booking');
-        const multiSelectToggle = document.getElementById('multi-select-toggle');
-        
+        const multiSelectToggle = document.getElementById('multi-select-toggle'); // Get element for listener
+        const bookSelectedBtn = document.getElementById('book-selected-btn'); // Get element for listener
+
         closeModal.onclick = () => { modal.style.display = 'none'; };
         window.onclick = (event) => { if (event.target == modal) { modal.style.display = 'none'; } };
         
@@ -639,7 +667,6 @@
             document.getElementById('modal-table-id').value = tableId;
             document.getElementById('modal-title').textContent = 'Table ' + tableId + ' Booking';
             
-            // Block modal if table is permanently unavailable
             if (STAFF_USE_TABLE_IDS.includes(Number(tableId))) {
                  alert('This table is reserved for staff use and cannot be manually assigned a premium slot.');
                  return;
@@ -734,12 +761,25 @@
             const modeText = isMultiSelectMode ? "Stop Multi-Select Mode" : "Start Multi-Select Mode";
             multiSelectToggle.textContent = modeText;
             
-            // Clear current selected group on toggle for clarity
-            if(selectedGroup) {
-                selectedGroup.findOne('.main-table').stroke('#000');
-                selectedGroup = null;
-                currentSelectedTableId = null;
-                layer.draw();
+            // Clear current selection and array on toggle
+            adminSelectedIds = [];
+            if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
+            selectedGroup = null;
+            currentSelectedTableId = null;
+            
+            // Hide the explicit book button
+            BOOK_SELECTED_BTN.style.display = 'none';
+            layer.draw();
+        });
+        
+        // --- Book Selected Button Listener ---
+        // This button is only visible when adminSelectedIds.length === 1 and isMultiSelectMode is ON
+        bookSelectedBtn.addEventListener('click', () => {
+            if (adminSelectedIds.length === 1) {
+                const tableId = adminSelectedIds[0];
+                const group = layer.findOne('#g-' + tableId);
+                const bookingData = group ? group.getAttr('booking_data') : null;
+                showBookingModal(tableId, bookingData);
             }
         });
 
