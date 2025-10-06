@@ -9,7 +9,7 @@
     <style>
         body{
             font-family: Arial, Helvetica, sans-serif;
-            background:#f7f7f7;
+            background:#e3e3e3; /* Matching the new gray background */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -131,7 +131,7 @@
             border: none;
         }
 
-        /* Floorplan container - RESPONSIVENESS FIX */
+        /* Floorplan container - STYLING CHANGES HERE */
         #container-wrapper {
             display: flex;
             justify-content: center;
@@ -142,9 +142,10 @@
         #container{
             width: 100%;
             height: auto;
-            border:1px solid #ccc;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            background:#fff;
+            /* REMOVED WHITE BACKGROUND, BORDER, AND SHADOW */
+            border: none; 
+            box-shadow: none;
+            background-color: transparent;
         }
 
         /* Status Legend */
@@ -365,7 +366,7 @@
         const MULTI_SELECT_STROKE = '#ff6347';
         const SINGLE_SELECT_STROKE = '#ffeb3b';
 
-        // --- FIXED: Table 17 is removed and is now available for booking ---
+        // --- Table 17 is available for booking ---
         const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
         
         let currentBookings = [];
@@ -417,7 +418,7 @@
             document.getElementById('booking-time').value = currentSelectedTime;
         }
 
-        // --- KONVA RESIZE FUNCTION (Admin & Customer Responsive Logic) ---
+        // --- KONVA RESIZE FUNCTION ---
         function resizeStage() {
             const containerWidth = container.offsetWidth;
             const scale = containerWidth / STAGE_WIDTH;
@@ -430,7 +431,7 @@
 
             stage.draw();
         }
-        // -------------------------------------------------------------
+        // -----------------------------
 
         // --- Konva Functions ---
 
@@ -944,6 +945,7 @@
 
         // --- Initialization ---
         setDefaultDateTime();
+        window.addEventListener('resize', resizeStage);
         loadBackground(loadTables);
     </script>
 </body>
