@@ -649,13 +649,17 @@
                  return false;
             }
             
+            // --- UPDATED BOOKING PAYLOAD ---
             const newBooking = {
                 table_id: tableIdNumber,
                 date: date, 
                 start_time: startTime, 
                 end_time: endTime, 
-                host_notes: notes, 
+                host_notes: notes,
+                // New column for manual admin bookings - set to undefined (NULL in Supabase)
+                stripe_order_id: undefined, 
             };
+            // -------------------------------
 
             const { error } = await _supa.from('premium_slots').insert([newBooking]); 
             
@@ -672,6 +676,7 @@
             let failedTables = [];
 
             for (const tableId of tableIds) {
+                // Bulk booking uses the updated createBooking logic
                 const success = await createBooking(tableId, startTime, endTime, notes);
                 if (success) {
                     successfulBookings++;
@@ -701,11 +706,29 @@
 
         // --- Modal/UI Functions ---
         
+        // --- NEW HELPER FUNCTION TO CLEAN UP NOTES ---
+        function cleanNotes(notes) {
+            if (!notes) return 'None';
+            
+            // Regex to find and remove Stripe test or live Checkout Session IDs (cs_...)
+            // and the full line they might be on, like "Order: cs_live_..."
+            // Looks for the pattern: [Word]: (cs_live_|cs_test_)[Alphanumeric string 24+ chars]
+            const stripeIdRegex = /(Order|Transaction)?\s*:\s*(cs_live_|cs_test_)[a-zA-Z0-9]{24,}/g;
+            
+            let cleanedNotes = notes.replace(stripeIdRegex, '').trim();
+
+            // Clean up any remaining artifacts like trailing commas or excessive whitespace
+            cleanedNotes = cleanedNotes.replace(/,\s*$/, '').trim();
+
+            return cleanedNotes || 'None';
+        }
+        // ---------------------------------------------
+        
         const singleModal = document.getElementById('booking-modal');
         const multiModal = document.getElementById('multi-booking-modal');
         const removeBookingButton = document.getElementById('remove-booking');
         
-        // FIX: Select ALL close buttons and assign the correct modal closing function
+        // Select ALL close buttons and assign the correct modal closing function
         const closeButtons = document.querySelectorAll('.close-button'); 
 
         closeButtons.forEach(button => {
@@ -742,7 +765,10 @@
                 
                 document.getElementById('booked-start').textContent = booking.start_time.substring(0, 5);
                 document.getElementById('booked-end').textContent = booking.end_time.substring(0, 5);
-                document.getElementById('booked-notes').textContent = booking.host_notes || 'None'; 
+                
+                // --- MODIFIED: USE CLEAN NOTES FOR DISPLAY ---
+                document.getElementById('booked-notes').textContent = cleanNotes(booking.host_notes); 
+                // ---------------------------------------------
                 
                 removeBookingButton.onclick = async () => {
                     if (confirm('Are you sure you want to remove this booking?')) {
