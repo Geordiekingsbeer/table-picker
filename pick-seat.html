@@ -144,7 +144,7 @@
     const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
 
     const stage = new Konva.Stage({ container: 'container', width: 480, height: 480 });
-    const layer = new Konva.Layer(); // This layer will hold all tables
+    const layer = new Konva.Layer(); 
     stage.add(layer);
     
     const payBtn = document.getElementById('payBtn');
@@ -220,10 +220,10 @@
         document.getElementById('booking-time').value = defaultTime;
     }
 
-    // --- Background Loading (REMOVED CALLBACK STRUCTURE) ---
+    // --- Background Loading (Uses simple sequential load) ---
 
     function loadBackground() {
-        // Since the CSS handles the image, we just need to call loadTables directly 
+        // Since the CSS handles the image, we call loadTables directly 
         // to start the Supabase fetch after a slight delay for Konva rendering.
         loadTables();
     }
@@ -300,11 +300,9 @@
     // --- Konva Table Drawing ---
     
     async function loadTables() {
-        // Fetch w and h explicitly for price calculation
         const { data, error } = await _supa.from('tables').select('*, rotation, w, h').order('id');
         if (error) { console.error(error); return; }
         
-        // Remove existing table layer children before redrawing
         layer.destroyChildren();
         tableDataMap = new Map(); 
         
@@ -504,7 +502,7 @@
 
     // --- Initialization ---
     setDefaultDateTime(); 
-    loadBackground(loadTables); // Final initialization call
+    loadBackground();
 </script>
 </body>
 </html>
