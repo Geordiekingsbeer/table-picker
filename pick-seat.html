@@ -457,25 +457,21 @@
 	// --- Background/Floorplan Loading (Admin Style) ---
 	
 	function loadFloorplan(callback) {
-        // Fix: Wrap the logic in a Promise to handle asynchronous loading cleanly
-        return new Promise((resolve) => {
-            const imageObj = new Image();
-            imageObj.onload = function() {
-                const floorplan = new Konva.Image({
-                    x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
-                });
-                backgroundLayer.add(floorplan);
-                
-                backgroundLayer.draw();
-                
-                resizeStage();	
-                
-                if (callback) callback();
-                resolve(); // Resolve the promise once loading is complete
-            };
-            // Add cache buster to force new image load
-            imageObj.src = 'floorplan.png?v=' + new Date().getTime();	
-        });
+		const imageObj = new Image();
+		imageObj.onload = function() {
+			const floorplan = new Konva.Image({
+				x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
+			});
+			backgroundLayer.add(floorplan);
+			
+			backgroundLayer.draw();
+			
+			resizeStage();	
+			
+			if (callback) callback();
+		};
+		// Add cache buster to force new image load
+		imageObj.src = 'floorplan.png?v=' + new Date().getTime();	
 	}
 
 	// --- Booking Logic ---
@@ -497,7 +493,7 @@
 			.from('premium_slots')	
 			.select('*')
 			.eq('date', selectedDateSupabase); 
-            // NOTE: The tenant_id filter has been removed to align with the permissive RLS policy.
+            // NOTE: The tenant_id filter is temporarily removed to bypass RLS conflicts on tables without the column.
 			
 		if(error){	
 			console.error('Error fetching bookings:', error);	
@@ -838,6 +834,18 @@
 			return;
 		}
 
+		// NEW: Log 'checkout_start' when modal opens
+		if (URL_PARAMS.booking_ref) {
+			const trackingEvent = {
+				tenant_id: URL_PARAMS.tenant_id,
+				booking_ref: URL_PARAMS.booking_ref,
+				event_type: 'checkout_start',
+				event_source: 'modal_open',
+			};
+			const { error } = await _supa.from('engagement_tracking').insert([trackingEvent]);
+			if (error) console.error('Tracking Error (Checkout Start):', error);
+		}
+
 		customerModal.style.display = 'flex';
 	};
 	
@@ -902,9 +910,7 @@
     getUrlParams(); // NEW: Reads URL params first
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
-	loadFloorplan(loadTables).then(() => {
-        logInitialClick(); // NEW: Logs the event AFTER the floorplan is loaded
-	});
+	loadFloorplan(loadTables);
 </script>
 </body>
 </html>
