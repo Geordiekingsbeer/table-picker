@@ -351,33 +351,48 @@
         }
     }
     
-    // NEW: Function to log the initial click event
-    async function logInitialClick() {
-        if (!URL_PARAMS.booking_ref) {
-            console.log("Tracking skipped: Missing booking_ref.");
-            return;
-        }
-        
-        const trackingEvent = {
-            tenant_id: URL_PARAMS.tenant_id,
-            booking_ref: URL_PARAMS.booking_ref,
-            event_type: 'link_click', // The customer landed on the page
-            event_source: URL_PARAMS.source || 'unknown',
-        };
+	// NEW: Function to log the initial click event (Using UPSERT)
+	async function logInitialClick() {
+		// Only log if we have a valid booking reference
+		if (!URL_PARAMS.booking_ref) {
+			return;
+		}
+		
+        // Use a temporary tracking event object to hold current state
+        const initialTrackingState = {
+            tenant_id: URL_PARAMS.tenant_id,
+            booking_ref: URL_PARAMS.booking_ref,
+            // If new row: view_link_count = 1, checkout_started = false, etc.
+        };
 
-        // Uses the public anon key to insert into the engagement_tracking table
-        const { error } = await _supa
-            .from('engagement_tracking')
-            .insert([trackingEvent]);
+        // UPSERT Logic: Insert new row OR update view_link_count if booking_ref exists
+		const { error } = await _supa
+			.from('engagement_tracking')
+			.upsert([initialTrackingState], { onConflict: 'booking_ref' })
+            .select('view_link_count') // Need to select to get the current count
+            .then(async ({ data: existingData }) => {
+                // If data was returned, it means a row existed, and we need to increment the count
+                if (existingData && existingData.length > 0) {
+                    const currentCount = existingData[0].view_link_count || 0;
 
-        if (error) {
-            // Logging the full database error to the console
-            console.error('Error logging initial link click:', error);
-        } else {
-            console.log(`Tracking: Logged 'link_click' for booking ${URL_PARAMS.booking_ref}.`);
-        }
-    }
-    // ---------------------------------------------------
+                    const { error: updateError } = await _supa
+                        .from('engagement_tracking')
+                        .update({ view_link_count: currentCount + 1 })
+                        .eq('booking_ref', URL_PARAMS.booking_ref);
+
+                    if (updateError) {
+                        console.error('Tracking Update Error:', updateError);
+                    }
+                }
+            });
+
+		if (error) {
+			console.error('Error logging initial link click:', error);
+		} else {
+			console.log(`Tracking: Logged/Updated link_click for booking ${URL_PARAMS.booking_ref}.`);
+		}
+	}
+	// ---------------------------------------------------
 
 
 	function timeToMinutes(timeStr) {
@@ -682,9 +697,9 @@
 			const seatW = seatHalf;	 	
 			const seatH = baseSeatSize;	
 			const v_spacing = (t.h - 2 * seatH) / 3;	
-			makeSeat(-seatW, v_spacing, seatW, seatH);	 	 	 	
+			makeSeat(-seatW, v_spacing, seatW, seatH);	 	       	
 			makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);	 	
-			makeSeat(t.w, v_spacing, seatW, seatH);	 	 	     	
+			makeSeat(t.w, v_spacing, seatW, seatH);	 	         	
 			makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);	 	 	
 		} else if (t.w === 50 && t.h === 30) {	
 			const seatW = baseSeatSize;	
@@ -839,10 +854,14 @@
 			const trackingEvent = {
 				tenant_id: URL_PARAMS.tenant_id,
 				booking_ref: URL_PARAMS.booking_ref,
-				event_type: 'checkout_start',
-				event_source: 'modal_open',
+				checkout_started: true, // Use the new column
 			};
-			const { error } = await _supa.from('engagement_tracking').insert([trackingEvent]);
+            
+            // Log the checkout start state by UPSERTING the flag
+            const { error } = await _supa
+                .from('engagement_tracking')
+                .upsert([trackingEvent], { onConflict: 'booking_ref' });
+                
 			if (error) console.error('Tracking Error (Checkout Start):', error);
 		}
 
@@ -907,7 +926,7 @@
 	// ------------------------------------
 
 	// --- Initialization ---
-    getUrlParams(); // NEW: Reads URL params first
+    getUrlParams(); // NEW: Reads URL params first
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
 	loadFloorplan(loadTables);
