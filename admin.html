@@ -388,7 +388,7 @@
 		
 		// CRITICAL: Dummy tenant ID for Admin Panel - CHANGE THIS FOR EACH CLIENT
 		const CURRENT_TENANT_ID = 'R-DEMO'; 
-        // CRITICAL: The URL of the Vercel API function (Used for secure Admin booking)
+        // CRITICAL: Vercel Function URL for SECURE Admin booking
         const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
 
 
@@ -477,7 +477,7 @@
 				
 				if (callback) callback();
 			};
-			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); 
+			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); // CACHE BUSTER
 		}
 
 		async function loadTables() {
@@ -506,17 +506,18 @@
 				{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater (50x30, rotated)
 			];
 			
-			// NOTE: This currently fetches ALL table layouts since RLS is set to SELECT TRUE
 			let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
 
 			if (error) {
+				// FIX: If error occurs, use base tables but log warning
 				console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
 				tables = baseTables;
 			} else {
 				const positionMap = new Map(dbData.map(t => [t.id, t]));
 				
 				tables = baseTables.map(t => {
-					const dbPos = positionPos.get(t.id);
+					// FIX: Use positionMap correctly inside this block
+					const dbPos = positionMap.get(t.id);
 					if (dbPos) {
 						return {	
 							id: t.id,	
@@ -759,6 +760,7 @@
 
 			// 2. Call your secure Vercel function (Part 1 of the fix)
 			try {
+				// NOTE: Using the full Vercel URL because your Admin page is hosted on GitHub Pages
 				const response = await fetch(ADMIN_BOOKING_API_URL, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -768,7 +770,7 @@
 				const result = await response.json();
 
 				if (!response.ok) {
-					alert('Booking failed: ' + (result.error || 'Check console for Vercel logs.'));
+					alert('Admin booking failed: ' + (result.error || 'Check console for Vercel logs.'));
 					console.error('Admin Booking API Error:', result.error || 'Unknown Vercel error.');
 					return false;
 				}
