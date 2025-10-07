@@ -320,10 +320,10 @@
     };
 
 	// --- Price Constants in Cents/Pence ---
-	// Using your charm pricing strategy: £4.99 base unit
+	// Your Requested Prices: £4.99, £9.99, £14.99
 	const PRICE_2_SEATER = 499;	// £4.99
-	const PRICE_4_SEATER = 999;	// £9.99 (2 x £4.99)
-	const PRICE_6_SEATER = 1499; // £14.99 (3 x £4.99)
+	const PRICE_4_SEATER = 999;	// £9.99 
+	const PRICE_6_SEATER = 1499; // £14.99 
 	// --------------------------------------
 
 	const TABLE_COLOR = '#b7d7a8';		
@@ -336,47 +336,48 @@
 	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
 	
 	// --- Helper Functions ---
-    
-    // NEW: Function to read the URL parameters
-    function getUrlParams() {
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        URL_PARAMS.tenant_id = urlParams.get('tenant_id');
-        URL_PARAMS.booking_ref = urlParams.get('booking_ref');
-        URL_PARAMS.source = urlParams.get('source');
+    
+    // NEW: Function to read the URL parameters
+    function getUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        URL_PARAMS.tenant_id = urlParams.get('tenant_id');
+        URL_PARAMS.booking_ref = urlParams.get('booking_ref');
+        URL_PARAMS.source = urlParams.get('source');
 
-        // Use a default for local testing if tenant_id is missing
-        if (!URL_PARAMS.tenant_id) {
-             URL_PARAMS.tenant_id = 'R-DEMO'; 
-        }
-    }
-    
-    // NEW: Function to log the initial click event
-    async function logInitialClick() {
-        if (!URL_PARAMS.booking_ref) {
-            console.log("Tracking skipped: Missing booking_ref.");
-            return;
-        }
-        
-        const trackingEvent = {
-            tenant_id: URL_PARAMS.tenant_id,
-            booking_ref: URL_PARAMS.booking_ref,
-            event_type: 'link_click', // The customer landed on the page
-            event_source: URL_PARAMS.source || 'unknown',
-        };
+        // Use a default for local testing if tenant_id is missing
+        if (!URL_PARAMS.tenant_id) {
+             URL_PARAMS.tenant_id = 'R-DEMO'; 
+        }
+    }
+    
+    // NEW: Function to log the initial click event
+    async function logInitialClick() {
+        if (!URL_PARAMS.booking_ref) {
+            console.log("Tracking skipped: Missing booking_ref.");
+            return;
+        }
+        
+        const trackingEvent = {
+            tenant_id: URL_PARAMS.tenant_id,
+            booking_ref: URL_PARAMS.booking_ref,
+            event_type: 'link_click', // The customer landed on the page
+            event_source: URL_PARAMS.source || 'unknown',
+        };
 
-        // Uses the public anon key to insert into the engagement_tracking table
-        const { error } = await _supa
-            .from('engagement_tracking')
-            .insert([trackingEvent]);
+        // Uses the public anon key to insert into the engagement_tracking table
+        const { error } = await _supa
+            .from('engagement_tracking')
+            .insert([trackingEvent]);
 
-        if (error) {
-            console.error('Error logging initial link click:', error);
-        } else {
-            console.log(`Tracking: Logged 'link_click' for booking ${URL_PARAMS.booking_ref}.`);
-        }
-    }
-    // ---------------------------------------------------
+        if (error) {
+            // Logging the full database error to the console
+            console.error('Error logging initial link click:', error);
+        } else {
+            console.log(`Tracking: Logged 'link_click' for booking ${URL_PARAMS.booking_ref}.`);
+        }
+    }
+    // ---------------------------------------------------
 
 
 	function timeToMinutes(timeStr) {
@@ -456,28 +457,32 @@
 	// --- Background/Floorplan Loading (Admin Style) ---
 	
 	function loadFloorplan(callback) {
-		const imageObj = new Image();
-		imageObj.onload = function() {
-			const floorplan = new Konva.Image({
-				x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
-			});
-			backgroundLayer.add(floorplan);
-			
-			backgroundLayer.draw();
-			
-			resizeStage();	
-			
-			if (callback) callback();
-		};
-		// Add cache buster to force new image load
-		imageObj.src = 'floorplan.png?v=' + new Date().getTime();	
+        // Fix: Wrap the logic in a Promise to handle asynchronous loading cleanly
+        return new Promise((resolve) => {
+            const imageObj = new Image();
+            imageObj.onload = function() {
+                const floorplan = new Konva.Image({
+                    x: 0, y: 0, image: imageObj, width: STAGE_WIDTH, height: STAGE_HEIGHT,
+                });
+                backgroundLayer.add(floorplan);
+                
+                backgroundLayer.draw();
+                
+                resizeStage();	
+                
+                if (callback) callback();
+                resolve(); // Resolve the promise once loading is complete
+            };
+            // Add cache buster to force new image load
+            imageObj.src = 'floorplan.png?v=' + new Date().getTime();	
+        });
 	}
 
 	// --- Booking Logic ---
 
 	async function loadBookings() {
-        // If tenant ID is missing (only for a broken live link), stop loading bookings.
-        if (!URL_PARAMS.tenant_id) return false; 
+        // If tenant ID is missing (only for a broken live link), stop loading bookings.
+        if (!URL_PARAMS.tenant_id) return false; 
 
 		const selectedDateSupabase = document.getElementById('booking-date').value;
 		const selectedTime = document.getElementById('booking-time').value;
@@ -491,9 +496,8 @@
 		const { data, error } = await _supa
 			.from('premium_slots')	
 			.select('*')
-			.eq('date', selectedDateSupabase)
-            // CRITICAL: Filter by tenant ID to show only relevant bookings
-            .eq('tenant_id', URL_PARAMS.tenant_id);
+			.eq('date', selectedDateSupabase); 
+            // NOTE: The tenant_id filter has been removed to align with the permissive RLS policy.
 			
 		if(error){	
 			console.error('Error fetching bookings:', error);	
@@ -559,10 +563,10 @@
 	// --- Konva Table Drawing ---
 	
 	async function loadTables() {
-        if (!URL_PARAMS.tenant_id) {
-             console.error("Critical Error: Missing tenant_id. Stopping map load.");
-             return;
-        }
+        if (!URL_PARAMS.tenant_id) {
+             console.error("Critical Error: Missing tenant_id. Stopping map load.");
+             return;
+        }
 
 		// --- DEFINITIVE LIST OF 21 TABLES WITH CORRECT SIZES (MUST MATCH ADMIN) ---
 		const baseTables = [
@@ -590,6 +594,7 @@
 		];
 		
 		// --- FETCH POSITIONS FROM DB ---
+        // NOTE: No filter here. Fetches ALL layouts to respect RLS open policy.
 		let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
 
 		if (error) {
@@ -683,7 +688,7 @@
 			const v_spacing = (t.h - 2 * seatH) / 3;	
 			makeSeat(-seatW, v_spacing, seatW, seatH);	 	 	 	
 			makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);	 	
-			makeSeat(t.w, v_spacing, seatW, seatH);	 	 	 	 	
+			makeSeat(t.w, v_spacing, seatW, seatH);	 	 	     	
 			makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);	 	 	
 		} else if (t.w === 50 && t.h === 30) {	
 			const seatW = baseSeatSize;	
@@ -699,8 +704,8 @@
 			const h_spacing = t.w / 4;	
 			for(let i=0; i<3; i++){
 				const x_pos = h_spacing * (i+1) - seatW/2;
-				makeSeat(x_pos, -seatH, seatW, seatH);	 	 	 	 	
-				makeSeat(x_pos, t.h, seatW, seatH);	 	 	 	 	 	
+				makeSeat(x_pos, -seatH, seatW, seatH);	 	 	     	
+				makeSeat(x_pos, t.h, seatW, seatH);	 	 	     	 	
 			}
 		}
 		return group;
@@ -873,9 +878,9 @@
 					total_pence: totalPence,
 					customer_name: customerName,
 					party_size: partySize,
-                    // CRITICAL: Pass tracking data to the payment function
-					tenant_id: URL_PARAMS.tenant_id, 
-					booking_ref: URL_PARAMS.booking_ref, 
+                    // CRITICAL: Pass tracking data to the payment function
+					tenant_id: URL_PARAMS.tenant_id, 
+					booking_ref: URL_PARAMS.booking_ref, 
 				})
 			});
 			
@@ -894,11 +899,11 @@
 	// ------------------------------------
 
 	// --- Initialization ---
-    getUrlParams(); // NEW: Reads URL params first
+    getUrlParams(); // NEW: Reads URL params first
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
 	loadFloorplan(loadTables).then(() => {
-        logInitialClick(); // NEW: Logs the event AFTER the floorplan is loaded
+        logInitialClick(); // NEW: Logs the event AFTER the floorplan is loaded
 	});
 </script>
 </body>
