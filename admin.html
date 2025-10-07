@@ -386,8 +386,8 @@
 		let isMultiSelectMode = false;
 		let selectedMultiTables = new Set();
 		
-		// CRITICAL: Dummy tenant ID for Admin Panel - CHANGE THIS FOR EACH CLIENT
-		const CURRENT_TENANT_ID = 'R-DEMO'; 
+		// CRITICAL: Dummy tenant ID for Admin Panel - UPDATED TO MATCH SUCCESSFUL TEST ID
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
         // CRITICAL: Vercel Function URL for SECURE Admin booking
         const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
 
@@ -477,7 +477,7 @@
 				
 				if (callback) callback();
 			};
-			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); // CACHE BUSTER
+			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); 
 		}
 
 		async function loadTables() {
@@ -760,7 +760,6 @@
 
 			// 2. Call your secure Vercel function (Part 1 of the fix)
 			try {
-				// NOTE: Using the full Vercel URL because your Admin page is hosted on GitHub Pages
 				const response = await fetch(ADMIN_BOOKING_API_URL, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
