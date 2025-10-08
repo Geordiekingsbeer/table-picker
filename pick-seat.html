@@ -582,4 +582,365 @@
 	// --- Konva Table Drawing ---
 	
 	async function loadTables() {
-        if
+        if (!URL_PARAMS.tenant_id) {
+             console.error("Critical Error: Missing tenant_id. Stopping map load.");
+             return;
+        }
+
+		// --- DEFINITIVE LIST OF 21 TABLES WITH CORRECT SIZES (MUST MATCH ADMIN) ---
+		const baseTables = [
+			// Original Tables 1-17
+			{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
+			{ id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
+			{ id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
+			{ id: 4, x: 140, y: 220, w: 30, h: 30, rotation: 0 },
+			{ id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 }, // 4-seater
+			{ id: 6, x: 250, y: 330, w: 30, h: 30, rotation: 0 },
+			{ id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 }, // 4-seater
+			{ id: 8, x: 400, y: 100, w: 30, h: 30, rotation: 0 },
+			{ id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 }, // 4-seater
+			{ id: 10, x: 300, y: 240, w: 30, h: 30, rotation: 0 },
+			{ id: 11, x: 40, y: 80, w: 30, h: 30, rotation: 0 },
+			{ id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 }, // 4-seater
+			{ id: 13, x: 400, y: 280, w: 30, h: 30, rotation: 0 },
+			{ id: 14, x: 250, y: 180, w: 30, h: 30, rotation: 0 },
+			
+			// --- NEW TABLES REQUESTED (IDs 18-21) ---
+			{ id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
+			{ id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
+			{ id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
+			{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater (50x30, rotated)
+		];
+		
+		// --- FETCH POSITIONS FROM DB ---
+        // NOTE: No filter here. Fetches ALL layouts to respect RLS open policy.
+		let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
+
+		if (error) {
+			console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
+			tables = baseTables;
+		} else {
+			const positionMap = new Map(dbData.map(t => [t.id, t]));
+			
+			// Merge database positions with the full set of table definitions
+			tables = baseTables.map(t => {
+				const dbPos = positionMap.get(t.id);
+				if (dbPos) {
+					return {	
+						id: t.id,	
+						x: dbPos.x,	
+						y: dbPos.y,	
+						w: t.w,	
+						h: t.h,	
+						rotation: dbPos.rotation	
+					};
+				}
+				return t;	
+			});
+			
+			tables = tables.filter((t, index, self) =>	
+				index === self.findIndex((tt) => (tt.id === t.id))
+			).sort((a, b) => a.id - b.id);
+		}
+		
+		layer.destroyChildren();	
+		tableDataMap = new Map(); // Re-initialize map with full data
+		
+		tables.forEach(t => {
+			const price = getTablePrice(t.w, t.h);
+			tableDataMap.set(t.id, { id: t.id, price: price, w: t.w, h: t.h }); // Store full table data
+
+			const group = drawTable(t);
+			const tableRect = group.findOne('.main-table');
+			
+			group.offset({ x: tableRect.width()/2, y: tableRect.height()/2 });
+			group.x(t.x + tableRect.width()/2);
+			group.y(t.y + tableRect.height()/2);
+			group.rotation(t.rotation || 0);	
+
+			if (STAFF_USE_TABLE_IDS.includes(t.id)) {
+				tableRect.fill(UNAVAILABLE_COLOR);
+			}
+		});
+		
+		layer.draw();	
+		await loadBookings();
+	}
+	
+	function drawTable(t) {
+		const group = new Konva.Group({	
+			x: t.x,	
+			y: t.y,	
+			id: 'g-' + t.id,
+			name: 'selectable-table'	
+		});
+		layer.add(group);
+
+		const tableRect = new Konva.Rect({	
+			width: t.w,	
+			height: t.h,	
+			fill: TABLE_COLOR,	
+			stroke: '#000',	
+			strokeWidth: 1,
+			name: 'main-table'	
+		});
+		group.add(tableRect);
+
+		group.on('click tap', (e) => selectTable(t.id, e.evt));
+
+		// Seat drawing logic (crucial for correct display)
+		const baseSeatSize = 12;	
+		const seatHalf = baseSeatSize / 2;	
+
+		function makeSeat(x, y, w, h) {
+			group.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
+		}
+		
+		if (t.w === 30 && t.h === 30) {
+			const seatW = baseSeatSize;	
+			const seatH = seatHalf;	 	
+			makeSeat(t.w/2 - seatW/2, -seatH, seatW, seatH);	 	 	
+			makeSeat(t.w/2 - seatW/2, t.h, seatW, seatH);	 	 	 	
+		} else if (t.w === 30 && t.h === 50) {
+			const seatW = seatHalf;	 	
+			const seatH = baseSeatSize;	
+			const v_spacing = (t.h - 2 * seatH) / 3;	
+			makeSeat(-seatW, v_spacing, seatW, seatH);	 	       	
+			makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);	 	
+			makeSeat(t.w, v_spacing, seatW, seatH);	 	         	
+			makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);	 	 	
+		} else if (t.w === 50 && t.h === 30) {	
+			const seatW = baseSeatSize;	
+			const seatH = seatHalf;	
+			const h_spacing = (t.w - 2 * seatW) / 3;
+			makeSeat(h_spacing, -seatH, seatW, seatH);
+			makeSeat(h_spacing * 2 + seatW, -seatH, seatW, seatH);
+			makeSeat(h_spacing, t.h, seatW, seatH);
+			makeSeat(h_spacing * 2 + seatW, t.h, seatW, seatH);
+		} else if (t.w === 90 && t.h === 30) {
+			const seatW = baseSeatSize;	
+			const seatH = seatHalf;	 	
+			const h_spacing = t.w / 4;	
+			for(let i=0; i<3; i++){
+				const x_pos = h_spacing * (i+1) - seatW/2;
+				makeSeat(x_pos, -seatH, seatW, seatH);	           	
+				makeSeat(x_pos, t.h, seatW, seatH);	           	 	
+			}
+		}
+		return group;
+	}
+
+	function selectTable(id, evt) {
+		const group = layer.findOne('#g-' + id);
+		const tableRect = group.findOne('.main-table');
+		
+		if (tableRect.fill() === UNAVAILABLE_COLOR || tableRect.fill() === BOOKED_COLOR) {
+			alert('This table is not available for online booking.');
+			return;
+		}
+
+		const idNumber = Number(id);
+		const index = selectedTableIds.indexOf(idNumber);
+		
+		const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
+		const isMulti = isShiftPressed || isMultiSelectMode;
+
+		if (index === -1) {
+			if (!isMulti) {
+				stage.find('.main-table').forEach(rect => {
+					if (rect.fill() === TABLE_COLOR) {
+						rect.stroke('#000');
+						rect.strokeWidth(1);
+					}
+				});
+				selectedTableIds = [];
+			}
+			
+			selectedTableIds.push(idNumber);
+			tableRect.stroke(HIGHLIGHT_COLOR);
+			tableRect.strokeWidth(3);
+
+		} else {
+			if (isMulti || selectedTableIds.length === 1) {
+				selectedTableIds.splice(index, 1);
+				tableRect.stroke('#000');
+				tableRect.strokeWidth(1);
+			}
+		}
+		
+		const totalPence = calculateTotalPence();
+		updatePayButton(totalPence);
+
+		layer.draw();
+	}
+
+	// --- Event Listeners ---
+	
+	window.addEventListener('resize', resizeStage);
+
+	document.getElementById('multi-select-toggle').onclick = () => {
+		// --- CRITICAL FIX: The event handler must be attached to the button object itself ---
+		const toggleButton = document.getElementById('multi-select-toggle');	
+		
+		isMultiSelectMode = !isMultiSelectMode;
+		
+		if (isMultiSelectMode) {
+			toggleButton.dataset.active = 'true';
+			toggleButton.classList.add('active');
+			toggleButton.textContent = 'Exit Multi-Select Mode';
+			
+			if(selectedGroup) {
+				selectedGroup.findOne('.main-table').stroke('#000');
+				selectedGroup = null;
+			}
+			
+			// NOTE: Admin tables remain draggable by default unless multi-select is active
+			layer.find('Group').forEach(group => group.draggable(false));	
+		} else {
+			toggleButton.dataset.active = 'false';
+			toggleButton.classList.remove('active');
+			toggleButton.textContent = 'Start Multi-Select Mode';
+			
+			selectedMultiTables.clear();
+			multiBookButton.style.display = 'none';
+
+			layer.find('Group').forEach(group => group.draggable(true));
+		}
+
+		updateTableVisuals();
+	};
+
+
+	document.getElementById('check-availability').onclick = async () => {
+		// Clear selection highlights on check
+		stage.find('.main-table').forEach(rect => {
+			rect.stroke('#000');
+			rect.strokeWidth(1);
+		});
+		selectedTableIds = [];
+		
+		await loadBookings();
+	};
+	
+	// --- Re-attach Check Availability logic to the specific button ---
+	const checkAvailabilityButton = document.getElementById('check-availability');
+	if (checkAvailabilityButton) {
+		checkAvailabilityButton.onclick = async () => {
+			// Re-run the load bookings logic
+			await loadBookings();	
+		};
+	}
+	// -----------------------------------------------------------------
+
+
+	payBtn.onclick = async () => {
+		if (selectedTableIds.length === 0) return;
+		
+		const selectedDate = document.getElementById('booking-date').value;
+		const selectedTime = document.getElementById('booking-time').value;
+
+		if (!selectedDate || !selectedTime) {
+			alert('Please select a valid date and time before proceeding.');
+			return;
+		}
+
+		await loadBookings();
+		
+		const isAnySelectedTableBooked = selectedTableIds.some(id => {
+			const group = layer.findOne('#g-' + id);
+			return group.findOne('.main-table').fill() === BOOKED_COLOR;
+		});
+
+		if (isAnySelectedTableBooked) {
+			alert("Error: One or more selected tables were just booked. Please re-check availability and select again.");
+			updateTableVisuals();
+			return;
+		}
+
+		// NEW: Log 'checkout_start' when modal opens
+		if (URL_PARAMS.booking_ref) {
+			const trackingEvent = {
+				tenant_id: URL_PARAMS.tenant_id,
+				booking_ref: URL_PARAMS.booking_ref,
+				checkout_started: true, // Use the new column
+			};
+            
+            // Log the checkout start state by UPSERTING the flag
+            const { error } = await _supa
+                .from('engagement_tracking')
+                .upsert([trackingEvent], { onConflict: 'booking_ref' });
+                
+			if (error) console.error('Tracking Error (Checkout Start):', error);
+		}
+
+		customerModal.style.display = 'flex';
+	};
+	
+	// --- FINAL SUBMIT LOGIC FROM MODAL ---
+	customerForm.addEventListener('submit', async function(e) {
+		e.preventDefault();
+        
+        // CRITICAL FIX: Re-read URL params before submit in case page was loaded in same tab
+        getUrlParams();
+
+		const customerName = document.getElementById('customer-name').value;
+		const partySize = parseInt(document.getElementById('party-size').value);
+		const email = document.getElementById('customer-email').value;
+
+		if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
+			alert('Please fill out all fields correctly.');
+			return;
+		}
+
+		customerModal.style.display = 'none';	
+
+		const selectedDate = document.getElementById('booking-date').value;
+		const selectedTime = document.getElementById('booking-time').value;
+		
+		const totalPence = calculateTotalPence();	
+		
+		if (totalPence === 0) {
+			alert("Error: Selected tables have no defined price (Total is 0).");
+			return;
+		}
+
+		try {
+			const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({	
+					table_ids: selectedTableIds,	
+					email: email,
+					booking_date: selectedDate,
+					booking_time: selectedTime,
+					total_pence: totalPence,
+					customer_name: customerName,
+					party_size: partySize,
+                    // CRITICAL FIX: Passing tracking data to Vercel API
+					tenant_id: URL_PARAMS.tenant_id, 
+					booking_ref: URL_PARAMS.booking_ref, 
+				})
+			});
+			
+			const data = await res.json();
+			if (data.url) {
+				window.location.href = data.url;	 	
+			} else {
+				console.error(data);
+				alert('Checkout creation failed. See console for details.');
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Checkout creation failed. See console for details.');
+		}
+	});
+	// ------------------------------------
+
+	// --- Initialization ---
+    getUrlParams(); // NEW: Reads URL params first
+	setDefaultDateTime();
+	window.addEventListener('resize', resizeStage);
+	loadFloorplan(loadTables);
+</script>
+</body>
+</html>
