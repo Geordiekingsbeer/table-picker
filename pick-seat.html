@@ -736,4 +736,201 @@
 		const isMulti = isShiftPressed || isMultiSelectMode;
 
 		if (index === -1) {
-			if (!isMulti)
+			if (!isMulti) {
+				stage.find('.main-table').forEach(rect => {
+					if (rect.fill() === TABLE_COLOR) {
+						rect.stroke('#000');
+						rect.strokeWidth(1);
+					}
+				});
+				selectedTableIds = [];
+			}
+			
+			selectedTableIds.push(idNumber);
+			tableRect.stroke(HIGHLIGHT_COLOR);
+			tableRect.strokeWidth(3);
+
+		} else {
+			if (isMulti || selectedTableIds.length === 1) {
+				selectedTableIds.splice(index, 1);
+				tableRect.stroke('#000');
+				tableRect.strokeWidth(1);
+			}
+		}
+		
+		const totalPence = calculateTotalPence();
+		updatePayButton(totalPence);
+
+		layer.draw();
+	}
+
+	// --- Event Listeners ---
+	
+	window.addEventListener('resize', resizeStage);
+
+	document.getElementById('multi-select-toggle').onclick = () => {
+		// --- CRITICAL FIX: The event handler must be attached to the button object itself ---
+		const toggleButton = document.getElementById('multi-select-toggle');	
+		
+		isMultiSelectMode = !isMultiSelectMode;
+		
+		if (isMultiSelectMode) {
+			toggleButton.dataset.active = 'true';
+			toggleButton.classList.add('active');
+			toggleButton.textContent = 'Exit Multi-Select Mode';
+			
+			if(selectedGroup) {
+				selectedGroup.findOne('.main-table').stroke('#000');
+				selectedGroup = null;
+			}
+			
+			// NOTE: Admin tables remain draggable by default unless multi-select is active
+			layer.find('Group').forEach(group => group.draggable(false));	
+		} else {
+			toggleButton.dataset.active = 'false';
+			toggleButton.classList.remove('active');
+			toggleButton.textContent = 'Start Multi-Select Mode';
+			
+			selectedMultiTables.clear();
+			multiBookButton.style.display = 'none';
+
+			layer.find('Group').forEach(group => group.draggable(true));
+		}
+
+		updateTableVisuals();
+	};
+
+
+	document.getElementById('check-availability').onclick = async () => {
+		// Clear selection highlights on check
+		stage.find('.main-table').forEach(rect => {
+			rect.stroke('#000');
+			rect.strokeWidth(1);
+		});
+		selectedTableIds = [];
+		
+		await loadBookings();
+	};
+	
+	// --- Re-attach Check Availability logic to the specific button ---
+	const checkAvailabilityButton = document.getElementById('check-availability');
+	if (checkAvailabilityButton) {
+		checkAvailabilityButton.onclick = async () => {
+			// Re-run the load bookings logic
+			await loadBookings();	
+		};
+	}
+	// -----------------------------------------------------------------
+
+
+	payBtn.onclick = async () => {
+		if (selectedTableIds.length === 0) return;
+		
+		const selectedDate = document.getElementById('booking-date').value;
+		const selectedTime = document.getElementById('booking-time').value;
+
+		if (!selectedDate || !selectedTime) {
+			alert('Please select a valid date and time before proceeding.');
+			return;
+		}
+
+		await loadBookings();
+		
+		const isAnySelectedTableBooked = selectedTableIds.some(id => {
+			const group = layer.findOne('#g-' + id);
+			return group.findOne('.main-table').fill() === BOOKED_COLOR;
+		});
+
+		if (isAnySelectedTableBooked) {
+			alert("Error: One or more selected tables were just booked. Please re-check availability and select again.");
+			updateTableVisuals();
+			return;
+		}
+
+		// NEW: Log 'checkout_start' when modal opens
+		if (URL_PARAMS.booking_ref) {
+			const trackingEvent = {
+				tenant_id: URL_PARAMS.tenant_id,
+				booking_ref: URL_PARAMS.booking_ref,
+				checkout_started: true, // Use the new column
+			};
+            
+            // Log the checkout start state by UPSERTING the flag
+            const { error } = await _supa
+                .from('engagement_tracking')
+                .upsert([trackingEvent], { onConflict: 'booking_ref' });
+                
+			if (error) console.error('Tracking Error (Checkout Start):', error);
+		}
+
+		customerModal.style.display = 'flex';
+	};
+	
+	// --- FINAL SUBMIT LOGIC FROM MODAL ---
+	customerForm.addEventListener('submit', async function(e) {
+		e.preventDefault();
+
+        // CRITICAL FIX: Re-read URL parameters just before final submit
+        getUrlParams(); 
+
+		const customerName = document.getElementById('customer-name').value;
+		const partySize = parseInt(document.getElementById('party-size').value);
+		const email = document.getElementById('customer-email').value;
+
+		if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
+			alert('Please fill out all fields correctly.');
+			return;
+		}
+
+		customerModal.style.display = 'none';	
+
+		const selectedDate = document.getElementById('booking-date').value;
+		const selectedTime = document.getElementById('booking-time').value;
+		
+		const totalPence = calculateTotalPence();	
+		
+		if (totalPence === 0) {
+			alert("Error: Selected tables have no defined price (Total is 0).");
+			return;
+		}
+
+		try {
+			const res = await fetch('https://stripe-serverless-phi.vercel.app/api/create-checkout', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({	
+					table_ids: selectedTableIds,	
+					email: email,
+					booking_date: selectedDate,
+					booking_time: selectedTime,
+					total_pence: totalPence,
+					customer_name: customerName,
+					party_size: partySize,
+                    // CRITICAL FIX: Passing tracking data to Vercel API
+					tenant_id: URL_PARAMS.tenant_id, 
+					booking_ref: URL_PARAMS.booking_ref, 
+				})
+			});
+			
+			const data = await res.json();
+			if (data.url) {
+				window.location.href = data.url;	 	
+			} else {
+				console.error(data);
+				alert('Checkout creation failed. See console for details.');
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Checkout creation failed. See console for details.');
+		}
+	});
+	// ------------------------------------
+
+	// --- Initialization ---
+    getUrlParams(); // NEW: Reads URL params first
+	setDefaultDateTime();
+	window.addEventListener('resize', resizeStage);
+	loadFloorplan(loadTables);
+</script>
+</body>
+</html>
