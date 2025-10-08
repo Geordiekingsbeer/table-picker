@@ -284,6 +284,8 @@
 	</style>
 </head>
 <body>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+
 	<div class="admin-controls-top">
 		<button id="save">Save layout</button>
 		<button id="rotate">Rotate Table 90°</button>
@@ -477,7 +479,23 @@
 				
 				if (callback) callback();
 			};
-			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); 
+			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); // CACHE BUSTER
+		}
+
+		// NEW: Function to fetch the restaurant display name
+		async function loadDisplayName() {
+			const { data, error } = await _supa
+				.from('tenants')
+				.select('display_name')
+				.eq('tenant_id', CURRENT_TENANT_ID)
+				.single();
+
+			if (data) {
+				document.getElementById('restaurant-display-name').textContent = `${data.display_name} Admin Panel`;
+			} else {
+				document.getElementById('restaurant-display-name').textContent = `Admin Panel (${CURRENT_TENANT_ID})`;
+				console.error("Could not fetch display name for current tenant.");
+			}
 		}
 
 		async function loadTables() {
