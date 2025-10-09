@@ -375,7 +375,7 @@
 		
 		// ACTION REQUIRED: PASTE YOUR VERIFIED SUPABASE SERVICE ROLE KEY HERE
 		// This key is used on the server side (Vercel) for the Save function.
-		const supabaseServiceRoleKey = 'sb_secret_nbGsaU0asg8w3ANN6DNsfg_-7sxSjtp'; 
+		const supabaseServiceRoleKey = 'YOUR_SERVICE_ROLE_KEY_GOES_HERE'; 
 		
 		// FIX: Use the safe, read-only ANONYMOUS KEY for browser ops to avoid 401 (Unauthorized) errors.
 		const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
@@ -397,9 +397,9 @@
 		// CRITICAL: Dummy tenant ID for Admin Panel - UPDATED TO MATCH SUCCESSFUL TEST ID
 		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
         // CRITICAL: Vercel Function URL for SECURE Admin booking
-        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/function/admin-create-booking';
+        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
         // NEW: Vercel Function URL for SECURE Admin Layout Save
-        const ADMIN_SAVE_LAYOUT_API_URL = 'https://stripe-serverless-phi.vercel.app/function/admin-save-layout';
+        const ADMIN_SAVE_LAYOUT_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-save-layout';
 
 
 		// --- UNIFIED COLOR CONSTANTS ---
@@ -792,7 +792,7 @@
 
 			// 2. Call your secure Vercel function (Part 1 of the fix)
 			try {
-				// FIX: Update URL to new functions path
+				// FIX: Updated URL to call standard API path
 				const response = await fetch(ADMIN_BOOKING_API_URL, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -1074,7 +1074,7 @@
 				return { id:t.id, x:finalX, y:finalY, rotation: finalRotation, tenant_id: CURRENT_TENANT_ID };
 			}).filter(t => t !== null);
 			
-			// FIX: Call the secure Vercel endpoint for RLS bypass
+			// FIX: Call the secure Vercel endpoint for RLS bypass (using standard /api/ path)
             try {
                 const response = await fetch(ADMIN_SAVE_LAYOUT_API_URL, {
                     method: 'POST',
@@ -1092,6 +1092,7 @@
                     alert('Layout saved!');
                 }
             } catch (error) {
+                // Now that the routing is fixed, this should only catch network drops.
                 alert('Network Error: Could not connect to save service.');
             }
 		};
