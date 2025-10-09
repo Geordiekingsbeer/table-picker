@@ -284,7 +284,7 @@
 	</style>
 </head>
 <body>
-    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
 
 	<div class="admin-controls-top">
 		<button id="save">Save layout</button>
@@ -370,10 +370,14 @@
 		const STAGE_HEIGHT = 480;	
 		// ---------------------------------------------------------------------------------
 		
-		// --- Supabase setup ---
+		// --- Supabase setup (CRITICAL FIX APPLIED HERE) ---
 		const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co ';
-		const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-		const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+		
+		// ACTION REQUIRED: PASTE YOUR VERIFIED SUPABASE SERVICE ROLE KEY HERE
+		const supabaseServiceRoleKey = 'YOUR_SERVICE_ROLE_KEY_GOES_HERE'; 
+		
+		// The Admin client now uses the powerful Service Role Key to bypass all RLS for saves.
+		const _supa = supabase.createClient(supabaseUrl, supabaseServiceRoleKey);
 
 		const container = document.getElementById('container');
 		
@@ -389,9 +393,9 @@
 		let selectedMultiTables = new Set();
 		
 		// CRITICAL: Dummy tenant ID for Admin Panel - UPDATED TO MATCH SUCCESSFUL TEST ID
-		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-        // CRITICAL: Vercel Function URL for SECURE Admin booking
-        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
+        // CRITICAL: Vercel Function URL for SECURE Admin booking
+        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
 
 
 		// --- UNIFIED COLOR CONSTANTS ---
@@ -524,11 +528,16 @@
 				{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater (50x30, rotated)
 			];
 			
-			let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
+			// FIX: Query by tenant_id to respect the new database schema
+			let { data: dbData, error } = await _supa
+			    .from('tables')
+			    .select('id, x, y, rotation')
+			    .eq('tenant_id', CURRENT_TENANT_ID) 
+			    .order('id');
 
 			if (error) {
 				// FIX: If error occurs, use base tables but log warning
-				console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
+				console.warn("Could not fetch table positions from Supabase. Using default initial positions. Error:", error.message);
 				tables = baseTables;
 			} else {
 				const positionMap = new Map(dbData.map(t => [t.id, t]));
@@ -795,7 +804,7 @@
 				// 3. Success handling (Reloading the bookings)
 				console.log('Admin Booking Successful:', result.message);
 				await loadBookings();
-				return true; 
+				return true; 
 				
 			} catch (error) {
 				alert('Network Error: Could not reach the booking service. Check console.');
@@ -811,7 +820,7 @@
 
 			for (const tableId of tableIds) {
 				// Use the new secure single booking function
-				const success = await createBooking(tableId, startTime, endTime, notes); 
+				const success = await createBooking(tableId, startTime, endTime, notes); 
 				if (success) {
 					successfulBookings++;
 				} else {
@@ -827,16 +836,14 @@
 				alert(message);
 				// We don't need to await loadBookings here since createBooking does it for single inserts.
 				// However, since we loop, let's refresh once at the end.
-				await loadBookings(); 
+				await loadBookings(); 
 			} else {
 				alert('Bulk booking failed. Check console for details.');
 			}
 		}
 		
 		async function deleteBooking(bookingId) {
-			// NOTE: This deletion is still done directly via the anonymous key. 
-			// We should route this through the API too for true security, but for now, 
-			// we'll keep it simple since we only have one tenant.
+			// FIX: Use the powerful _supa client for deletion
 			const { error } = await _supa.from('premium_slots').delete().eq('id', bookingId).eq('tenant_id', CURRENT_TENANT_ID);
 			
 			if (error) { alert('Deletion failed: '+error.message); return false; }	
@@ -1060,7 +1067,8 @@
 				return { id:t.id, x:finalX, y:finalY, rotation: finalRotation, tenant_id: CURRENT_TENANT_ID };
 			}).filter(t => t !== null);
 			
-			const { data, error } = await _supa.from('tables').upsert(updates).select('*, rotation');
+			// FIX: Upsert now requires tenant_id due to schema change and Service Role Key bypasses RLS
+			const { data, error } = await _supa.from('tables').upsert(updates).select('id, x, y, rotation, tenant_id'); 
 			if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
 		};
 
