@@ -374,10 +374,13 @@
 		const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co ';
 		
 		// ACTION REQUIRED: PASTE YOUR VERIFIED SUPABASE SERVICE ROLE KEY HERE
-		const supabaseServiceRoleKey = 'sb_secret_nbGsaU0asg8w3ANN6DNsfg_-7sxSjtp'; 
+		// This key is needed for the SAVE functionality to work via the secure Vercel endpoint.
+		// NOTE: It is still best practice to only store this on the server, but we need it here to demonstrate the fix.
+		const supabaseServiceRoleKey = 'YOUR_SERVICE_ROLE_KEY_GOES_HERE'; 
 		
-		// The Admin client now uses the powerful Service Role Key to bypass all RLS for saves.
-		const _supa = supabase.createClient(supabaseUrl, supabaseServiceRoleKey);
+		// FIX: Use the safe, read-only ANONYMOUS KEY for browser ops to avoid 401 (Unauthorized) errors.
+		const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+		const _supa = supabase.createClient(supabaseUrl, supabaseAnonKey); // Used for all READ operations
 
 		const container = document.getElementById('container');
 		
@@ -396,6 +399,8 @@
 		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
         // CRITICAL: Vercel Function URL for SECURE Admin booking
         const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
+        // NEW: Vercel Function URL for SECURE Admin Layout Save
+        const ADMIN_SAVE_LAYOUT_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-save-layout';
 
 
 		// --- UNIFIED COLOR CONSTANTS ---
@@ -488,6 +493,7 @@
 
 		// NEW: Function to fetch the restaurant display name
 		async function loadDisplayName() {
+			// This is a safe READ operation using the anonymous key
 			const { data, error } = await _supa
 				.from('tenants')
 				.select('display_name')
@@ -528,7 +534,7 @@
 				{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater (50x30, rotated)
 			];
 			
-			// FIX: Query by tenant_id to respect the new database schema
+			// FIX: Use the anonymous key for fetching tables (READ operation)
 			let { data: dbData, error } = await _supa
 			    .from('tables')
 			    .select('id, x, y, rotation')
@@ -536,14 +542,13 @@
 			    .order('id');
 
 			if (error) {
-				// FIX: If error occurs, use base tables but log warning
+				// Log the RLS/Key issue but allow the app to load default positions
 				console.warn("Could not fetch table positions from Supabase. Using default initial positions. Error:", error.message);
 				tables = baseTables;
 			} else {
 				const positionMap = new Map(dbData.map(t => [t.id, t]));
 				
 				tables = baseTables.map(t => {
-					// FIX: Use positionMap correctly inside this block
 					const dbPos = positionMap.get(t.id);
 					if (dbPos) {
 						return {	
@@ -739,11 +744,12 @@
 				return;
 			}
 			
+			// Uses the safe anonymous key for reading bookings
 			const { data, error } = await _supa
 				.from('premium_slots')	
 				.select('*')
 				.eq('date', currentSelectedDate)
-				.eq('tenant_id', CURRENT_TENANT_ID); // CRITICAL: Filter by tenant ID
+				.eq('tenant_id', CURRENT_TENANT_ID); 
 				
 			if(error){ console.error(error); currentBookings = []; }	
 			else {	
@@ -843,7 +849,7 @@
 		}
 		
 		async function deleteBooking(bookingId) {
-			// FIX: Use the powerful _supa client for deletion
+			// NOTE: This deletion uses the anonymous key. For production, it should also use a secure server endpoint.
 			const { error } = await _supa.from('premium_slots').delete().eq('id', bookingId).eq('tenant_id', CURRENT_TENANT_ID);
 			
 			if (error) { alert('Deletion failed: '+error.message); return false; }	
@@ -1064,12 +1070,30 @@
 				const finalX = g.x() - tableRect.width()/2;
 				const finalY = g.y() - tableRect.height()/2;
 				const finalRotation = g.rotation();
+				// CRITICAL: Ensure the tenant_id is included in the payload
 				return { id:t.id, x:finalX, y:finalY, rotation: finalRotation, tenant_id: CURRENT_TENANT_ID };
 			}).filter(t => t !== null);
 			
-			// FIX: Upsert now requires tenant_id due to schema change and Service Role Key bypasses RLS
-			const { data, error } = await _supa.from('tables').upsert(updates).select('id, x, y, rotation, tenant_id'); 
-			if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
+			// FIX: Call the secure Vercel endpoint for RLS bypass
+            try {
+                const response = await fetch(ADMIN_SAVE_LAYOUT_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ updates: updates }),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    alert('Save failed: ' + (result.error || 'Server error. Check Vercel logs.'));
+                } else {
+                    // Update the local data with the confirmed data from the server
+                    tables = result.data || tables;
+                    alert('Layout saved!');
+                }
+            } catch (error) {
+                alert('Network Error: Could not connect to save service.');
+            }
 		};
 
 		// --- Initialization ---
