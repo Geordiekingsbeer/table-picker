@@ -39,7 +39,7 @@
 			color: #fff;
 			transition: all 0.2s ease;
 			/* UPDATED: Added subtle box shadow for depth */
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 
 		/* UPDATED: Save button matches table color */
@@ -56,7 +56,7 @@
 		
 		.admin-controls-top button:hover {
 			/* Increased shadow on hover for better effect */
-			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
 			opacity: 0.95;
 		}
 
@@ -93,7 +93,7 @@
 			font-weight: 500;
 			text-align: center;
 			/* NEW: Force font without slashed zero */
-			font-family: Arial, sans-serif; 
+			font-family: Arial, sans-serif; 
 		}
 		
 		/* UPDATED: Load Bookings button matches table color & has bold text */
@@ -105,7 +105,7 @@
 			border-radius: 4px;
 			cursor: pointer;
 			/* UPDATED: Make text bold */
-			font-weight: 600; 
+			font-weight: 600; 
 			flex-grow: 1;
 			box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Added subtle box shadow */
 			white-space: nowrap;
@@ -142,7 +142,7 @@
 			max-width: 480px;
 			text-align: center;
 			/* Added subtle shadow to this button too */
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 		
 		#multi-select-toggle:hover, #multi-book-button:hover {
@@ -197,7 +197,7 @@
 			height: 15px;
 			border-radius: 3px;
 			margin-right: 5px;
-			border: 1px solid #000; 
+			border: 1px solid #000; 
 		}
 		
 		/* Modal styles */
@@ -284,7 +284,7 @@
 	</style>
 </head>
 <body>
-    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
 
 	<div class="admin-controls-top">
 		<button id="save">Save layout</button>
@@ -389,11 +389,9 @@
 		let selectedMultiTables = new Set();
 		
 		// CRITICAL: Dummy tenant ID for Admin Panel - UPDATED TO MATCH SUCCESSFUL TEST ID
-		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-        // CRITICAL: Vercel Function URL for SECURE Admin booking
-        const ADMIN_BOOKING_API_URL = 'https://table-api-final-jsi4kv08v-geordies-projects-8a74623d.vercel.app/api/admin-create-booking';
-        // NEW: Vercel Function URL for SECURE Admin Layout Save
-        const ADMIN_SAVE_LAYOUT_API_URL = 'https://table-api-final-jsi4kv08v-geordies-projects-8a74623d.vercel.app/api/admin-save-layout';
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
+        // CRITICAL: Vercel Function URL for SECURE Admin booking
+        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-phi.vercel.app/api/admin-create-booking';
 
 
 		// --- UNIFIED COLOR CONSTANTS ---
@@ -797,7 +795,7 @@
 				// 3. Success handling (Reloading the bookings)
 				console.log('Admin Booking Successful:', result.message);
 				await loadBookings();
-				return true; 
+				return true; 
 				
 			} catch (error) {
 				alert('Network Error: Could not reach the booking service. Check console.');
@@ -813,7 +811,7 @@
 
 			for (const tableId of tableIds) {
 				// Use the new secure single booking function
-				const success = await createBooking(tableId, startTime, endTime, notes); 
+				const success = await createBooking(tableId, startTime, endTime, notes); 
 				if (success) {
 					successfulBookings++;
 				} else {
@@ -829,15 +827,15 @@
 				alert(message);
 				// We don't need to await loadBookings here since createBooking does it for single inserts.
 				// However, since we loop, let's refresh once at the end.
-				await loadBookings(); 
+				await loadBookings(); 
 			} else {
 				alert('Bulk booking failed. Check console for details.');
 			}
 		}
 		
 		async function deleteBooking(bookingId) {
-			// NOTE: This deletion is still done directly via the anonymous key. 
-			// We should route this through the API too for true security, but for now, 
+			// NOTE: This deletion is still done directly via the anonymous key. 
+			// We should route this through the API too for true security, but for now, 
 			// we'll keep it simple since we only have one tenant.
 			const { error } = await _supa.from('premium_slots').delete().eq('id', bookingId).eq('tenant_id', CURRENT_TENANT_ID);
 			
@@ -1073,3 +1071,4 @@
 	</script>
 </body>
 </html>
+
