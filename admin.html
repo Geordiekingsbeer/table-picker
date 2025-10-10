@@ -613,7 +613,7 @@
 			updateTableVisuals();
 		}
 		
-		// NEW: direct Supabase insert (no Vercel, no CORS)
+		// NEW: direct Supabase insert + call Edge Function for email
 		async function createBooking(tableId, startTime, endTime, notes) {
 		  const date = document.getElementById('booking-date').value;
 		  const tenantId = CURRENT_TENANT_ID;
@@ -651,7 +651,7 @@
 		      start_time: startTime + ':00',
 		      end_time: endTime + ':00',
 		      host_notes: notes || 'Admin Manual Booking',
-		      staff_email: staffEmail,   // <-- triggers the email
+		      staff_email: staffEmail,   // <-- stored for email
 		    })
 		    .select();
 
@@ -662,6 +662,16 @@
 		  }
 
 		  console.log('Admin Booking Successful:', data);
+
+		  // 3. fire confirmation email directly (no trigger needed)
+		  try {
+		    await _supa.functions.invoke('send-confirmation', {
+		      body: { record: data[0] }
+		    });
+		  } catch (e) {
+		    console.warn('Email send failed:', e);
+		  }
+
 		  await loadBookings();
 		  return true;
 		}
