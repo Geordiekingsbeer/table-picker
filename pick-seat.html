@@ -894,8 +894,8 @@
 		}
 
 		try {
-			// FORCED DEPLOYMENT COMMIT - Corrected Endpoint URL
-			const res = await fetch('https://dine-checkout-live.vercel.app/checkout-api', { 
+			// ** NETLIFY FIX: Calling the Netlify function endpoint **
+			const res = await fetch('https://dine-select-api.netlify.app/.netlify/functions/checkout-session', { 
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({	
