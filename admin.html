@@ -1,254 +1,836 @@
-<script>
-	// --- Konva Stage Dimensions ---
-	const STAGE_WIDTH = 480;	
-	const STAGE_HEIGHT = 480;	
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Admin – Drag Tables</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2 "></script>
+	<script src="https://unpkg.com/konva@9/konva.min.js "></script>
+	<style>
+		body{
+			font-family: Arial, Helvetica, sans-serif;
+			background:#e3e3e3;	
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: flex-start;
+			min-height: 100vh;
+			margin: 0;	
+			padding: 20px 10px;
+		}
 
-	// --- Supabase setup ---
-	const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-	const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-	const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+		/* Admin Management Buttons (Drag, Save, Rotate) */
+		.admin-controls-top {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin-bottom: 20px;
+			flex-wrap: wrap;
+			gap: 10px;
+		}
+		
+		.admin-controls-top button {
+			padding: 8px 15px;
+			font-size: 14px;
+			font-weight: 600;
+			border-radius: 4px;
+			border: none;
+			cursor: pointer;
+			color: #fff;
+			transition: all 0.2s ease;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+		}
 
-	const container = document.getElementById('container');
-	const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
-	const backgroundLayer = new Konva.Layer();
-	stage.add(backgroundLayer);
-	const layer = new Konva.Layer();
-	stage.add(layer);
+		.admin-controls-top button#save {
+			background-color: #b7d7a8;
+			color: #333;
+		}
+		
+		.admin-controls-top button#rotate {
+			background-color: #add8e6;
+			color: #333;
+		}
+		
+		.admin-controls-top button:hover {
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+			opacity: 0.95;
+		}
 
-	let tables = [];
-	let selectedGroup = null;
-	let isMultiSelectMode = false;
-	let selectedMultiTables = new Set();
+		/* Date/Time Selector */
+		#datetime-controls {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 15px;
+			align-items: center;
+			padding: 0;
+			background: none;
+			box-shadow: none;
+			flex-wrap: nowrap;
+			max-width: 480px;
+			width: 100%;
+		}
+
+		#datetime-controls label {
+			font-weight: 600;
+			color: #555;
+			white-space: nowrap;
+		}
+
+		#datetime-controls input {
+			flex-grow: 1;
+			padding: 12px 10px;
+			border: 1px solid #ccc;
+			border-radius: 4px;
+			background: white;
+			font-size: 16px;
+			color: #333;
+			max-width: none;
+			font-weight: 500;
+			text-align: center;
+			font-family: Arial, sans-serif; 
+		}
+		
+		#load-bookings {
+			padding: 12px 10px;
+			background-color: #b7d7a8;
+			color: #333;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			font-weight: 600; 
+			flex-grow: 1;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+			white-space: nowrap;
+		}
+		
+		#load-bookings:hover {
+			background-color: #a7c598;
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+		}
+		
+		.admin-controls-top button#save:hover {
+			background-color: #a7c598;
+		}
+		
+		.admin-controls-top button#rotate:hover {
+			background-color: #99c2d1;
+		}
+
+		/* Multi-Select Toggle */
+		#multi-select-toggle, #multi-book-button {
+			padding: 10px 15px;
+			font-size: 16px;
+			font-weight: 500;
+			margin-bottom: 20px;
+			border-radius: 4px;
+			cursor: pointer;
+			border: 1px solid #666;
+			background-color: #f7f7f7;
+			color: #333;
+			transition: all 0.2s ease;
+			white-space: nowrap;
+			width: 90vw;
+			max-width: 480px;
+			text-align: center;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+		}
+		
+		#multi-select-toggle:hover, #multi-book-button:hover {
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+		}
+
+		#multi-select-toggle.active {
+			background-color: #1976d2;
+			color: white;
+			border: 1px solid #1976d2;
+		}
+		#multi-book-button {
+			background-color: #388e3c;
+			color: white;
+			border: none;
+		}
+
+		/* Floorplan container */
+		#container-wrapper {
+			display: flex;
+			justify-content: center;
+			width: 100%;
+			max-width: 480px;	
+		}
+
+		#container{
+			width: 100%;
+			height: auto;
+			border: none;	
+			box-shadow: none;
+			background-color: transparent;
+		}
+
+		/* Status Legend */
+		#status-legend {
+			display: flex;
+			gap: 15px;
+			margin-top: 15px;
+			font-size: 14px;
+			color: #555;
+			flex-wrap: wrap;
+			justify-content: center;
+			max-width: 480px;
+			width: 100%;
+		}
+		.legend-item {
+			display: flex;
+			align-items: center;
+		}
+		.legend-color {
+			width: 15px;
+			height: 15px;
+			border-radius: 3px;
+			margin-right: 5px;
+			border: 1px solid #000; 
+		}
+		
+		/* Modal styles */
+		.modal {
+			display: none;	
+			position: fixed;	
+			z-index: 1000;	
+			left: 0;
+			top: 0;
+			width: 100%;	
+			height: 100%;	
+			overflow: auto;	
+			background-color: rgba(0,0,0,0.4);	
+		}
+
+		.modal-content {
+			margin: 10vh auto;
+			padding: 20px;
+			border: 1px solid #888;
+			width: 90%;
+			max-width: 400px;
+			border-radius: 10px;
+			box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+			position: relative;
+			background-color: #fefefe;
+		}
+		
+		.close-button {
+			color: #aaa;
+			float: right;
+			font-size: 28px;
+			font-weight: bold;
+		}
+
+		.close-button:hover,
+		.close-button:focus {
+			color: #000;
+			text-decoration: none;
+			cursor: pointer;
+		}
+		
+		.modal-content label { display: block; margin-top: 10px; font-weight: 600; }
+		.modal-content input, .modal-content textarea, .modal-content button {	
+			width: 100%;	
+			padding: 8px;	
+			margin-top: 5px;	
+			box-sizing: border-box;	
+			border: 1px solid #ccc;
+			border-radius: 4px;
+		}
+		
+		.modal-content button {
+			background-color: #388e3c;
+			color: white;
+			cursor: pointer;
+			margin-top: 20px;
+		}
+		
+		.modal-content button:hover {
+			background-color: #2e7d32;
+		}
+		
+		#current-booking-info {
+			padding: 10px;
+			margin-top: 15px;
+			border: 1px solid #ffcc80;
+			background-color: #fff3e0;
+			border-radius: 5px;
+		}
+
+		#current-booking-info p span {
+			word-break: break-all;
+		}
+		
+		#remove-booking {
+			background-color: #d32f2f;
+		}
+		
+		/* Responsive for small screens */
+		@media (max-width: 500px) {
+			.admin-controls-top button { padding: 8px 10px; font-size: 12px; }
+		}
+	</style>
+</head>
+<body>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+
+	<div class="admin-controls-top">
+		<button id="save">Save layout</button>
+		<button id="rotate">Rotate Table 90°</button>
+	</div>
+
+	<button id="multi-select-toggle" data-active="false">Start Multi-Select Mode</button>
+	<button id="multi-book-button" style="display:none;">Book Selected Tables</button>
+
+	<div id="datetime-controls">
+		<label for="booking-date">Date:</label>
+		<input type="date" id="booking-date" value="">
+		<label for="booking-time">Time:</label>
+		<input type="time" id="booking-time" value="">
+		<button id="load-bookings">Load Bookings</button>
+	</div>
+
+	<div id="container-wrapper">
+		<div id="container"></div>
+	</div>
 	
-	const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-	const TABLE_COLOR = '#b7d7a8';
-	const SELECTED_TABLE_COLOR = '#E5FF80';
-	const BOOKED_COLOR = '#e0e0e0';
-	const UNAVAILABLE_COLOR = '#ffffff';
-	const SEAT_COLOR = '#555';
-	const MULTI_SELECT_STROKE = '#ff6347';
-	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
-	
-	let currentBookings = [];
-	let currentSelectedDate = '';
-	let currentSelectedTime = '';
-	let currentSelectedTableId = null;
-	const multiBookButton = document.getElementById('multi-book-button');
+	<div id="status-legend">
+		<div class="legend-item"><span class="legend-color" style="background-color: #b7d7a8;"></span>Premium Available</div>
+		<div class="legend-item"><span class="legend-color" style="background-color: #e0e0e0;"></span>Booked (Premium)</div>
+		<div class="legend-item"><span class="legend-color" style="background-color: #ffffff;"></span>Staff Use Only (N/A)</div>	
+	</div>
 
-	function timeToMinutes(timeStr) {
-		const [h, m] = timeStr.split(':').map(Number);
-		return (h * 60) + m;
-	}
+	<div id="multi-booking-modal" class="modal">
+		<div class="modal-content">
+			<span class="close-button" id="multi-close-button-span">&times;</span>
+			<h3 id="multi-modal-title">Bulk Booking</h3>
+			<p>Selected Tables: <span id="selected-table-list"></span></p>
+			<form id="multi-booking-form">
+				<label for="multi-start-time">Start Time (HH:MM):</label>
+				<input type="time" id="multi-start-time" required>
+				
+				<label for="multi-end-time">End Time (HH:MM):</label>
+				<input type="time" id="multi-end-time" required>
+				
+				<label for="multi-notes">Notes:</label>
+				<textarea id="multi-notes" rows="3"></textarea>
+				
+				<button type="submit" id="multi-book-slot">Confirm Bulk Booking</button>
+			</form>
+		</div>
+	</div>
 
-	function setDefaultDateTime() {
-		const today = new Date();
-		const y = today.getFullYear();
-		const m = String(today.getMonth() + 1).padStart(2, '0');
-		const d = String(today.getDate()).padStart(2, '0');
-		currentSelectedDate = `${y}-${m}-${d}`;
-		currentSelectedTime = '19:00';
-		document.getElementById('booking-date').value = currentSelectedDate;
-		document.getElementById('booking-time').value = currentSelectedTime;
-	}
+	<div id="booking-modal" class="modal">
+		<div class="modal-content">
+			<span class="close-button" id="single-close-button-span">&times;</span>
+			<h3 id="modal-title">Table Booking</h3>
+			<form id="booking-form">
+				<input type="hidden" id="modal-table-id">
+				
+				<div id="current-booking-info" style="display:none;">
+					<p><strong>Status:</strong> Booked</p>
+					<p><strong>Start:</strong> <span id="booked-start"></span></p>
+					<p><strong>End:</strong> <span id="booked-end"></span></p>
+					<p><strong>Notes:</strong> <span id="booked-notes"></span></p>
+					<button type="button" id="remove-booking">Remove Booking</button>
+				</div>
 
-	function resizeStage() {
-		const cw = container.offsetWidth;
-		const s  = cw / STAGE_WIDTH;
-		stage.width(cw);
-		stage.height(STAGE_HEIGHT * s);
-		stage.scale({ x: s, y: s });
-		container.style.height = `${STAGE_HEIGHT * s}px`;
-		stage.draw();
-	}
-	
-	function loadBackground(cb) {
-		const img = new Image();
-		img.onload = () => {
-			backgroundLayer.add(new Konva.Image({ x: 0, y: 0, image: img, width: STAGE_WIDTH, height: STAGE_HEIGHT }));
-			backgroundLayer.draw();
-			resizeStage();
-			if (cb) cb();
+				<div id="new-booking-form">
+					<label for="start-time">Start Time (HH:MM):</label>
+					<input type="time" id="start-time" required>
+					
+					<label for="end-time">End Time (HH:MM):</label>
+					<input type="time" id="end-time" required>
+					
+					<label for="notes">Notes:</label>
+					<textarea id="notes" rows="3"></textarea>
+					
+					<button type="submit" id="book-slot">Book Slot</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<script>
+		// --- Konva Stage Dimensions ---
+		const STAGE_WIDTH = 480;	
+		const STAGE_HEIGHT = 480;	
+
+		// --- Supabase setup ---
+		const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+		const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+		const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+
+		const container = document.getElementById('container');
+		const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
+		const backgroundLayer = new Konva.Layer();
+		stage.add(backgroundLayer);
+		const layer = new Konva.Layer();
+		stage.add(layer);
+
+		let tables = [];
+		let selectedGroup = null;
+		let isMultiSelectMode = false;
+		let selectedMultiTables = new Set();
+		
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
+		const TABLE_COLOR = '#b7d7a8';
+		const BOOKED_COLOR = '#e0e0e0';
+		const UNAVAILABLE_COLOR = '#ffffff';
+		const SEAT_COLOR = '#555';
+		const MULTI_SELECT_STROKE = '#ff6347';
+		const SINGLE_SELECT_STROKE = '#E5FF80';
+		const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
+		
+		let currentBookings = [];
+		let currentSelectedDate = '';
+		let currentSelectedTime = '';
+		let currentSelectedTableId = null;
+		const multiBookButton = document.getElementById('multi-book-button');
+
+		function timeToMinutes(timeStr) {
+			const [h, m] = timeStr.split(':').map(Number);
+			return (h * 60) + m;
+		}
+
+		function setDefaultDateTime() {
+			const today = new Date();
+			const y = today.getFullYear();
+			const m = String(today.getMonth() + 1).padStart(2, '0');
+			const d = String(today.getDate()).padStart(2, '0');
+			currentSelectedDate = `${y}-${m}-${d}`;
+			currentSelectedTime = '19:00';
+			document.getElementById('booking-date').value = currentSelectedDate;
+			document.getElementById('booking-time').value = currentSelectedTime;
+		}
+
+		function resizeStage() {
+			const cw = container.offsetWidth;
+			const s  = cw / STAGE_WIDTH;
+			stage.width(cw);
+			stage.height(STAGE_HEIGHT * s);
+			stage.scale({ x: s, y: s });
+			container.style.height = `${STAGE_HEIGHT * s}px`;
+			stage.draw();
+		}
+		
+		function loadBackground(cb) {
+			const img = new Image();
+			img.onload = () => {
+				backgroundLayer.add(new Konva.Image({ x: 0, y: 0, image: img, width: STAGE_WIDTH, height: STAGE_HEIGHT }));
+				backgroundLayer.draw();
+				resizeStage();
+				if (cb) cb();
+			};
+			img.src = 'floorplan.png?v=' + Date.now();
+		}
+
+		async function loadDisplayName() {
+			const { data, error } = await _supa
+				.from('tenants')
+				.select('display_name')
+				.eq('tenant_id', CURRENT_TENANT_ID)
+				.single();
+			if (data) {
+				document.getElementById('restaurant-display-name').textContent = `${data.display_name} Admin Panel`;
+			} else {
+				document.getElementById('restaurant-display-name').textContent = `Admin Panel (${CURRENT_TENANT_ID})`;
+			}
+		}
+
+		async function loadTables() {
+			const baseTables = [
+				{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
+				{ id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
+				{ id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
+				{ id: 4, x: 140, y: 220, w: 30, h: 30, rotation: 0 },
+				{ id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 },
+				{ id: 6, x: 250, y: 330, w: 30, h: 30, rotation: 0 },
+				{ id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 },
+				{ id: 8, x: 400, y: 100, w: 30, h: 30, rotation: 0 },
+				{ id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 },
+				{ id: 10, x: 300, y: 240, w: 30, h: 30, rotation: 0 },
+				{ id: 11, x: 40, y: 80, w: 30, h: 30, rotation: 0 },
+				{ id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 },
+				{ id: 13, x: 400, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 14, x: 250, y: 180, w: 30, h: 30, rotation: 0 },
+				{ id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 },
+			];
+			
+			let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
+			if (error) {
+				console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
+				tables = baseTables;
+			} else {
+				const map = new Map(dbData.map(t => [t.id, t]));
+				tables = baseTables.map(t => {
+					const p = map.get(t.id);
+					return p ? { ...t, x: p.x, y: p.y, rotation: p.rotation } : t;
+				}).filter((t, i, a) => i === a.findIndex(x => x.id === t.id)).sort((a, b) => a.id - b.id);
+			}
+			
+			layer.destroyChildren();	
+			tables.forEach(t => {
+				const group = drawTable(t);
+				const r = group.findOne('.main-table');
+				group.offset({ x: r.width()/2, y: r.height()/2 });
+				group.x(t.x + r.width()/2);
+				group.y(t.y + r.height()/2);
+				group.rotation(t.rotation || 0);
+			});
+			layer.draw();
+			
+			selectedMultiTables.clear();
+			isMultiSelectMode = false;
+			document.getElementById('multi-select-toggle').dataset.active = 'false';
+			document.getElementById('multi-select-toggle').classList.remove('active');
+			document.getElementById('multi-select-toggle').textContent = 'Start Multi-Select Mode';
+			multiBookButton.style.display = 'none';
+
+			await loadBookings();	
+		}
+		
+		function updateTableVisuals() {
+			tables.forEach(t => {
+				const group = layer.findOne('#g-'+t.id);
+				if (!group) return;
+				const rect = group.findOne('.main-table');
+				const id = Number(t.id);
+				const sel = selectedMultiTables.has(id);
+				
+				if (STAFF_USE_TABLE_IDS.includes(id)) {
+					rect.fill(UNAVAILABLE_COLOR);
+				} else {
+					const booked = currentBookings.find(b => Number(b.table_id) === id);
+					rect.fill(booked ? BOOKED_COLOR : TABLE_COLOR);
+				}
+				
+				if (sel) {
+					 rect.stroke(MULTI_SELECT_STROKE);	
+					 rect.strokeWidth(2);
+				} else if (selectedGroup && selectedGroup.id() === group.id()) {
+					 rect.stroke(SINGLE_SELECT_STROKE);	
+					 rect.strokeWidth(1);
+				} else {
+					 rect.stroke('#000');	
+					 rect.strokeWidth(1);
+				}
+				group.setAttr('booking_data', currentBookings.find(b => Number(b.table_id) === id) || null);
+			});
+			layer.draw();
+			
+			multiBookButton.style.display = (isMultiSelectMode && selectedMultiTables.size > 0) ? 'block' : 'none';
+		}
+
+		function drawTable(t){
+			const g = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, table_id: Number(t.id), draggable:true });
+			layer.add(g);
+
+			const staff = STAFF_USE_TABLE_IDS.includes(t.id);
+			const r = new Konva.Rect({ width:t.w, height:t.h, fill: staff ? UNAVAILABLE_COLOR : TABLE_COLOR, stroke:'#000', strokeWidth:1, name:'main-table' });
+			g.add(r);
+
+			const seat = (x,y,w,h) => g.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
+			const bs = 12, hbs = bs/2;
+
+			if (t.w === 30 && t.h === 30) {
+				seat(t.w/2 - hbs, -hbs, bs, hbs);
+				seat(t.w/2 - hbs, t.h, bs, hbs);
+			} else if (t.w === 30 && t.h === 50) {
+				const vs = (t.h - 2*bs)/3;
+				seat(-hbs, vs, hbs, bs);
+				seat(-hbs, vs*2 + bs, hbs, bs);
+				seat(t.w, vs, hbs, bs);
+				seat(t.w, vs*2 + bs, hbs, bs);
+			} else if (t.w === 50 && t.h === 30) {	
+				const hs = (t.w - 2*bs)/3;
+				seat(hs, -hbs, bs, hbs);
+				seat(hs*2 + bs, -hbs, bs, hbs);
+				seat(hs, t.h, bs, hbs);
+				seat(hs*2 + bs, t.h, bs, hbs);
+			} else if (t.w === 90 && t.h === 30) {
+				const hs = t.w / 4;
+				for(let i=0;i<3;i++){
+					const xp = hs*(i+1) - hbs;
+					seat(xp, -hbs, bs, hbs);
+					seat(xp, t.h, bs, hbs);
+				}
+			}
+			
+			g.on('click', () => {
+				const tid = Number(t.id);
+				if (staff) { alert('Staff-use table – no booking allowed.'); return; }
+				if (isMultiSelectMode) {
+					const booked = g.getAttr('booking_data');
+					if (selectedMultiTables.has(tid)) selectedMultiTables.delete(tid);
+					else {
+						if(booked){ alert(`Table ${tid} already booked.`); return; }
+						selectedMultiTables.add(tid);
+					}
+					updateTableVisuals(); selectedGroup = null;
+				} else {
+					if(selectedGroup) selectedGroup.findOne('.main-table').stroke('#000');
+					selectedGroup = g;
+					r.stroke(SINGLE_SELECT_STROKE); layer.draw();
+					currentSelectedTableId = t.id;
+					showBookingModal(t.id, g.getAttr('booking_data'));
+				}
+			});
+
+			g.on('dblclick', (e) => {
+				e.evt.preventDefault();
+				const booking = g.getAttr('booking_data');
+				if (booking && confirm(`Cancel booking ${booking.id}?`)) deleteBooking(booking.id);
+			});
+
+			return g;
+		}
+		
+		async function loadBookings() {
+			currentSelectedDate = document.getElementById('booking-date').value;
+			currentSelectedTime = document.getElementById('booking-time').value;
+			if (!currentSelectedDate || !currentSelectedTime) { currentBookings = []; updateTableVisuals(); return; }
+			
+			const { data, error } = await _supa
+				.from('premium_slots')	
+				.select('*')
+				.eq('date', currentSelectedDate)
+				.eq('tenant_id', CURRENT_TENANT_ID);
+				
+			if(error){ console.error(error); currentBookings = []; }	
+			else {	
+				const sel = timeToMinutes(currentSelectedTime);	
+				currentBookings = data.filter(b => {
+					const start = timeToMinutes(b.start_time);
+					const end   = timeToMinutes(b.end_time);
+					return sel >= start && sel < end;
+				});
+			}
+			updateTableVisuals();
+		}
+		
+		// NEW: direct Supabase insert + call Edge Function for email
+		async function createBooking(tableId, startTime, endTime, notes) {
+		  const date = document.getElementById('booking-date').value;
+		  const tenantId = CURRENT_TENANT_ID;
+
+		  const endTimeMinutes = timeToMinutes(endTime);
+		  const startTimeMinutes = timeToMinutes(startTime);
+
+		  if (STAFF_USE_TABLE_IDS.includes(Number(tableId))) {
+		    console.error('System Warning: Cannot create a premium slot booking on a Staff Use Only table.');
+		    return false;
+		  }
+
+		  if (endTimeMinutes <= startTimeMinutes) {
+		    alert('End time must be after start time.');
+		    return false;
+		  }
+
+		  // 1. ask for the staff email (one-off popup)
+		  const staffEmail = prompt(
+		    'Confirm booking:\nTable ' + tableId + ' on ' + date + ' at ' + startTime +
+		    '\n\nEnter the staff email address for confirmation:'
+		  );
+		  if (!staffEmail || !staffEmail.includes('@')) {
+		    alert('Valid staff email required – booking cancelled.');
+		    return false;
+		  }
+
+		  // 2. insert directly into premium_slots
+		  const { data, error } = await _supa
+		    .from('premium_slots')
+		    .insert({
+		      tenant_id: tenantId,
+		      table_id: Number(tableId),
+		      date: date,
+		      start_time: startTime + ':00',
+		      end_time: endTime + ':00',
+		      host_notes: notes || 'Admin Manual Booking',
+		      staff_email: staffEmail,   // <-- stored for email
+		    })
+		    .select();
+
+		  if (error) {
+		    alert('Booking failed: ' + error.message);
+		    console.error('Direct DB Insert Error:', error);
+		    return false;
+		  }
+
+		  console.log('Admin Booking Successful:', data);
+
+		  // 3. fire confirmation email directly (no trigger needed)
+		  try {
+		    await _supa.functions.invoke('send-confirmation', {
+		      body: { record: data[0] }
+		    });
+		  } catch (e) {
+		    console.warn('Email send failed:', e);
+		  }
+
+		  await loadBookings();
+		  return true;
+		}
+
+		async function createBulkBooking(tableIds, startTime, endTime, notes) {
+			let ok = 0, fail = [];
+			for (const id of tableIds) {
+				(await createBooking(id, startTime, endTime, notes)) ? ok++ : fail.push(id);
+			}
+			if (ok) {
+				let msg = `Booked ${ok} table(s).`;
+				if (fail.length) msg += ` Failed: ${fail.join(',')}`;
+				alert(msg);
+				await loadBookings();
+			} else {
+				alert('Bulk booking failed.');
+			}
+		}
+		
+		async function deleteBooking(bookingId) {
+			const { error } = await _supa.from('premium_slots').delete().eq('id', bookingId).eq('tenant_id', CURRENT_TENANT_ID);
+			if (error) { alert('Deletion failed: '+error.message); return false; }	
+			else { alert('Booking removed!'); await loadBookings(); return true; }
+		}
+		
+		function cleanNotes(notes) {
+			if (!notes) return 'None';
+			return notes.replace(/(Order|Transaction)?\s*:\s*(cs_live_|cs_test_)[a-zA-Z0-9]{24,}/g,'').replace(/,\s*$/,'').trim() || 'None';
+		}
+		
+		const singleModal = document.getElementById('booking-modal');
+		const multiModal = document.getElementById('multi-booking-modal');
+		
+		document.querySelectorAll('.close-button').forEach(b => {
+			if (b.closest('#booking-modal')) b.onclick = () => singleModal.style.display = 'none';
+			if (b.closest('#multi-booking-modal')) b.onclick = () => multiModal.style.display = 'none';
+		});
+		
+		window.onclick = e => {
+			if (e.target === singleModal) singleModal.style.display = 'none';
+			if (e.target === multiModal) multiModal.style.display = 'none';
 		};
-		img.src = 'floorplan.png?v=' + Date.now();
-	}
-
-	async function loadDisplayName() {
-		const { data, error } = await _supa
-			.from('tenants')
-			.select('display_name')
-			.eq('tenant_id', CURRENT_TENANT_ID)
-			.single();
-		if (data) {
-			document.getElementById('restaurant-display-name').textContent = `${data.display_name} Admin Panel`;
-		} else {
-			document.getElementById('restaurant-display-name').textContent = `Admin Panel (${CURRENT_TENANT_ID})`;
-		}
-	}
-
-	async function loadTables() {
-		const baseTables = [
-			{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
-			{ id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
-			{ id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
-			{ id: 4, x: 140, y: 220, w: 30, h: 30, rotation: 0 },
-			{ id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 },
-			{ id: 6, x: 250, y: 330, w: 30, h: 30, rotation: 0 },
-			{ id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 },
-			{ id: 8, x: 400, y: 100, w: 30, h: 30, rotation: 0 },
-			{ id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 },
-			{ id: 10, x: 300, y: 240, w: 30, h: 30, rotation: 0 },
-			{ id: 11, x: 40, y: 80, w: 30, h: 30, rotation: 0 },
-			{ id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 },
-			{ id: 13, x: 400, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 14, x: 250, y: 180, w: 30, h: 30, rotation: 0 },
-			{ id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 },
-		];
 		
-		let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
-		if (error) {
-			console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
-			tables = baseTables;
-		} else {
-			const map = new Map(dbData.map(t => [t.id, t]));
-			tables = baseTables.map(t => {
-				const p = map.get(t.id);
-				return p ? { ...t, x: p.x, y: p.y, rotation: p.rotation } : t;
-			}).filter((t, i, a) => i === a.findIndex(x => x.id === t.id)).sort((a, b) => a.id - b.id);
-		}
-		
-		layer.destroyChildren();	
-		tables.forEach(t => {
-			const group = drawTable(t);
-			const r = group.findOne('.main-table');
-			group.offset({ x: r.width()/2, y: r.height()/2 });
-			group.x(t.x + r.width()/2);
-			group.y(t.y + r.height()/2);
-			group.rotation(t.rotation || 0);
-		});
-		layer.draw();
-		
-		selectedMultiTables.clear();
-		isMultiSelectMode = false;
-		document.getElementById('multi-select-toggle').dataset.active = 'false';
-		document.getElementById('multi-select-toggle').classList.remove('active');
-		document.getElementById('multi-select-toggle').textContent = 'Start Multi-Select Mode';
-		multiBookButton.style.display = 'none';
+		function showBookingModal(tableId, booking) {
+			if (isMultiSelectMode) { alert('Exit Multi-Select Mode first.'); return; }
+			if (STAFF_USE_TABLE_IDS.includes(Number(tableId))) { alert('Staff-use table – no booking allowed.'); return; }
 
-		await loadBookings();	
-	}
-	
-	function updateTableVisuals() {
-		tables.forEach(t => {
-			const group = layer.findOne('#g-'+t.id);
-			if (!group) return;
-			const rect = group.findOne('.main-table');
-			const id = Number(t.id);
-			const sel = selectedMultiTables.has(id);
+			document.getElementById('modal-table-id').value = tableId;
+			document.getElementById('modal-title').textContent = 'Table ' + tableId + ' Booking';
 			
-			if (STAFF_USE_TABLE_IDS.includes(id)) {
-				rect.fill(UNAVAILABLE_COLOR);
+			if (booking) {
+				document.getElementById('current-booking-info').style.display = 'block';
+				document.getElementById('new-booking-form').style.display = 'none';
+				document.getElementById('booked-start').textContent = booking.start_time.substring(0, 5);
+				document.getElementById('booked-end').textContent = booking.end_time.substring(0, 5);
+				document.getElementById('booked-notes').textContent = cleanNotes(booking.host_notes);
+				document.getElementById('remove-booking').onclick = async () => {
+					if (confirm('Remove this booking?')) {
+						const ok = await deleteBooking(booking.id);
+						if (ok) singleModal.style.display = 'none';
+					}
+				};
 			} else {
-				const booked = currentBookings.find(b => Number(b.table_id) === id);
-				rect.fill(booked ? BOOKED_COLOR : TABLE_COLOR);
+				document.getElementById('current-booking-info').style.display = 'none';
+				document.getElementById('new-booking-form').style.display = 'block';
+				document.getElementById('start-time').value = currentSelectedTime;
+				const [h, m] = currentSelectedTime.split(':').map(Number);
+				const end = new Date(); end.setHours(h, m + 60);
+				document.getElementById('end-time').value = `${String(end.getHours()).padStart(2,'0')}:${String(end.getMinutes()).padStart(2,'0')}`;
+				document.getElementById('notes').value = '';
 			}
-			
-			if (sel) {
-				 rect.stroke(MULTI_SELECT_STROKE);	
-				 rect.strokeWidth(2);
-			} else if (selectedGroup && selectedGroup.id() === group.id()) {
-				 rect.fill(SELECTED_TABLE_COLOR);
-				 rect.stroke('#000');
-				 rect.strokeWidth(1);
-			} else {
-				 rect.stroke('#000');	
-				 rect.strokeWidth(1);
-			}
-			group.setAttr('booking_data', currentBookings.find(b => Number(b.table_id) === id) || null);
-		});
-		layer.draw();
-		
-		multiBookButton.style.display = (isMultiSelectMode && selectedMultiTables.size > 0) ? 'block' : 'none';
-	}
-
-	function drawTable(t){
-		const g = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, table_id: Number(t.id), draggable:true });
-		layer.add(g);
-
-		const staff = STAFF_USE_TABLE_IDS.includes(t.id);
-		const r = new Konva.Rect({ width:t.w, height:t.h, fill: staff ? UNAVAILABLE_COLOR : TABLE_COLOR, stroke:'#000', strokeWidth:1, name:'main-table' });
-		g.add(r);
-
-		const seat = (x,y,w,h) => g.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
-		const bs = 12, hbs = bs/2;
-
-		if (t.w === 30 && t.h === 30) {
-			seat(t.w/2 - hbs, -hbs, bs, hbs);
-			seat(t.w/2 - hbs, t.h, bs, hbs);
-		} else if (t.w === 30 && t.h === 50) {
-			const vs = (t.h - 2*bs)/3;
-			seat(-hbs, vs, hbs, bs);
-			seat(-hbs, vs*2 + bs, hbs, bs);
-			seat(t.w, vs, hbs, bs);
-			seat(t.w, vs*2 + bs, hbs, bs);
-		} else if (t.w === 50 && t.h === 30) {	
-			const hs = (t.w - 2*bs)/3;
-			seat(hs, -hbs, bs, hbs);
-			seat(hs*2 + bs, -hbs, bs, hbs);
-			seat(hs, t.h, bs, hbs);
-			seat(hs*2 + bs, t.h, bs, hbs);
-		} else if (t.w === 90 && t.h === 30) {
-			const hs = t.w / 4;
-			for(let i=0;i<3;i++){
-				const xp = hs*(i+1) - hbs;
-				seat(xp, -hbs, bs, hbs);
-				seat(xp, t.h, bs, hbs);
-			}
+			singleModal.style.display = 'block';
 		}
-		
-		g.on('click', () => {
-			const tid = Number(t.id);
-			if (staff) { alert('Staff-use table – no booking allowed.'); return; }
+
+		function showMultiBookingModal() {
+			if (selectedMultiTables.size === 0) return;
+			const ids = Array.from(selectedMultiTables).sort((a, b) => a - b).join(', ');
+			document.getElementById('selected-table-list').textContent = ids;
+			document.getElementById('multi-start-time').value = currentSelectedTime;
+			const [h, m] = currentSelectedTime.split(':').map(Number);
+			const end = new Date(); end.setHours(h, m + 60);
+			document.getElementById('multi-end-time').value = `${String(end.getHours()).padStart(2,'0')}:${String(end.getMinutes()).padStart(2,'0')}`;
+			document.getElementById('multi-notes').value = '';
+			multiModal.style.display = 'block';
+		}
+
+		document.getElementById('multi-select-toggle').onclick = () => {
+			const btn = document.getElementById('multi-select-toggle');
+			isMultiSelectMode = !isMultiSelectMode;
 			if (isMultiSelectMode) {
-				const booked = g.getAttr('booking_data');
-				if (selectedMultiTables.has(tid)) selectedMultiTables.delete(tid);
-				else {
-					if(booked){ alert(`Table ${tid} already booked.`); return; }
-					selectedMultiTables.add(tid);
-				}
-				updateTableVisuals(); selectedGroup = null;
+				btn.dataset.active = 'true'; btn.classList.add('active'); btn.textContent = 'Exit Multi-Select Mode';
+				if(selectedGroup) { selectedGroup.findOne('.main-table').stroke('#000'); selectedGroup = null; }
+				layer.find('Group').forEach(g => g.draggable(false));
 			} else {
-				if (selectedGroup) {
-					const prevRect = selectedGroup.findOne('.main-table');
-					prevRect.fill(TABLE_COLOR);
-				}
-				selectedGroup = g;
-				r.fill(SELECTED_TABLE_COLOR);
-				layer.draw();
-				currentSelectedTableId = t.id;
-				showBookingModal(t.id, g.getAttr('booking_data'));
+				btn.dataset.active = 'false'; btn.classList.remove('active'); btn.textContent = 'Start Multi-Select Mode';
+				selectedMultiTables.clear(); multiBookButton.style.display = 'none';
+				layer.find('Group').forEach(g => g.draggable(true));
 			}
-		});
+			updateTableVisuals();
+		};
 
-		g.on('dblclick', (e) => {
-			e.evt.preventDefault();
-			const booking = g.getAttr('booking_data');
-			if (booking && confirm(`Cancel booking ${booking.id}?`)) deleteBooking(booking.id);
-		});
+		document.getElementById('multi-book-button').onclick = () => showMultiBookingModal();
 
-		return g;
-	}
-	
-	// (Everything else below this point remains the same)
-	async function loadBookings() { /* unchanged */ }
-	async function createBooking(tableId, startTime, endTime, notes) { /* unchanged */ }
-	async function createBulkBooking(tableIds, startTime, endTime, notes) { /* unchanged */ }
-	async function deleteBooking(bookingId) { /* unchanged */ }
-	function cleanNotes(notes) { /* unchanged */ }
-	// ... rest of your existing script remains exactly the same
-	setDefaultDateTime();
-	window.addEventListener('resize', resizeStage);
-	loadBackground(loadTables);
-</script>
+		document.getElementById('multi-booking-form').onsubmit = async (e) => {
+			e.preventDefault();
+			const start = document.getElementById('multi-start-time').value;
+			const end   = document.getElementById('multi-end-time').value;
+			const notes = document.getElementById('multi-notes').value;
+			const ids   = Array.from(selectedMultiTables);
+			if (!ids.length) { alert('No tables selected.'); return; }
+			await createBulkBooking(ids, start, end, notes);
+			multiModal.style.display = 'none';
+			document.getElementById('multi-select-toggle').click();
+		};
+
+		document.getElementById('load-bookings').onclick = async () => {
+			currentSelectedDate = document.getElementById('booking-date').value;
+			currentSelectedTime = document.getElementById('booking-time').value;
+			await loadBookings();
+		};
+
+		document.getElementById('booking-form').onsubmit = async (e) => {
+			e.preventDefault();
+			const tableId = document.getElementById('modal-table-id').value;
+			const start = document.getElementById('start-time').value;
+			const end   = document.getElementById('end-time').value;
+			const notes = document.getElementById('notes').value;
+			const ok = await createBooking(tableId, start, end, notes);
+			if (ok) { singleModal.style.display = 'none'; await loadBookings(); }
+		};
+
+		document.getElementById('rotate').onclick = () => {
+			if (isMultiSelectMode) {
+				selectedMultiTables.forEach(id => {
+					const g = layer.findOne('#g-' + id);
+					if (g) g.rotation(g.rotation() + 90);
+				});
+				layer.draw();
+			} else if(selectedGroup){
+				selectedGroup.rotation(selectedGroup.rotation()+90);
+				layer.draw();
+			}
+		};
+
+		document.getElementById('save').onclick = async () => {
+			const ups = tables.map(t=>{
+				const g = layer.findOne('#g-'+t.id);
+				if (!g) return null;
+				const r = g.findOne('.main-table');
+				return { id:t.id, x:g.x() - r.width()/2, y:g.y() - r.height()/2, rotation:g.rotation(), tenant_id:CURRENT_TENANT_ID };
+			}).filter(Boolean);
+			const { data, error } = await _supa.from('tables').upsert(ups).select('*, rotation');
+			if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
+		};
+
+		// --- start ---
+		setDefaultDateTime();
+		window.addEventListener('resize', resizeStage);
+		loadBackground(loadTables);
+	</script>
+</body>
+</html>
