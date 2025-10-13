@@ -1,254 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Admin Table Manager</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Load Supabase + Konva first -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>
+
+<style>
+	body {
+		font-family: Arial, sans-serif;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		background: #e3e3e3;
+		padding: 20px;
+		min-height: 100vh;
+	}
+	h1 { font-size: 28px; margin-bottom: 10px; }
+	#multi-select-toggle {
+		padding: 10px 15px;
+		font-size: 16px;
+		font-weight: 500;
+		margin-bottom: 20px;
+		border-radius: 4px;
+		cursor: pointer;
+		border: 1px solid #ccc;
+		background-color: #f7f7f7;
+		color: #333;
+		width: 90vw;
+		max-width: 480px;
+	}
+	#multi-select-toggle.active {
+		background-color: #1976d2;
+		color: white;
+		border-color: #1976d2;
+	}
+	#container-wrapper {
+		display: flex;
+		justify-content: center;
+		width: 100%;
+		max-width: 480px;
+	}
+	#container { width: 100%; height: auto; background-color: transparent; }
+	.status-legend {
+		margin-top: 10px;
+		font-size: 14px;
+		color: #555;
+		display: flex;
+		gap: 15px;
+		justify-content: center;
+		flex-wrap: wrap;
+		max-width: 480px;
+		width: 100%;
+	}
+	.legend-item { display: flex; align-items: center; }
+	.legend-color {
+		width: 15px; height: 15px;
+		border-radius: 3px;
+		margin-right: 5px;
+		border: 1px solid #000;
+	}
+</style>
+</head>
+<body>
+
+<h1>Admin Table Manager</h1>
+<button id="multi-select-toggle" data-active="false">Start Group Selection (Tap Mode)</button>
+
+<div id="container-wrapper">
+	<div id="container"></div>
+</div>
+
+<div class="status-legend">
+	<div class="legend-item"><span class="legend-color" style="background:#b7d7a8"></span>Available</div>
+	<div class="legend-item"><span class="legend-color" style="background:#e0e0e0"></span>Booked</div>
+	<div class="legend-item"><span class="legend-color" style="background:#fff"></span>Staff Use</div>
+	<div class="legend-item"><span class="legend-color" style="background:#E5FF80"></span>Selected</div>
+</div>
+
 <script>
-	// --- Konva Stage Dimensions ---
-	const STAGE_WIDTH = 480;	
-	const STAGE_HEIGHT = 480;	
+// --- CONFIG ---
+const STAGE_WIDTH = 480, STAGE_HEIGHT = 480;
+const TABLE_COLOR = '#b7d7a8';
+const BOOKED_COLOR = '#e0e0e0';
+const UNAVAILABLE_COLOR = '#ffffff';
+const HIGHLIGHT_COLOR = '#E5FF80';
+const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
 
-	// --- Supabase setup ---
-	const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-	const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-	const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+// ✅ Initialize Supabase
+const _supa = supabase.createClient(
+  'https://Rrjvdabtqzkaomjuiref.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg'
+);
 
-	const container = document.getElementById('container');
-	const stage = new Konva.Stage({ container:'container', width:STAGE_WIDTH, height:STAGE_HEIGHT });
-	const backgroundLayer = new Konva.Layer();
-	stage.add(backgroundLayer);
-	const layer = new Konva.Layer();
-	stage.add(layer);
+// --- KONVA SETUP ---
+const stage = new Konva.Stage({
+	container: 'container',
+	width: STAGE_WIDTH,
+	height: STAGE_HEIGHT
+});
+const bgLayer = new Konva.Layer();
+const layer = new Konva.Layer();
+stage.add(bgLayer);
+stage.add(layer);
 
-	let tables = [];
-	let selectedGroup = null;
-	let isMultiSelectMode = false;
-	let selectedMultiTables = new Set();
-	
-	const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-	const TABLE_COLOR = '#b7d7a8';
-	const SELECTED_TABLE_COLOR = '#E5FF80';
-	const BOOKED_COLOR = '#e0e0e0';
-	const UNAVAILABLE_COLOR = '#ffffff';
-	const SEAT_COLOR = '#555';
-	const MULTI_SELECT_STROKE = '#ff6347';
-	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
-	
-	let currentBookings = [];
-	let currentSelectedDate = '';
-	let currentSelectedTime = '';
-	let currentSelectedTableId = null;
-	const multiBookButton = document.getElementById('multi-book-button');
+let selectedTableIds = [];
+let currentBookings = [];
+let tableDataMap = new Map();
+let isMultiSelectMode = false;
 
-	function timeToMinutes(timeStr) {
-		const [h, m] = timeStr.split(':').map(Number);
-		return (h * 60) + m;
+// --- UTILITIES ---
+function calculateTotal() {
+	return selectedTableIds.reduce((sum, id) => sum + (tableDataMap.get(id)?.price || 0), 0);
+}
+
+function resizeStage() {
+	const w = container.offsetWidth;
+	const scale = w / STAGE_WIDTH;
+	stage.width(w);
+	stage.height(STAGE_HEIGHT * scale);
+	stage.scale({ x: scale, y: scale });
+	container.style.height = `${STAGE_HEIGHT * scale}px`;
+	stage.draw();
+}
+
+// --- DRAWING ---
+function drawTable(t) {
+	const g = new Konva.Group({ x: t.x, y: t.y, id: 'g-' + t.id, name: 'selectable-table' });
+	layer.add(g);
+	const rect = new Konva.Rect({
+		width: t.w, height: t.h,
+		fill: TABLE_COLOR,
+		stroke: '#000',
+		strokeWidth: 1,
+		name: 'main-table'
+	});
+	g.add(rect);
+	g.on('click tap', e => selectTable(t.id, e.evt));
+	return g;
+}
+
+function updateVisuals() {
+	stage.find('.main-table').forEach(r => {
+		const id = Number(r.getParent().id().split('-')[1]);
+		if (STAFF_USE_TABLE_IDS.includes(id)) r.fill(UNAVAILABLE_COLOR);
+		else if (currentBookings.some(b => Number(b.table_id) === id)) r.fill(BOOKED_COLOR);
+		else r.fill(TABLE_COLOR);
+		r.stroke('#000');
+		r.strokeWidth(1);
+	});
+	selectedTableIds.forEach(id => {
+		const g = layer.findOne('#g-' + id);
+		if (g) {
+			const r = g.findOne('.main-table');
+			if (r.fill() === TABLE_COLOR) r.fill(HIGHLIGHT_COLOR);
+		}
+	});
+	layer.draw();
+}
+
+// --- SELECT LOGIC ---
+function selectTable(id, evt) {
+	const g = layer.findOne('#g-' + id);
+	const r = g.findOne('.main-table');
+	if ([BOOKED_COLOR, UNAVAILABLE_COLOR].includes(r.fill())) {
+		alert('This table is not available.');
+		return;
 	}
 
-	function setDefaultDateTime() {
-		const today = new Date();
-		const y = today.getFullYear();
-		const m = String(today.getMonth() + 1).padStart(2, '0');
-		const d = String(today.getDate()).padStart(2, '0');
-		currentSelectedDate = `${y}-${m}-${d}`;
-		currentSelectedTime = '19:00';
-		document.getElementById('booking-date').value = currentSelectedDate;
-		document.getElementById('booking-time').value = currentSelectedTime;
-	}
+	const multi = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey) || isMultiSelectMode;
+	const idx = selectedTableIds.indexOf(id);
 
-	function resizeStage() {
-		const cw = container.offsetWidth;
-		const s  = cw / STAGE_WIDTH;
-		stage.width(cw);
-		stage.height(STAGE_HEIGHT * s);
-		stage.scale({ x: s, y: s });
-		container.style.height = `${STAGE_HEIGHT * s}px`;
-		stage.draw();
-	}
-	
-	function loadBackground(cb) {
-		const img = new Image();
-		img.onload = () => {
-			backgroundLayer.add(new Konva.Image({ x: 0, y: 0, image: img, width: STAGE_WIDTH, height: STAGE_HEIGHT }));
-			backgroundLayer.draw();
-			resizeStage();
-			if (cb) cb();
-		};
-		img.src = 'floorplan.png?v=' + Date.now();
-	}
-
-	async function loadDisplayName() {
-		const { data, error } = await _supa
-			.from('tenants')
-			.select('display_name')
-			.eq('tenant_id', CURRENT_TENANT_ID)
-			.single();
-		if (data) {
-			document.getElementById('restaurant-display-name').textContent = `${data.display_name} Admin Panel`;
-		} else {
-			document.getElementById('restaurant-display-name').textContent = `Admin Panel (${CURRENT_TENANT_ID})`;
+	if (idx === -1) {
+		if (!multi) {
+			selectedTableIds = [];
+			stage.find('.main-table').forEach(rr => {
+				if (rr.fill() === HIGHLIGHT_COLOR) rr.fill(TABLE_COLOR);
+			});
+		}
+		selectedTableIds.push(id);
+		r.fill(HIGHLIGHT_COLOR);
+	} else {
+		if (multi || selectedTableIds.length === 1) {
+			selectedTableIds.splice(idx, 1);
+			r.fill(TABLE_COLOR);
 		}
 	}
+	layer.draw();
+}
 
-	async function loadTables() {
-		const baseTables = [
-			{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
-			{ id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
-			{ id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
-			{ id: 4, x: 140, y: 220, w: 30, h: 30, rotation: 0 },
-			{ id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 },
-			{ id: 6, x: 250, y: 330, w: 30, h: 30, rotation: 0 },
-			{ id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 },
-			{ id: 8, x: 400, y: 100, w: 30, h: 30, rotation: 0 },
-			{ id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 },
-			{ id: 10, x: 300, y: 240, w: 30, h: 30, rotation: 0 },
-			{ id: 11, x: 40, y: 80, w: 30, h: 30, rotation: 0 },
-			{ id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 },
-			{ id: 13, x: 400, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 14, x: 250, y: 180, w: 30, h: 30, rotation: 0 },
-			{ id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 },
-			{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 },
-		];
-		
-		let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
-		if (error) {
-			console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
-			tables = baseTables;
-		} else {
-			const map = new Map(dbData.map(t => [t.id, t]));
-			tables = baseTables.map(t => {
-				const p = map.get(t.id);
-				return p ? { ...t, x: p.x, y: p.y, rotation: p.rotation } : t;
-			}).filter((t, i, a) => i === a.findIndex(x => x.id === t.id)).sort((a, b) => a.id - b.id);
-		}
-		
-		layer.destroyChildren();	
-		tables.forEach(t => {
-			const group = drawTable(t);
-			const r = group.findOne('.main-table');
-			group.offset({ x: r.width()/2, y: r.height()/2 });
-			group.x(t.x + r.width()/2);
-			group.y(t.y + r.height()/2);
-			group.rotation(t.rotation || 0);
-		});
-		layer.draw();
-		
-		selectedMultiTables.clear();
-		isMultiSelectMode = false;
-		document.getElementById('multi-select-toggle').dataset.active = 'false';
-		document.getElementById('multi-select-toggle').classList.remove('active');
-		document.getElementById('multi-select-toggle').textContent = 'Start Multi-Select Mode';
-		multiBookButton.style.display = 'none';
+// --- BUTTON HANDLERS ---
+document.getElementById('multi-select-toggle').onclick = () => {
+	isMultiSelectMode = !isMultiSelectMode;
+	const btn = document.getElementById('multi-select-toggle');
+	btn.classList.toggle('active', isMultiSelectMode);
+	btn.textContent = isMultiSelectMode ? 'Exit Multi-Select Mode' : 'Start Group Selection (Tap Mode)';
+};
 
-		await loadBookings();	
-	}
-	
-	function updateTableVisuals() {
-		tables.forEach(t => {
-			const group = layer.findOne('#g-'+t.id);
-			if (!group) return;
-			const rect = group.findOne('.main-table');
-			const id = Number(t.id);
-			const sel = selectedMultiTables.has(id);
-			
-			if (STAFF_USE_TABLE_IDS.includes(id)) {
-				rect.fill(UNAVAILABLE_COLOR);
-			} else {
-				const booked = currentBookings.find(b => Number(b.table_id) === id);
-				rect.fill(booked ? BOOKED_COLOR : TABLE_COLOR);
-			}
-			
-			if (sel) {
-				 rect.stroke(MULTI_SELECT_STROKE);	
-				 rect.strokeWidth(2);
-			} else if (selectedGroup && selectedGroup.id() === group.id()) {
-				 rect.fill(SELECTED_TABLE_COLOR);
-				 rect.stroke('#000');
-				 rect.strokeWidth(1);
-			} else {
-				 rect.stroke('#000');	
-				 rect.strokeWidth(1);
-			}
-			group.setAttr('booking_data', currentBookings.find(b => Number(b.table_id) === id) || null);
-		});
-		layer.draw();
-		
-		multiBookButton.style.display = (isMultiSelectMode && selectedMultiTables.size > 0) ? 'block' : 'none';
-	}
+// --- FLOORPLAN LOADER ---
+function loadFloorplan(cb) {
+	const img = new Image();
+	img.onload = () => {
+		bgLayer.add(new Konva.Image({ x: 0, y: 0, image: img, width: STAGE_WIDTH, height: STAGE_HEIGHT }));
+		bgLayer.draw();
+		resizeStage();
+		if (cb) cb();
+	};
+	img.src = 'floorplan.png?v=' + Date.now();
+}
 
-	function drawTable(t){
-		const g = new Konva.Group({ x:t.x, y:t.y, id:'g-'+t.id, table_id: Number(t.id), draggable:true });
-		layer.add(g);
+async function loadTables() {
+	const base = [
+		{ id: 1, x: 235, y: 110, w: 90, h: 30 },
+		{ id: 2, x: 100, y: 30, w: 90, h: 30 },
+		{ id: 3, x: 100, y: 150, w: 30, h: 30 }
+	];
+	layer.destroyChildren();
+	tableDataMap.clear();
+	base.forEach(t => {
+		tableDataMap.set(t.id, { id: t.id, price: 999 });
+		drawTable(t);
+	});
+	layer.draw();
+	updateVisuals();
+}
 
-		const staff = STAFF_USE_TABLE_IDS.includes(t.id);
-		const r = new Konva.Rect({ width:t.w, height:t.h, fill: staff ? UNAVAILABLE_COLOR : TABLE_COLOR, stroke:'#000', strokeWidth:1, name:'main-table' });
-		g.add(r);
-
-		const seat = (x,y,w,h) => g.add(new Konva.Rect({ width:w, height:h, fill:SEAT_COLOR, x:x, y:y }));
-		const bs = 12, hbs = bs/2;
-
-		if (t.w === 30 && t.h === 30) {
-			seat(t.w/2 - hbs, -hbs, bs, hbs);
-			seat(t.w/2 - hbs, t.h, bs, hbs);
-		} else if (t.w === 30 && t.h === 50) {
-			const vs = (t.h - 2*bs)/3;
-			seat(-hbs, vs, hbs, bs);
-			seat(-hbs, vs*2 + bs, hbs, bs);
-			seat(t.w, vs, hbs, bs);
-			seat(t.w, vs*2 + bs, hbs, bs);
-		} else if (t.w === 50 && t.h === 30) {	
-			const hs = (t.w - 2*bs)/3;
-			seat(hs, -hbs, bs, hbs);
-			seat(hs*2 + bs, -hbs, bs, hbs);
-			seat(hs, t.h, bs, hbs);
-			seat(hs*2 + bs, t.h, bs, hbs);
-		} else if (t.w === 90 && t.h === 30) {
-			const hs = t.w / 4;
-			for(let i=0;i<3;i++){
-				const xp = hs*(i+1) - hbs;
-				seat(xp, -hbs, bs, hbs);
-				seat(xp, t.h, bs, hbs);
-			}
-		}
-		
-		g.on('click', () => {
-			const tid = Number(t.id);
-			if (staff) { alert('Staff-use table – no booking allowed.'); return; }
-			if (isMultiSelectMode) {
-				const booked = g.getAttr('booking_data');
-				if (selectedMultiTables.has(tid)) selectedMultiTables.delete(tid);
-				else {
-					if(booked){ alert(`Table ${tid} already booked.`); return; }
-					selectedMultiTables.add(tid);
-				}
-				updateTableVisuals(); selectedGroup = null;
-			} else {
-				if (selectedGroup) {
-					const prevRect = selectedGroup.findOne('.main-table');
-					prevRect.fill(TABLE_COLOR);
-				}
-				selectedGroup = g;
-				r.fill(SELECTED_TABLE_COLOR);
-				layer.draw();
-				currentSelectedTableId = t.id;
-				showBookingModal(t.id, g.getAttr('booking_data'));
-			}
-		});
-
-		g.on('dblclick', (e) => {
-			e.evt.preventDefault();
-			const booking = g.getAttr('booking_data');
-			if (booking && confirm(`Cancel booking ${booking.id}?`)) deleteBooking(booking.id);
-		});
-
-		return g;
-	}
-	
-	// (Everything else below this point remains the same)
-	async function loadBookings() { /* unchanged */ }
-	async function createBooking(tableId, startTime, endTime, notes) { /* unchanged */ }
-	async function createBulkBooking(tableIds, startTime, endTime, notes) { /* unchanged */ }
-	async function deleteBooking(bookingId) { /* unchanged */ }
-	function cleanNotes(notes) { /* unchanged */ }
-	// ... rest of your existing script remains exactly the same
-	setDefaultDateTime();
-	window.addEventListener('resize', resizeStage);
-	loadBackground(loadTables);
+// --- INIT ---
+window.addEventListener('resize', resizeStage);
+loadFloorplan(loadTables);
 </script>
+</body>
+</html>
