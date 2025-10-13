@@ -220,13 +220,20 @@
 		}
 		
 		.modal-content h3 { margin-top: 0; }
-		.modal-content input {
+		.modal-content input[type="text"], 
+		.modal-content input[type="number"], 
+		.modal-content input[type="email"] {
 			width: 100%;
 			padding: 10px;
 			margin-bottom: 15px;
 			border: 1px solid #ccc;
 			border-radius: 5px;
 			box-sizing: border-box;
+		}
+		/* Small input adjustment for the checkbox */
+		.modal-content input[type="checkbox"] {
+		    width: auto;
+		    margin-bottom: 0;
 		}
 
 		#confirm-booking-btn {
@@ -271,6 +278,19 @@
 				<input type="text" id="customer-name" placeholder="Full Name" required>
 				<input type="number" id="party-size" placeholder="Party Size (e.g., 4)" min="1" required>
 				<input type="email" id="customer-email" placeholder="Email for Receipt" required>
+				
+				<!-- NEW: Opt-In Box and Compliance Note -->
+				<div style="margin-top: 10px; margin-bottom: 20px; text-align: left;">
+				    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer;">
+				        <input type="checkbox" id="opt-in-promos" style="width: auto; margin: 0; transform: scale(1.2);">
+				        <span>Send me restaurant discounts and updates in my area</span>
+				    </label>
+				    <p style="font-size: 11px; color: #888; margin-top: 5px;">
+				        We'll use this information to send you local offers. You can unsubscribe anytime.
+				    </p>
+				</div>
+				<!-- END NEW HTML -->
+				
 				<button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
 			</form>
 		</div>
@@ -329,7 +349,7 @@
 	const BOOKED_COLOR = '#e0e0e0';		
 	const UNAVAILABLE_COLOR = '#ffffff';
 	const SEAT_COLOR = '#555';	
-	const HIGHLIGHT_COLOR = '#E5FF80';
+	const HIGHLIGHT_COLOR = '#ffeb3b'; // Using the old value to ensure the color is visible
 	
 	// Table 17 is available for booking
 	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
@@ -866,6 +886,33 @@
 	};
 	
 	// --- FINAL SUBMIT LOGIC FROM MODAL ---
+    // Function to handle the Supabase insert for marketing data (Needs to be defined outside or above this)
+    async function saveMarketingOptIn(email, selectedDate) {
+        const optedIn = document.getElementById('opt-in-promos').checked;
+        
+        if (!optedIn) {
+            return; // User did not opt in, do nothing
+        }
+
+        const tenantLocation = URL_PARAMS.tenant_id;
+        
+        const { error } = await _supa.from('marketing_optins').insert([{
+            email: email,
+            tenant_id: URL_PARAMS.tenant_id,
+            booking_date: selectedDate,
+            location: tenantLocation, 
+            opted_in: true,
+            source: 'table_booking',
+            consent_text: 'Send me restaurant discounts and updates in my area'
+        }]);
+
+        if (error) {
+            console.error("Marketing Opt-In Save Failed:", error);
+        } else {
+            console.log("Marketing opt-in successfully saved.");
+        }
+    }
+    
 	customerForm.addEventListener('submit', async function(e) {
 		e.preventDefault();
 
@@ -892,6 +939,10 @@
 			alert("Error: Selected tables have no defined price (Total is 0).");
 			return;
 		}
+		
+		// Non-blocking: Save the marketing opt-in FIRST while Stripe processes
+        saveMarketingOptIn(email, selectedDate);
+
 
 		try {
 			// ** NETLIFY FIX: Calling the Netlify function endpoint **
