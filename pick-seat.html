@@ -947,7 +947,7 @@
 
 		try {
 			// ** FINAL FIX: Deploying frontend to Netlify allows us to use the relative path **
-			const res = await fetch('https://dine-select-api.netlify.app/.netlify/functions/checkout-session', {
+			const res = await fetch('/.netlify/functions/checkout-session', { 
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({	
