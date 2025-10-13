@@ -349,7 +349,7 @@
 	const BOOKED_COLOR = '#e0e0e0';		
 	const UNAVAILABLE_COLOR = '#ffffff';
 	const SEAT_COLOR = '#555';	
-	const HIGHLIGHT_COLOR = '#38761d'; // Using the old value to ensure the color is visible
+	const HIGHLIGHT_COLOR = '#ffeb3b'; // Using the old value to ensure the color is visible
 	
 	// Table 17 is available for booking
 	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
@@ -714,9 +714,9 @@
 			const seatW = seatHalf;	 	
 			const seatH = baseSeatSize;	
 			const v_spacing = (t.h - 2 * seatH) / 3;	
-			makeSeat(-seatW, v_spacing, seatW, seatH);	 	       	
+			makeSeat(-seatW, v_spacing, seatW, seatH);	 	        	
 			makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);	 	
-			makeSeat(t.w, v_spacing, seatW, seatH);	 	         	
+			makeSeat(t.w, v_spacing, seatW, seatH);	 	           	
 			makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);	 	 	
 		} else if (t.w === 50 && t.h === 30) {	
 			const seatW = baseSeatSize;	
@@ -732,8 +732,8 @@
 			const h_spacing = t.w / 4;	
 			for(let i=0; i<3; i++){
 				const x_pos = h_spacing * (i+1) - seatW/2;
-				makeSeat(x_pos, -seatH, seatW, seatH);	           	
-				makeSeat(x_pos, t.h, seatW, seatH);	           	 	
+				makeSeat(x_pos, -seatH, seatW, seatH);	           	
+				makeSeat(x_pos, t.h, seatW, seatH);	           	 	
 			}
 		}
 		return group;
