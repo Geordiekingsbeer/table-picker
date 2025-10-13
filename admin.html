@@ -380,7 +380,7 @@
 		const UNAVAILABLE_COLOR = '#ffffff';
 		const SEAT_COLOR = '#555';
 		const MULTI_SELECT_STROKE = '#ff6347';
-		const SINGLE_SELECT_STROKE = '#f4cccc';
+		const SINGLE_SELECT_STROKE = '#38761d';
 		const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
 		
 		let currentBookings = [];
@@ -514,7 +514,7 @@
 					 rect.strokeWidth(2);
 				} else if (selectedGroup && selectedGroup.id() === group.id()) {
 					 rect.stroke(SINGLE_SELECT_STROKE);	
-					 rect.strokeWidth(5);
+					 rect.strokeWidth(3);
 				} else {
 					 rect.stroke('#000');	
 					 rect.strokeWidth(1);
