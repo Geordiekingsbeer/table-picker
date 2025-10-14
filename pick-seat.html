@@ -312,18 +312,18 @@
 	let tableDataMap = new Map();	
 	let isMultiSelectMode = false;	
 
-    // NEW: Global parameters object for tracking data
-    let URL_PARAMS = {
-        tenant_id: null,
-        booking_ref: null,
-        source: null,
-    };
+    // NEW: Global parameters object for tracking data
+    let URL_PARAMS = {
+        tenant_id: null,
+        booking_ref: null,
+        source: null,
+    };
 
 	// --- Price Constants in Cents/Pence ---
 	// Your Requested Prices: £4.99, £9.99, £14.99
 	const PRICE_2_SEATER = 499;	// £4.99
-	const PRICE_4_SEATER = 999;	// £9.99 
-	const PRICE_6_SEATER = 1499; // £14.99 
+	const PRICE_4_SEATER = 999;	// £9.99 
+	const PRICE_6_SEATER = 1499; // £14.99 
 	// --------------------------------------
 
 	const TABLE_COLOR = '#b7d7a8';		
@@ -349,48 +349,12 @@
         if (!URL_PARAMS.tenant_id) {
              URL_PARAMS.tenant_id = 'R-DEMO'; 
         }
+        
+        // NOTE: We keep URL_PARAMS but ignore booking_ref in the code below 
+        // as per the requirement to disable tracking logic.
     }
     
-	// NEW: Function to log the initial click event (Using UPSERT)
-	async function logInitialClick() {
-		// Only log if we have a valid booking reference
-		if (!URL_PARAMS.booking_ref) {
-			return;
-		}
-		
-        // 1. Check if the row already exists
-        const { data: existingData, error: selectError } = await _supa
-            .from('engagement_tracking')
-            .select('view_link_count')
-            .eq('booking_ref', URL_PARAMS.booking_ref)
-            .maybeSingle();
-
-        let newCount = 1;
-        if (existingData) {
-            // Row exists, increment the count
-            newCount = existingData.view_link_count + 1;
-        }
-
-        // 2. Perform UPSERT (or update the count)
-		const { error: upsertError } = await _supa
-			.from('engagement_tracking')
-			.upsert([
-                {
-                    tenant_id: URL_PARAMS.tenant_id,
-                    booking_ref: URL_PARAMS.booking_ref,
-                    // If inserting new, set view_link_count to 1
-                    view_link_count: 1, 
-                }
-            ], { onConflict: 'booking_ref' })
-            .update({ view_link_count: newCount }, { onConflict: 'booking_ref' }); // Update existing row's count
-
-		if (upsertError) {
-			console.error('Error logging initial link click:', upsertError);
-		} else {
-			console.log(`Tracking: Logged/Updated link_click for booking ${URL_PARAMS.booking_ref}. New Count: ${newCount}`);
-		}
-	}
-	// ---------------------------------------------------
+	// *** LOGIC BLOCK REMOVED: logInitialClick function and its definition are gone. ***
 
 
 	function timeToMinutes(timeStr) {
@@ -505,8 +469,7 @@
 		const { data, error } = await _supa
 			.from('premium_slots')	
 			.select('*')
-			.eq('date', selectedDateSupabase); 
-            // NOTE: The tenant_id filter is removed to avoid database schema conflicts.
+			.eq('date', selectedDateSupabase); 
 			
 		if(error){	
 			console.error('Error fetching bookings:', error);	
@@ -603,7 +566,7 @@
 		];
 		
 		// --- FETCH POSITIONS FROM DB ---
-        // NOTE: No filter here. Fetches ALL layouts to respect RLS open policy.
+        // NOTE: No filter here. Fetches ALL layouts to respect RLS open policy.
 		let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
 
 		if (error) {
@@ -695,9 +658,9 @@
 			const seatW = seatHalf;	 	
 			const seatH = baseSeatSize;	
 			const v_spacing = (t.h - 2 * seatH) / 3;	
-			makeSeat(-seatW, v_spacing, seatW, seatH);	 	       	
+			makeSeat(-seatW, v_spacing, seatW, seatH);	 	        	
 			makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);	 	
-			makeSeat(t.w, v_spacing, seatW, seatH);	 	         	
+			makeSeat(t.w, v_spacing, seatW, seatH);	 	          	
 			makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);	 	 	
 		} else if (t.w === 50 && t.h === 30) {	
 			const seatW = baseSeatSize;	
@@ -713,8 +676,8 @@
 			const h_spacing = t.w / 4;	
 			for(let i=0; i<3; i++){
 				const x_pos = h_spacing * (i+1) - seatW/2;
-				makeSeat(x_pos, -seatH, seatW, seatH);	           	
-				makeSeat(x_pos, t.h, seatW, seatH);	           	 	
+				makeSeat(x_pos, -seatH, seatW, seatH);	           	
+				makeSeat(x_pos, t.h, seatW, seatH);	           	 	
 			}
 		}
 		return group;
@@ -791,8 +754,9 @@
 			toggleButton.classList.remove('active');
 			toggleButton.textContent = 'Start Multi-Select Mode';
 			
-			selectedMultiTables.clear();
-			multiBookButton.style.display = 'none';
+			// NOTE: Since multi-select mode is now only for selection, we can remove multiBookButton code
+			// selectedMultiTables.clear();
+			// multiBookButton.style.display = 'none';
 
 			layer.find('Group').forEach(group => group.draggable(true));
 		}
@@ -847,21 +811,22 @@
 			return;
 		}
 
-		// NEW: Log 'checkout_start' when modal opens
+		// *** TRACKING LOGIC REMOVED: No more logging checkout_start ***
+		/*
 		if (URL_PARAMS.booking_ref) {
 			const trackingEvent = {
 				tenant_id: URL_PARAMS.tenant_id,
 				booking_ref: URL_PARAMS.booking_ref,
-				checkout_started: true, // Use the new column
+				checkout_started: true,
 			};
-            
-            // Log the checkout start state by UPSERTING the flag
-            const { error } = await _supa
-                .from('engagement_tracking')
-                .upsert([trackingEvent], { onConflict: 'booking_ref' });
-                
+            
+            const { error } = await _supa
+                .from('engagement_tracking')
+                .upsert([trackingEvent], { onConflict: 'booking_ref' });
+                
 			if (error) console.error('Tracking Error (Checkout Start):', error);
 		}
+		*/
 
 		customerModal.style.display = 'flex';
 	};
@@ -870,8 +835,8 @@
 	customerForm.addEventListener('submit', async function(e) {
 		e.preventDefault();
 
-        // CRITICAL FIX: Re-read URL parameters just before final submit
-        getUrlParams(); 
+        // CRITICAL FIX: Re-read URL parameters just before final submit
+        getUrlParams(); 
 
 		const customerName = document.getElementById('customer-name').value;
 		const partySize = parseInt(document.getElementById('party-size').value);
@@ -906,7 +871,7 @@
 					total_pence: totalPence,
 					customer_name: customerName,
 					party_size: partySize,
-                    // CRITICAL FIX: Passing tracking data to Vercel API
+                    // CRITICAL FIX: Passing tracking data to Vercel API (STILL PASSED FOR WEBHOOK)
 					tenant_id: URL_PARAMS.tenant_id, 
 					booking_ref: URL_PARAMS.booking_ref, 
 				})
@@ -927,10 +892,11 @@
 	// ------------------------------------
 
 	// --- Initialization ---
-    getUrlParams(); // NEW: Reads URL params first
+    getUrlParams(); // NEW: Reads URL params first
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
 	loadFloorplan(loadTables);
+	// *** INITIAL TRACKING CALL REMOVED: logInitialClick is no longer called here. ***
 </script>
 </body>
 </html>
