@@ -946,8 +946,8 @@
 
 
 		try {
-			// ** FINAL FIX: Deploying frontend to Netlify allows us to use the absolute path **
-			const res = await fetch('https://dine-select-api.netlify.app/.netlify/functions/checkout-session', { 
+			// ** FINAL FIX: Using the Absolute Vercel Path for the fetch call **
+			const res = await fetch('https://dine-checkout-live.vercel.app/api/checkout-session', { 
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({	
