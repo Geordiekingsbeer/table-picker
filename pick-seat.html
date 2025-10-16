@@ -63,7 +63,7 @@ h1{font-size:32px;font-weight:700;color:#333;margin-bottom:5px;}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/konva@9/konva.min.js"></script>
 <script>
-/* ----------  FLOORPLAN + TABLES  ---------- */
+/* ----------  FLOORPLAN + CLICKABLE TABLES  ---------- */
 const stage = new Konva.Stage({container:'container',width:480,height:480});
 const bgLayer   = new Konva.Layer();  // background picture
 const tblLayer  = new Konva.Layer();  // tables
@@ -76,19 +76,25 @@ img.onload = () => {
 	bgLayer.draw();
 	console.log('✅  Floor-plan loaded');
 };
-img.src = 'floorplan.png?v=' + Date.now();   // ← must exist in repo root
+img.src = 'floorplan.png?v=' + Date.now();   // must exist in repo root
 
-// 2. draw tables (same positions)
+// 2. draw tables AND make them clickable
 const base = [
 {id:1,x:235,y:110,w:90,h:30},{id:2,x:100,y:30,w:90,h:30},{id:3,x:100,y:150,w:30,h:30},{id:4,x:140,y:220,w:30,h:30},{id:5,x:180,y:300,w:50,h:30},{id:6,x:250,y:330,w:30,h:30},{id:7,x:30,y:300,w:50,h:30},{id:8,x:400,y:100,w:30,h:30},{id:9,x:20,y:180,w:30,h:50},{id:10,x:300,y:240,w:30,h:30},{id:11,x:40,y:80,w:30,h:30},{id:12,x:350,y:350,w:50,h:30},{id:13,x:400,y:280,w:30,h:30},{id:14,x:250,y:180,w:30,h:30},{id:18,x:140,y:280,w:30,h:30},{id:19,x:220,y:280,w:30,h:30},{id:20,x:300,y:280,w:30,h:30},{id:21,x:300,y:180,w:50,h:30}
 ];
 
 base.forEach(t=>{
 	const r = new Konva.Rect({x:t.x,y:t.y,width:t.w,height:t.h,fill:'#b7d7a8',stroke:'#000',strokeWidth:1});
+	// MAKE IT CLICKABLE
+	r.on('click tap',()=>{
+		r.fill('#ffeb3b');        // turn yellow
+		tblLayer.draw();          // refresh canvas
+		console.log('Table '+t.id+' clicked');
+	});
 	tblLayer.add(r);
 });
 tblLayer.draw();
-console.log('✅  Tables drawn on top of floor-plan');
+console.log('✅  Tables drawn and clickable');
 </script>
 </body>
 </html>
