@@ -14,23 +14,26 @@ const PRICE_2 = 499, PRICE_4 = 999, PRICE_6 = 1499;
 // --- Colors & IDs ---
 const TABLE_COLOR = '#b7d7a8', BOOKED = '#e0e0e0', STAFF = '#ffffff', HIGHLIGHT = '#ffeb3b';
 const SEAT_COLOR = '#555';
-const STAFF_IDS = [10, 13, 12, 14, 1]; // Must match Admin list
+const STAFF_IDS = [10, 13, 12, 14, 1]; // Staff Use Only IDs (must match Admin list)
 
 // --- API URL ---
-// CRITICAL FIX: Pointing to your stripe-serverless Vercel deployment
 const STRIPE_CHECKOUT_API_URL = 'https://stripe-serverless-phi.vercel.app/api/create-checkout';
 
 
 let selectedIds = [], bookings = [], isMulti = false, urlParams = {};
-let tableMap = new Map(); // Stores table data and Konva object references
+let tableMap = new Map();
 
-/* ---------- UI ELEMENTS ---------- */
+/* ---------- UI ELEMENTS & KONVA SETUP ---------- */
 const container = document.getElementById('container');
 const payBtn = document.getElementById('payBtn');
 const multiSelectToggle = document.getElementById('multi-select-toggle');
 const customerModal = document.getElementById('customer-modal');
 const customerForm = document.getElementById('customer-form');
 
+// CRITICAL FIX: Only one Konva Stage initialization
+const stage = new Konva.Stage({container:'container',width:STAGE_WIDTH,height:STAGE_HEIGHT});
+const bgLayer = new Konva.Layer(), tblLayer = new Konva.Layer();
+stage.add(bgLayer); stage.add(tblLayer);
 
 /* ---------- UTILS ---------- */
 function timeToMin(t){ const [h,m] = t.split(':').map(Number); return h*60 + m; }
@@ -55,26 +58,19 @@ function setDefaultDateTime(){
 	document.getElementById('booking-time').value='19:00';
 }
 
-/* ---------- URL PARAMS & TRACKING (Optional, but included for completeness) ---------- */
+/* ---------- URL PARAMS & RESIZE ---------- */
 function getUrlParams(){
 	const u = new URLSearchParams(location.search);
-	urlParams.tenant_id = u.get('tenant_id') || 'R-DEMO'; // Fallback to R-DEMO
+	urlParams.tenant_id = u.get('tenant_id') || 'R-DEMO';
 	urlParams.booking_ref = u.get('booking_ref');
 	urlParams.source      = u.get('source');
 }
 
-// Function to log initial click (Simplified, removed Supabase engagement_tracking for brevity)
 function logInitialClick() {
 	if (urlParams.booking_ref) {
 		console.log(`Tracking: Initial view for booking ${urlParams.booking_ref} (Logging to console only).`);
 	}
 }
-
-
-/* ---------- KONVA SETUP ---------- */
-const stage = new Konva.Stage({container:'container',width:STAGE_WIDTH,height:STAGE_HEIGHT});
-const bgLayer = new Konva.Layer(), tblLayer = new Konva.Layer();
-stage.add(bgLayer); stage.add(tblLayer);
 
 function resize(){
 	const w = container.offsetWidth, scale = w/STAGE_WIDTH;
@@ -96,7 +92,6 @@ function loadFloorplan(cb){
 
 /* ---------- DRAW TABLES (MATCHING ADMIN STYLE/LOGIC) ---------- */
 
-// Seat drawing logic (Copied from admin.html)
 function drawSeats(group, t) {
 	const baseSeatSize = 12;	
 	const seatHalf = baseSeatSize / 2;	
@@ -133,7 +128,7 @@ function drawTable(t){
 	const g = new Konva.Group({	
 		id:'g-'+t.id,	
 		table_id: Number(t.id),
-		x: t.x, // Initial position, will be updated by x/y/rotation below
+		x: t.x, 
 		y: t.y,
 	});
 	tblLayer.add(g);
@@ -150,9 +145,8 @@ function drawTable(t){
 	});
 	g.add(r);
 	
-	drawSeats(g, t); // Draw seats inside the group
+	drawSeats(g, t);
 
-	// IMPORTANT: Use the same offset/positioning logic as Admin
 	g.offset({ x: r.width()/2, y: r.height()/2 });
 	g.x(t.x + r.width()/2);
 	g.y(t.y + r.height()/2);
@@ -181,7 +175,7 @@ async function loadTables() {
 
 	let tablesToDraw = baseTables;
 	
-	// 1. Fetch saved positions from Supabase
+	// 1. Fetch saved positions (The key to Admin/Customer layout consistency)
 	try {
 		const { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id'); 
 		
@@ -258,7 +252,7 @@ function updateVisual(){
 	currentSelection.forEach(id=>{
 		const t=tableMap.get(id);
 		if(t.rect.fill()===TABLE_COLOR){ 
-			selectedIds.push(id); // Keep selected
+			selectedIds.push(id); 
 			t.rect.stroke(HIGHLIGHT).strokeWidth(3); 
 		} else {
 			// Table is now booked/staff use, must deselect
@@ -295,7 +289,8 @@ document.getElementById('customer-form').onsubmit=async(e)=>{
 		payBtn.textContent = "Processing...";
 		payBtn.disabled = true;
 		
-		const res = await fetch(STRIPE_CHECKOUT_API_URL,{
+		// CRITICAL FIX: Ensure the API path is correct
+		const res = await fetch(STRIPE_CHECKOUT_API_URL,{ 
 			method:'POST',
 			headers:{'Content-Type':'application/json'},
 			body:JSON.stringify({
@@ -308,8 +303,8 @@ document.getElementById('customer-form').onsubmit=async(e)=>{
 				total_pence:total,
 				tenant_id:urlParams.tenant_id,
 				booking_ref:urlParams.booking_ref,
-				successUrl: successUrl, // Pass the success URL
-				cancelUrl: window.location.href, // Pass the cancel URL
+				successUrl: successUrl,
+				cancelUrl: window.location.href,
 			})
 		});
 		
@@ -325,7 +320,6 @@ document.getElementById('customer-form').onsubmit=async(e)=>{
 		console.error(err); 
 		alert('Network error: Could not reach the payment service.'); 
 	} finally {
-		// Reset button state
 		updateBtn();
 		payBtn.disabled = false;
 	}
@@ -336,12 +330,16 @@ multiSelectToggle.onclick = () => {
 	isMulti = !isMulti;
 	multiSelectToggle.classList.toggle('active', isMulti);
 	multiSelectToggle.textContent = isMulti ? 'Exit Group Selection (Tap Mode)' : 'Start Group Selection (Tap Mode)';
-	// If changing mode, clear selection to prevent confusion
 	selectedIds = [];
 	updateVisual();
 };
 
 document.getElementById('check-availability').onclick = loadBookings;
+window.onclick = (event) => {
+	if (event.target === customerModal) {
+		customerModal.style.display = 'none';
+	}
+};
 
 getUrlParams(); 
 logInitialClick();
