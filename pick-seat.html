@@ -3,260 +3,292 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pick Your Seat</title>
-
+  <title>Restaurant Premium Tables</title>
   <style>
     body {
-      font-family: system-ui, sans-serif;
       margin: 0;
-      background: #fafafa;
+      background: #f5f5f5;
+      font-family: system-ui, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px;
-    }
-    #container {
-      width: 100%;
-      max-width: 480px;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+      justify-content: flex-start;
+      height: 100vh;
       overflow: hidden;
-      margin-bottom: 1rem;
     }
-    #controls {
+
+    #container {
+      border: 2px solid #ccc;
+      background: #fff;
+      margin-top: 20px;
+    }
+
+    #actions {
+      margin-top: 10px;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
+      gap: 12px;
     }
+
     button {
-      padding: 10px 18px;
+      padding: 10px 16px;
       border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 15px;
-    }
-    #payBtn {
-      background: #635bff;
-      color: white;
-    }
-    #payBtn:disabled {
-      background: #aaa;
-      cursor: not-allowed;
-    }
-    #multi-select-toggle {
-      background: #eee;
-    }
-    #multi-select-toggle.active {
-      background: #ffc107;
-    }
-    #customer-modal {
-      display: none;
-      position: fixed;
-      z-index: 10;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      justify-content: center;
-      align-items: center;
-    }
-    #customer-form {
-      background: white;
-      padding: 20px;
       border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 280px;
+      background: #222;
+      color: #fff;
+      cursor: pointer;
+      font-size: 16px;
     }
-    #customer-form input, #customer-form select {
-      padding: 8px;
-      font-size: 14px;
-      border-radius: 4px;
+
+    button:hover {
+      background: #444;
+    }
+
+    /* Optional simple modal for checkout */
+    #modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      width: 300px;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 6px;
+      margin-top: 4px;
       border: 1px solid #ccc;
+      border-radius: 6px;
     }
   </style>
 </head>
 
 <body>
-  <h1>Pick Your Seat</h1>
-
+  <h1>Book a Premium Table</h1>
   <div id="container"></div>
 
-  <div id="controls">
-    <div>
-      <label>Date:</label>
-      <input type="date" id="booking-date" />
-      <label>Time:</label>
-      <input type="time" id="booking-time" />
-      <button id="check-availability">Check</button>
-    </div>
+  <div id="actions">
     <button id="multi-select-toggle">Start Group Selection (Tap Mode)</button>
-    <button id="payBtn" disabled>Pay for 0 Tables – Stripe</button>
+    <button id="payBtn">Pay for 0 Tables – Stripe</button>
   </div>
 
-  <!-- Modal -->
-  <div id="customer-modal">
-    <form id="customer-form">
-      <h3>Enter Details</h3>
-      <input type="text" id="customer-name" placeholder="Name" required />
-      <input type="email" id="customer-email" placeholder="Email" required />
-      <input type="number" id="party-size" placeholder="Party size" min="1" required />
-      <button type="submit">Continue to Stripe</button>
-    </form>
+  <div id="modal">
+    <div id="modal-content">
+      <h3>Complete Booking</h3>
+      <label for="booking-date">Date:</label>
+      <input type="date" id="booking-date" />
+      <label for="booking-time">Time:</label>
+      <input type="time" id="booking-time" />
+      <div style="margin-top:16px;">
+        <button id="confirmBtn">Confirm</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Dependencies -->
+  <!-- Supabase + Konva -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
 
-  <!-- ✅ Your App Logic -->
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      /* ---------- CONFIG ---------- */
+      const STAGE_WIDTH = 480;
+      const STAGE_HEIGHT = 400;
+      const TABLE_COLOR = '#ddd';
+      const HIGHLIGHT = '#00bcd4';
+      const STAFF = '#aaa';
+      const STAFF_IDS = []; // optional
 
-/* ---------- CONFIG/CONSTANTS ---------- */
-const STAGE_WIDTH  = 480;
-const STAGE_HEIGHT = 480;
-const supabaseUrl  = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
-const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
+      const stage = new Konva.Stage({
+        container: 'container',
+        width: STAGE_WIDTH,
+        height: STAGE_HEIGHT
+      });
 
-// --- Prices (Cents/Pence) ---
-const PRICE_2 = 499, PRICE_4 = 999, PRICE_6 = 1499;
+      const bgLayer = new Konva.Layer();
+      const tblLayer = new Konva.Layer();
+      stage.add(bgLayer);
+      stage.add(tblLayer);
 
-// --- Colors & IDs ---
-const TABLE_COLOR = '#b7d7a8', BOOKED = '#e0e0e0', STAFF = '#ffffff', HIGHLIGHT = '#ffeb3b';
-const SEAT_COLOR = '#555';
-const STAFF_IDS = [10, 13, 12, 14, 1];
+      const tableMap = new Map();
+      const selectedIds = [];
+      let isMulti = false;
 
-// --- API URL ---
-const STRIPE_CHECKOUT_API_URL = 'https://stripe-serverless-phi.vercel.app/api/create-checkout';
+      const multiToggle = document.getElementById('multi-select-toggle');
+      const payBtn = document.getElementById('payBtn');
 
-let selectedIds = [], bookings = [], isMulti = false, urlParams = {};
-let tableMap = new Map();
+      multiToggle.addEventListener('click', () => {
+        isMulti = !isMulti;
+        multiToggle.textContent = isMulti
+          ? 'End Group Selection'
+          : 'Start Group Selection (Tap Mode)';
+      });
 
-/* ---------- UI ELEMENTS & KONVA SETUP ---------- */
-const container = document.getElementById('container');
-const payBtn = document.getElementById('payBtn');
-const multiSelectToggle = document.getElementById('multi-select-toggle');
-const customerModal = document.getElementById('customer-modal');
-const customerForm = document.getElementById('customer-form');
+      /* ---------- FLOORPLAN ---------- */
+      function loadFloorplan(cb) {
+        const imageObj = new Image();
+        imageObj.onload = () => {
+          const bg = new Konva.Image({
+            image: imageObj,
+            width: STAGE_WIDTH,
+            height: STAGE_HEIGHT
+          });
+          bgLayer.add(bg);
+          bgLayer.draw();
+          if (cb) cb();
+        };
+        imageObj.src = 'floorplan.png'; // must exist in same folder
+      }
 
-const stage = new Konva.Stage({container:'container',width:STAGE_WIDTH,height:STAGE_HEIGHT});
-const bgLayer = new Konva.Layer(), tblLayer = new Konva.Layer();
-stage.add(bgLayer); stage.add(tblLayer);
+      /* ---------- TABLE DRAWING ---------- */
+      function drawSeats(group, t) {
+        const baseSeatSize = 12;
+        const seatHalf = baseSeatSize / 2;
+        function makeSeat(x, y, w, h) {
+          group.add(new Konva.Rect({ width: w, height: h, fill: '#555', x, y }));
+        }
 
-/* ---------- UTILS ---------- */
-function timeToMin(t){ const [h,m] = t.split(':').map(Number); return h*60 + m; }
-function getSupabaseDate(){ return document.getElementById('booking-date').value; }
+        if (t.w === 30 && t.h === 30) {
+          makeSeat(t.w / 2 - seatHalf, -seatHalf, baseSeatSize, seatHalf);
+          makeSeat(t.w / 2 - seatHalf, t.h, baseSeatSize, seatHalf);
+        } else if (t.w === 30 && t.h === 50) {
+          const v_spacing = (t.h - 2 * baseSeatSize) / 3;
+          makeSeat(-seatHalf, v_spacing, seatHalf, baseSeatSize);
+          makeSeat(-seatHalf, v_spacing * 2 + baseSeatSize, seatHalf, baseSeatSize);
+          makeSeat(t.w, v_spacing, seatHalf, baseSeatSize);
+          makeSeat(t.w, v_spacing * 2 + baseSeatSize, seatHalf, baseSeatSize);
+        } else if (t.w === 50 && t.h === 30) {
+          const h_spacing = (t.w - 2 * baseSeatSize) / 3;
+          makeSeat(h_spacing, -seatHalf, baseSeatSize, seatHalf);
+          makeSeat(h_spacing * 2 + baseSeatSize, -seatHalf, baseSeatSize, seatHalf);
+          makeSeat(h_spacing, t.h, baseSeatSize, seatHalf);
+          makeSeat(h_spacing * 2 + baseSeatSize, t.h, baseSeatSize, seatHalf);
+        } else if (t.w === 90 && t.h === 30) {
+          const h_spacing = t.w / 4;
+          for (let i = 0; i < 3; i++) {
+            const x_pos = h_spacing * (i + 1) - baseSeatSize / 2;
+            makeSeat(x_pos, -seatHalf, baseSeatSize, seatHalf);
+            makeSeat(x_pos, t.h, baseSeatSize, seatHalf);
+          }
+        }
+      }
 
-function getPrice(w,h){
-  if(w===30 && h===30) return PRICE_2;
-  if((w===30 && h===50)||(w===50 && h===30)) return PRICE_4;
-  if(w===90 && h===30) return PRICE_6;
-  return 0;
-}
-function totalPence(){ return selectedIds.reduce((t,id)=>t+(tableMap.get(id)?.price||0),0); }
-function updateBtn(){
-  const p = totalPence();
-  payBtn.disabled = !p;
-  payBtn.textContent = p ? `Pay £${(p/100).toFixed(2)} – Stripe` : 'Pay for 0 Tables – Stripe';
-}
+      function getPrice(w, h) {
+        if (w >= 90) return 20;
+        if (w >= 50) return 15;
+        return 10;
+      }
 
-function setDefaultDateTime(){
-  const today=new Date(), y=today.getFullYear(), m=String(today.getMonth()+1).padStart(2,'0'), d=String(today.getDate()).padStart(2,'0');
-  document.getElementById('booking-date').value=`${y}-${m}-${d}`;
-  document.getElementById('booking-time').value='19:00';
-}
+      function drawTable(t) {
+        const g = new Konva.Group({ id: 'g-' + t.id, x: t.x, y: t.y });
+        tblLayer.add(g);
+        const r = new Konva.Rect({
+          width: t.w,
+          height: t.h,
+          fill: TABLE_COLOR,
+          stroke: '#000',
+          strokeWidth: 1
+        });
+        g.add(r);
+        drawSeats(g, t);
+        g.offset({ x: t.w / 2, y: t.h / 2 });
+        g.x(t.x + t.w / 2);
+        g.y(t.y + t.h / 2);
+        g.rotation(t.rotation || 0);
+        g.on('click tap', () => selectTable(t.id));
+        tableMap.set(t.id, { id: t.id, price: getPrice(t.w, t.h), rect: r, group: g });
+      }
 
-/* ---------- URL PARAMS ---------- */
-function getUrlParams(){
-  const u = new URLSearchParams(location.search);
-  urlParams.tenant_id = u.get('tenant_id') || 'R-DEMO';
-  urlParams.booking_ref = u.get('booking_ref');
-}
-function logInitialClick(){
-  if(urlParams.booking_ref){ console.log(`Tracking: Initial view for booking ${urlParams.booking_ref}`); }
-}
+      const baseTables = [
+        { id: 1, x: 235, y: 110, w: 90, h: 30 },
+        { id: 2, x: 100, y: 30, w: 90, h: 30 },
+        { id: 3, x: 100, y: 150, w: 30, h: 30 },
+        { id: 4, x: 140, y: 220, w: 30, h: 30 },
+        { id: 5, x: 180, y: 300, w: 50, h: 30 },
+        { id: 6, x: 250, y: 330, w: 30, h: 30 },
+        { id: 7, x: 30, y: 300, w: 50, h: 30 },
+        { id: 8, x: 400, y: 100, w: 30, h: 30 },
+        { id: 9, x: 20, y: 180, w: 30, h: 50 },
+        { id: 10, x: 300, y: 240, w: 30, h: 30 },
+        { id: 11, x: 40, y: 80, w: 30, h: 30 },
+        { id: 12, x: 350, y: 350, w: 50, h: 30 },
+        { id: 13, x: 400, y: 280, w: 30, h: 30 },
+        { id: 14, x: 250, y: 180, w: 30, h: 30 },
+        { id: 18, x: 140, y: 280, w: 30, h: 30 },
+        { id: 19, x: 220, y: 280, w: 30, h: 30 },
+        { id: 20, x: 300, y: 280, w: 30, h: 30 },
+        { id: 21, x: 300, y: 180, w: 50, h: 30 }
+      ];
 
-/* ---------- RESIZE ---------- */
-function resize(){
-  const w = container.offsetWidth, scale = w/STAGE_WIDTH;
-  stage.width(w); stage.height(STAGE_HEIGHT*scale); stage.scale({x:scale,y:scale});
-  container.style.height = STAGE_HEIGHT*scale+'px'; stage.draw();
-}
-window.addEventListener('resize', resize);
+      function loadTables() {
+        tblLayer.destroyChildren();
+        tableMap.clear();
+        baseTables.forEach(t => drawTable(t));
+        tblLayer.draw();
+      }
 
-/* ---------- FLOORPLAN ---------- */
-function loadFloorplan(cb){
-  const img = new Image();
-  img.onload = ()=>{ bgLayer.add(new Konva.Image({x:0,y:0,image:img,width:STAGE_WIDTH,height:STAGE_HEIGHT})); bgLayer.draw(); resize(); if(cb) cb(); };
-  img.src = 'floorplan.png?v='+Date.now();
-}
+      function selectTable(id) {
+        const data = tableMap.get(id);
+        if (!data) return;
+        const idx = selectedIds.indexOf(id);
+        if (idx === -1) {
+          if (!isMulti) {
+            selectedIds.forEach(i => {
+              const d = tableMap.get(i);
+              if (d) d.rect.stroke('#000');
+            });
+            selectedIds.length = 0;
+          }
+          selectedIds.push(id);
+          data.rect.stroke(HIGHLIGHT);
+          data.rect.strokeWidth(3);
+        } else {
+          selectedIds.splice(idx, 1);
+          data.rect.stroke('#000');
+          data.rect.strokeWidth(1);
+        }
+        updateBtn();
+        tblLayer.draw();
+      }
 
-/* ---------- TABLE DRAWING (same logic) ---------- */
-// ... (You can paste your drawSeats, drawTable, baseTables, loadTables, loadBookings, etc. here — unchanged from your current working version) ...
+      function updateBtn() {
+        const total = selectedIds.reduce(
+          (sum, id) => sum + (tableMap.get(id)?.price || 0),
+          0
+        );
+        payBtn.textContent =
+          selectedIds.length === 0
+            ? 'Pay for 0 Tables – Stripe'
+            : `Pay €${total} for ${selectedIds.length} Table${selectedIds.length > 1 ? 's' : ''}`;
+      }
 
-/* ---------- STRIPE CHECKOUT ---------- */
-payBtn.onclick = ()=>{ 
-  if(!selectedIds.length){ alert("Please select a table first."); return; } 
-  customerModal.style.display='flex'; 
-};
+      payBtn.addEventListener('click', () => {
+        if (selectedIds.length === 0) return alert('Select a table first!');
+        document.getElementById('modal').style.display = 'flex';
+      });
 
-customerForm.onsubmit = async (e)=>{
-  e.preventDefault();
-  const name  = document.getElementById('customer-name').value.trim();
-  const email = document.getElementById('customer-email').value.trim();
-  const party = parseInt(document.getElementById('party-size').value);
-  if(!name||!email||!party){ alert('Please complete all fields.'); return; }
-  customerModal.style.display='none';
-  
-  const date = getSupabaseDate();
-  const time = document.getElementById('booking-time').value;
-  const total = totalPence();
+      document.getElementById('confirmBtn').addEventListener('click', () => {
+        document.getElementById('modal').style.display = 'none';
+        alert('Proceeding to Stripe checkout… (placeholder)');
+        // Here you'll call your Stripe redirect logic
+      });
 
-  const successUrl = window.location.origin + window.location.pathname.replace('pick-seat.html', 'success.html') + window.location.search;
-  
-  try {
-    payBtn.textContent = "Processing...";
-    payBtn.disabled = true;
-
-    const res = await fetch(STRIPE_CHECKOUT_API_URL,{ 
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        table_ids:selectedIds,
-        booking_date:date,
-        booking_time:time,
-        customer_email:email,
-        customer_name:name,
-        party_size:party,
-        total_pence:total,
-        tenant_id:urlParams.tenant_id,
-        booking_ref:urlParams.booking_ref,
-        successUrl: successUrl,
-        cancelUrl: window.location.href,
-      })
+      loadFloorplan(loadTables);
     });
-    
-    const data = await res.json();
-    if(res.ok && data.url){ window.location.href = data.url; } 
-    else { alert('Checkout failed: ' + (data.error || 'Unknown error.')); console.error(data); }
-  } catch(err) {
-    console.error(err);
-    alert('Network error: Could not reach the payment service.');
-  } finally {
-    updateBtn(); payBtn.disabled = false;
-  }
-};
-
-/* ---------- INIT ---------- */
-getUrlParams();
-logInitialClick();
-setDefaultDateTime();
-loadFloorplan(); // (and loadTables inside that)
-  });
   </script>
 </body>
 </html>
