@@ -65,7 +65,7 @@
                     </tr>
                 </thead>
                 <tbody id="funnel-body">
-                    <tr><td>Total Link Views (Floorplan)</td><td id="kpi-link-opened"></td></tr>
+                    <tr><td>Total People Viewed Link</td><td id="kpi-link-opened"></td></tr>
                     <tr><td>Total Checkout Starts</td><td id="kpi-checkout-started"></td></tr>
                     <tr><td>Total Paid Bookings (Conversion)</td><td id="kpi-paid"></td></tr>
                     <tr><td>Conversion Rate (Paid / Viewed)</td><td id="kpi-rate"></td></tr>
@@ -101,7 +101,7 @@
 
         async function loadReports() {
             try {
-                // 1. Fetch Engagement Funnel Data (FIXED: removed .single() call)
+                // 1. Fetch Engagement Funnel Data
                 const { data: funnelData, error: funnelError } = await _supa
                     .from('v_engagement_funnel')
                     .select('*')
@@ -111,7 +111,7 @@
                     throw new Error(funnelError.message);
                 }
 
-                // Access data from the first element of the returned array (or default to empty object)
+                // Access data from the first element of the returned array
                 const funnel = funnelData && funnelData.length > 0 ? funnelData[0] : {};
                 
                 if (Object.keys(funnel).length === 0) {
@@ -120,17 +120,18 @@
                     return;
                 }
                 
-                const linksOpened = funnel.total_links_opened || 0;
+                // --- FIX: Use the new column name: total_people_viewed_link ---
+                const linksViewed = funnel.total_people_viewed_link || 0;
                 const paidBookings = funnel.total_paid_bookings || 0;
-                const conversionRate = (linksOpened > 0) ? ((paidBookings / linksOpened) * 100).toFixed(2) + '%' : '0.00%';
+                const conversionRate = (linksViewed > 0) ? ((paidBookings / linksViewed) * 100).toFixed(2) + '%' : '0.00%';
 
-                document.getElementById('kpi-link-opened').textContent = linksOpened;
+                document.getElementById('kpi-link-opened').textContent = linksViewed;
                 document.getElementById('kpi-checkout-started').textContent = funnel.total_checkout_started || 0;
                 document.getElementById('kpi-paid').textContent = paidBookings;
                 document.getElementById('kpi-rate').textContent = conversionRate;
 
 
-                // 2. Fetch Table Demand Metrics (FIXED: removed .single() call)
+                // 2. Fetch Table Demand Metrics
                 const { data: metricsData, error: metricsError } = await _supa
                     .from('v_table_booking_metrics')
                     .select('*')
@@ -140,7 +141,6 @@
                     throw new Error(metricsError.message);
                 }
                 
-                // Access data from the first element of the returned array (or default to empty object)
                 const metrics = metricsData && metricsData.length > 0 ? metricsData[0] : {};
 
                 document.getElementById('kpi-2-seat').textContent = metrics.count_2_seaters || 0;
