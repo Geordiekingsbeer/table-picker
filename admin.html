@@ -552,19 +552,15 @@
 				.on('postgres_changes', 
 					{ event: 'INSERT', schema: 'public', table: 'premium_slots' },
 					(payload) => {
-						// Only reload if the change is relevant to the currently selected time
-						const newBookingDate = payload.new.date;
-						const newBookingTime = payload.new.start_time;
 						const selectedTimeMinutes = timeToMinutes(currentSelectedTime);
 						
-						if (newBookingDate === currentSelectedDate) {
-							// Check if the new booking overlaps with the currently selected time
+						if (payload.new.date === currentSelectedDate) {
 							const bookingStartMinutes = timeToMinutes(payload.new.start_time);
 							const bookingEndMinutes = timeToMinutes(payload.new.end_time);
 
 							if (selectedTimeMinutes >= bookingStartMinutes && selectedTimeMinutes < bookingEndMinutes) {
 								console.log('Realtime update received. Reloading bookings...');
-								loadBookings(); // Reloads data and updates visuals
+								loadBookings();
 							}
 						}
 					}
@@ -932,8 +928,6 @@
 			multiModal.style.display = 'block';
 		}
 
-		// --- Event Listeners ---
-		
 		window.addEventListener('resize', resizeStage);
 
 		document.getElementById('multi-select-toggle').onclick = () => {
@@ -1046,7 +1040,6 @@
 			if(error){ alert('Save failed: '+error.message); } else { tables = data; alert('Layout saved!'); }
 		};
 
-		// --- Initialization ---
 		setDefaultDateTime();
 		window.addEventListener('resize', resizeStage);
 		loadBackground(loadTables);
