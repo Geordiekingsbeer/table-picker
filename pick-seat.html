@@ -68,7 +68,7 @@
 			-webkit-appearance: none;
 			-moz-appearance: none;
 			appearance: none;
-			font-family: Arial, sans-serif; 
+			font-family: Arial, sans-serif;
 		}
 		
 		#booking-date {
@@ -89,7 +89,7 @@
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
-			font-weight: 600; 
+			font-weight: 600;
 			flex-grow: 1;
 			box-shadow: none;
 			white-space: nowrap;
@@ -120,7 +120,7 @@
 		#multi-select-toggle.active {
 			background-color: #1976d2;
 			color: white;
-			border: 1px solid #1976d2;
+			border: 1px solid #1977d2;
 		}
 
 		#container-wrapper {
@@ -158,7 +158,7 @@
 			height: 15px;
 			border-radius: 3px;
 			margin-right: 5px;
-			border: 1px solid #000; 
+			border: 1px solid #000;
 		}
 
 		#payBtn{
@@ -168,7 +168,7 @@
 			background:#388e3c;
 			color:#fff;
 			border:none;
-			border-radius: 20px; 
+			border-radius: 20px;
 			cursor:pointer;
 			box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 			width: 90vw;
@@ -214,6 +214,12 @@
 			border-radius: 5px;
 			box-sizing: border-box;
 		}
+        
+        #future-offers-optin {
+            width: auto !important; 
+            margin: 0 10px 0 0 !important; 
+            display: inline-block !important; 
+        }
 
 		#confirm-booking-btn {
 			background-color: #388e3c;
@@ -257,7 +263,14 @@
 				<input type="text" id="customer-name" placeholder="Full Name" required>
 				<input type="number" id="party-size" placeholder="Party Size (e.g., 4)" min="1" required>
 				<input type="email" id="customer-email" placeholder="Email for Receipt" required>
-				<button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
+
+                <div style="margin-top: 15px; margin-bottom: 20px; text-align: left;">
+                    <input type="checkbox" id="future-offers-optin">
+                    <label for="future-offers-optin" style="font-size: 14px; font-weight: normal; color: #555;">
+                        Yes, I would like to receive future offers and discounts from restaurants in my area.
+                    </label>
+                </div>
+                <button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
 			</form>
 		</div>
 	</div>
@@ -289,6 +302,10 @@
 	let currentBookings = [];	
 	let tableDataMap = new Map();	
 	let isMultiSelectMode = false;	
+    let selectedGroup = null; // Defined for multi-select logic cleanup
+    let selectedMultiTables = new Set(); // Defined for multi-select logic cleanup
+
+    const MULTI_BOOK_BUTTON = { style: { display: 'none' } }; // Mocked element for multi-select logic cleanup
 
     let URL_PARAMS = {
         tenant_id: null,
@@ -316,7 +333,7 @@
         URL_PARAMS.source = urlParams.get('source');
 
         if (!URL_PARAMS.tenant_id) {
-             URL_PARAMS.tenant_id = 'R-DEMO'; 
+             URL_PARAMS.tenant_id = 'R-DEMO';
         }
     }
     
@@ -342,7 +359,7 @@
                 {
                     tenant_id: URL_PARAMS.tenant_id,
                     booking_ref: URL_PARAMS.booking_ref,
-                    view_link_count: 1, 
+                    view_link_count: 1,
                 }
             ], { onConflict: 'booking_ref' })
             .update({ view_link_count: newCount }, { onConflict: 'booking_ref' });
@@ -494,18 +511,15 @@
 				tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
 			}
 			
-			// Reset stroke
 			tableRect.stroke('#000');	
 			tableRect.strokeWidth(1);
 		});
 		
-		// Re-apply selection highlights for available tables
 		currentSelection.forEach(id => {
 			const group = layer.findOne('#g-' + id);
 			if (!group) return;	
 			const tableRect = group.findOne('.main-table');
 
-			// Re-select only if available
 			if (tableRect.fill() === TABLE_COLOR) {
 				selectedTableIds.push(id);
 				tableRect.stroke(HIGHLIGHT_COLOR);
@@ -636,9 +650,9 @@
 			const seatW = seatHalf;	 	
 			const seatH = baseSeatSize;	
 			const v_spacing = (t.h - 2 * seatH) / 3;	
-			makeSeat(-seatW, v_spacing, seatW, seatH);	 	       	
+			makeSeat(-seatW, v_spacing, seatW, seatH);	 	
 			makeSeat(-seatW, v_spacing * 2 + seatH, seatW, seatH);	 	
-			makeSeat(t.w, v_spacing, seatW, seatH);	 	         	
+			makeSeat(t.w, v_spacing, seatW, seatH);	 	
 			makeSeat(t.w, v_spacing * 2 + seatH, seatW, seatH);	 	 	
 		} else if (t.w === 50 && t.h === 30) {	
 			const seatW = baseSeatSize;	
@@ -729,7 +743,7 @@
 			toggleButton.textContent = 'Start Multi-Select Mode';
 			
 			selectedMultiTables.clear();
-			multiBookButton.style.display = 'none';
+			MULTI_BOOK_BUTTON.style.display = 'none';
 
 			layer.find('Group').forEach(group => group.draggable(true));
 		}
@@ -784,13 +798,13 @@
 			const trackingEvent = {
 				tenant_id: URL_PARAMS.tenant_id,
 				booking_ref: URL_PARAMS.booking_ref,
-				checkout_started: 'TRUE', // Changed to string
+				checkout_started: 'TRUE',
 			};
             
             const { error } = await _supa
                 .from('engagement_tracking')
                 .upsert([trackingEvent], { onConflict: 'booking_ref', ignoreDuplicates: false })
-                .update({ checkout_started: 'TRUE' }); // Explicitly update the existing row
+                .update({ checkout_started: 'TRUE' });
                 
 			if (error) console.error('Tracking Error (Checkout Start):', error);
 		}
@@ -806,6 +820,7 @@
 		const customerName = document.getElementById('customer-name').value;
 		const partySize = parseInt(document.getElementById('party-size').value);
 		const email = document.getElementById('customer-email').value;
+        const receiveOffers = document.getElementById('future-offers-optin').checked;
 
 		if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
 			alert('Please fill out all fields correctly.');
@@ -836,8 +851,9 @@
 					total_pence: totalPence,
 					customer_name: customerName,
 					party_size: partySize,
-					tenant_id: URL_PARAMS.tenant_id, 
-					booking_ref: URL_PARAMS.booking_ref, 
+					tenant_id: URL_PARAMS.tenant_id,
+					booking_ref: URL_PARAMS.booking_ref,
+                    receive_offers: receiveOffers
 				})
 			});
 			
