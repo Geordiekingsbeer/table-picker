@@ -19,7 +19,6 @@
 			padding: 20px 10px;
 		}
 
-		/* Admin Management Buttons (Drag, Save, Rotate) */
 		.admin-controls-top {
 			display: flex;
 			align-items: center;
@@ -37,30 +36,24 @@
 			border: none;
 			cursor: pointer;
 			color: #fff;
-			transition: all 0.2s ease;
-			/* UPDATED: Added subtle box shadow for depth */
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 
-		/* UPDATED: Save button matches table color */
 		.admin-controls-top button#save {
-			background-color: #b7d7a8; /* Table Color */
-			color: #333; /* Darker text for visibility */
+			background-color: #b7d7a8;
+			color: #333;
 		}
 		
-		/* UPDATED: Rotate button to light baby blue */
 		.admin-controls-top button#rotate {
-			background-color: #add8e6; /* Light Blue */
-			color: #333; /* Darker text for visibility */
+			background-color: #add8e6;
+			color: #333;
 		}
 		
 		.admin-controls-top button:hover {
-			/* Increased shadow on hover for better effect */
-			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
 			opacity: 0.95;
 		}
 
-		/* Date/Time Selector - MATCHES CUSTOMER FILE */
 		#datetime-controls {
 			display: flex;
 			gap: 10px;
@@ -80,7 +73,6 @@
 			white-space: nowrap;
 		}
 
-		/* Input Styling - MATCHES CUSTOMER FILE */
 		#datetime-controls input {
 			flex-grow: 1;
 			padding: 12px 10px;
@@ -92,40 +84,36 @@
 			max-width: none;
 			font-weight: 500;
 			text-align: center;
-			/* NEW: Force font without slashed zero */
-			font-family: Arial, sans-serif; 
+			font-family: Arial, sans-serif; 
 		}
 		
-		/* UPDATED: Load Bookings button matches table color & has bold text */
 		#load-bookings {
 			padding: 12px 10px;
-			background-color: #b7d7a8; /* Table Color */
-			color: #333; /* Darker text for visibility */
+			background-color: #b7d7a8;
+			color: #333;
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
-			/* UPDATED: Make text bold */
-			font-weight: 600; 
+			font-weight: 600; 
 			flex-grow: 1;
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Added subtle box shadow */
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 			white-space: nowrap;
 		}
 		
 		#load-bookings:hover {
-			background-color: #a7c598; /* Slightly darker hover for table color */
-			box-shadow: 0 2px 5px rgba(0,0,0,0.3); /* Increased shadow on hover */
+			background-color: #a7c598;
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 		}
 		
 		.admin-controls-top button#save:hover {
-			background-color: #a7c598; /* Slightly darker hover for save button */
+			background-color: #a7c598;
 		}
 		
 		.admin-controls-top button#rotate:hover {
-			background-color: #99c2d1; /* Slightly darker hover for rotate button */
+			background-color: #99c2d1;
 		}
 
 
-		/* Multi-Select Toggle Button - MATCHES CUSTOMER FILE */
 		#multi-select-toggle, #multi-book-button {
 			padding: 10px 15px;
 			font-size: 16px;
@@ -134,15 +122,14 @@
 			border-radius: 4px;
 			cursor: pointer;
 			border: 1px solid #666;
-			background-color: #f7f7f7; /* Light Gray Background */
+			background-color: #f7f7f7;
 			color: #333;
 			transition: all 0.2s ease;
 			white-space: nowrap;
 			width: 90vw;
 			max-width: 480px;
 			text-align: center;
-			/* Added subtle shadow to this button too */
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 		
 		#multi-select-toggle:hover, #multi-book-button:hover {
@@ -160,7 +147,6 @@
 			border: none;
 		}
 
-		/* Floorplan container */
 		#container-wrapper {
 			display: flex;
 			justify-content: center;
@@ -176,7 +162,6 @@
 			background-color: transparent;
 		}
 
-		/* Status Legend */
 		#status-legend {
 			display: flex;
 			gap: 15px;
@@ -197,10 +182,9 @@
 			height: 15px;
 			border-radius: 3px;
 			margin-right: 5px;
-			border: 1px solid #000; 
+			border: 1px solid #000; 
 		}
 		
-		/* Modal styles */
 		.modal {
 			display: none;	
 			position: fixed;	
@@ -268,7 +252,6 @@
 			border-radius: 5px;
 		}
 
-		/* Ensures long text strings (like order IDs) wrap correctly */
 		#current-booking-info p span {
 			word-break: break-all;
 		}
@@ -277,14 +260,13 @@
 			background-color: #d32f2f;
 		}
 		
-		/* Responsive for small screens */
 		@media (max-width: 500px) {
 			.admin-controls-top button { padding: 8px 10px; font-size: 12px; }
 		}
 	</style>
 </head>
 <body>
-    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
 
 	<div class="admin-controls-top">
 		<button id="save">Save layout</button>
@@ -365,12 +347,9 @@
 	</div>
 
 	<script>
-		// --- Konva Stage Dimensions (The fixed, internal dimensions of your floorplan) ---
 		const STAGE_WIDTH = 480;	
 		const STAGE_HEIGHT = 480;	
-		// ---------------------------------------------------------------------------------
 		
-		// --- Supabase setup ---
 		const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co ';
 		const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
 		const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
@@ -388,13 +367,10 @@
 		let isMultiSelectMode = false;
 		let selectedMultiTables = new Set();
 		
-		// CRITICAL: Dummy tenant ID for Admin Panel - UPDATED TO MATCH SUCCESSFUL TEST ID
-		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-        // CRITICAL: Vercel Function URL for SECURE Admin booking
-        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-fresh.vercel.app/api/admin-create-booking';
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
+        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-fresh.vercel.app/api/admin-create-booking';
 
 
-		// --- UNIFIED COLOR CONSTANTS ---
 		const TABLE_COLOR = '#b7d7a8';
 		const BOOKED_COLOR = '#e0e0e0';
 		const UNAVAILABLE_COLOR = '#ffffff';
@@ -479,10 +455,9 @@
 				
 				if (callback) callback();
 			};
-			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); // CACHE BUSTER
+			imageObj.src = 'floorplan.png?v=' + new Date().getTime();
 		}
 
-		// NEW: Function to fetch the restaurant display name
 		async function loadDisplayName() {
 			const { data, error } = await _supa
 				.from('tenants')
@@ -499,42 +474,37 @@
 		}
 
 		async function loadTables() {
-			// --- DEFINITIVE LIST OF 21 TABLES WITH CORRECT SIZES ---
 			const baseTables = [
-				// Original Tables 1-17
 				{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
 				{ id: 2, x: 100, y: 30, w: 90, h: 30, rotation: 0 },
 				{ id: 3, x: 100, y: 150, w: 30, h: 30, rotation: 0 },
 				{ id: 4, x: 140, y: 220, w: 30, h: 30, rotation: 0 },
-				{ id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 }, // 4-seater
+				{ id: 5, x: 180, y: 300, w: 50, h: 30, rotation: 90 },
 				{ id: 6, x: 250, y: 330, w: 30, h: 30, rotation: 0 },
-				{ id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 }, // 4-seater
+				{ id: 7, x: 30, y: 300, w: 50, h: 30, rotation: 90 },
 				{ id: 8, x: 400, y: 100, w: 30, h: 30, rotation: 0 },
-				{ id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 }, // 4-seater
+				{ id: 9, x: 20, y: 180, w: 30, h: 50, rotation: 0 },
 				{ id: 10, x: 300, y: 240, w: 30, h: 30, rotation: 0 },
 				{ id: 11, x: 40, y: 80, w: 30, h: 30, rotation: 0 },
-				{ id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 }, // 4-seater
+				{ id: 12, x: 350, y: 350, w: 50, h: 30, rotation: 0 },
 				{ id: 13, x: 400, y: 280, w: 30, h: 30, rotation: 0 },
 				{ id: 14, x: 250, y: 180, w: 30, h: 30, rotation: 0 },
 				
-				// --- NEW TABLES REQUESTED (IDs 18-21) ---
-				{ id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
-				{ id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
-				{ id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 }, // New 2-seater
-				{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 }, // New 4-seater (50x30, rotated)
+				{ id: 18, x: 140, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 19, x: 220, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 20, x: 300, y: 280, w: 30, h: 30, rotation: 0 },
+				{ id: 21, x: 300, y: 180, w: 50, h: 30, rotation: 90 },
 			];
 			
 			let { data: dbData, error } = await _supa.from('tables').select('id, x, y, rotation').order('id');
 
 			if (error) {
-				// FIX: If error occurs, use base tables but log warning
 				console.warn("Could not fetch table positions from Supabase. Using default initial positions.");
 				tables = baseTables;
 			} else {
 				const positionMap = new Map(dbData.map(t => [t.id, t]));
 				
 				tables = baseTables.map(t => {
-					// FIX: Use positionMap correctly inside this block
 					const dbPos = positionMap.get(t.id);
 					if (dbPos) {
 						return {	
@@ -574,8 +544,36 @@
 			multiBookButton.style.display = 'none';
 
 			await loadBookings();	
+			setupRealtimeSubscription();
 		}
 		
+		function setupRealtimeSubscription() {
+			_supa.channel('bookings-change')
+				.on('postgres_changes', 
+					{ event: 'INSERT', schema: 'public', table: 'premium_slots' },
+					(payload) => {
+						// Only reload if the change is relevant to the currently selected time
+						const newBookingDate = payload.new.date;
+						const newBookingTime = payload.new.start_time;
+						const selectedTimeMinutes = timeToMinutes(currentSelectedTime);
+						
+						if (newBookingDate === currentSelectedDate) {
+							// Check if the new booking overlaps with the currently selected time
+							const bookingStartMinutes = timeToMinutes(payload.new.start_time);
+							const bookingEndMinutes = timeToMinutes(payload.new.end_time);
+
+							if (selectedTimeMinutes >= bookingStartMinutes && selectedTimeMinutes < bookingEndMinutes) {
+								console.log('Realtime update received. Reloading bookings...');
+								loadBookings(); // Reloads data and updates visuals
+							}
+						}
+					}
+				)
+				.subscribe();
+				
+			console.log('Realtime subscription set up for premium_slots.');
+		}
+
 		function updateTableVisuals() {
 			tables.forEach(t => {
 				const group = layer.findOne('#g-'+t.id);
@@ -637,7 +635,6 @@
 			});
 			group.add(tableRect);
 
-			// Seat drawing logic (crucial for correct display)
 			const baseSeatSize = 12;	
 			const seatHalf = baseSeatSize / 2;	
 
@@ -669,7 +666,6 @@
 				}
 			}
 			
-			// --- UPDATED CLICK HANDLER ---
 			group.on('click', () => {
 				const tableIdNumber = Number(t.id);
 				
@@ -718,8 +714,6 @@
 			return group;
 		}
 		
-		// --- Supabase Booking Functions ---
-		
 		async function loadBookings() {
 			currentSelectedDate = document.getElementById('booking-date').value;
 			currentSelectedTime = document.getElementById('booking-time').value;
@@ -734,7 +728,7 @@
 				.from('premium_slots')	
 				.select('*')
 				.eq('date', currentSelectedDate)
-				.eq('tenant_id', CURRENT_TENANT_ID); // CRITICAL: Filter by tenant ID
+				.eq('tenant_id', CURRENT_TENANT_ID);
 				
 			if(error){ console.error(error); currentBookings = []; }	
 			else {	
@@ -748,7 +742,6 @@
 			updateTableVisuals();
 		}
 		
-		// NEW: FUNCTION TO SECURELY CREATE BOOKING VIA VERCEL API
 		async function createBooking(tableId, startTime, endTime, notes) {
 			const date = document.getElementById('booking-date').value;
 			const tenantId = CURRENT_TENANT_ID;
@@ -766,7 +759,6 @@
 				return false;
 			}
 			
-			// 1. Build the data payload
 			const bookingPayload = {
 				tableId: Number(tableId),
 				date: date,
@@ -776,7 +768,6 @@
 				tenantId: tenantId,
 			};
 
-			// 2. Call your secure Vercel function (Part 1 of the fix)
 			try {
 				const response = await fetch(ADMIN_BOOKING_API_URL, {
 					method: 'POST',
@@ -792,10 +783,9 @@
 					return false;
 				}
 
-				// 3. Success handling (Reloading the bookings)
 				console.log('Admin Booking Successful:', result.message);
 				await loadBookings();
-				return true; 
+				return true; 
 				
 			} catch (error) {
 				alert('Network Error: Could not reach the booking service. Check console.');
@@ -810,8 +800,7 @@
 			let failedTables = [];
 
 			for (const tableId of tableIds) {
-				// Use the new secure single booking function
-				const success = await createBooking(tableId, startTime, endTime, notes); 
+				const success = await createBooking(tableId, startTime, endTime, notes); 
 				if (success) {
 					successfulBookings++;
 				} else {
@@ -825,26 +814,19 @@
 					message += ` Tables ${failedTables.join(', ')} failed due to overlaps or errors.`;
 				}
 				alert(message);
-				// We don't need to await loadBookings here since createBooking does it for single inserts.
-				// However, since we loop, let's refresh once at the end.
-				await loadBookings(); 
+				await loadBookings(); 
 			} else {
 				alert('Bulk booking failed. Check console for details.');
 			}
 		}
 		
 		async function deleteBooking(bookingId) {
-			// NOTE: This deletion is still done directly via the anonymous key. 
-			// We should route this through the API too for true security, but for now, 
-			// we'll keep it simple since we only have one tenant.
 			const { error } = await _supa.from('premium_slots').delete().eq('id', bookingId).eq('tenant_id', CURRENT_TENANT_ID);
 			
 			if (error) { alert('Deletion failed: '+error.message); return false; }	
 			else { alert('Booking removed!'); await loadBookings(); return true; }
 		}
 
-		// --- Modal/UI Functions ---
-		
 		function cleanNotes(notes) {
 			if (!notes) return 'None';
 			
@@ -1071,5 +1053,3 @@
 	</script>
 </body>
 </html>
-
-
