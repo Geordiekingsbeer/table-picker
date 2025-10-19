@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>KPI Reporting Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f7f7f7;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h2 {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            margin-top: 30px;
+            color: #1976d2;
+        }
+        .kpi-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .kpi-table th, .kpi-table td {
+            border: 1px solid #eee;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        .kpi-table th {
+            background-color: #eef;
+            font-weight: 600;
+        }
+        .kpi-table td:last-child {
+            font-weight: bold;
+        }
+        #status {
+            padding: 15px;
+            background-color: #ffcc80;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pricing & Reporting Dashboard</h1>
+        <div id="status">Loading data...</div>
+
+        <div id="funnel-report">
+            <h2>1. Engagement Funnel & Conversion</h2>
+            <table class="kpi-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody id="funnel-body">
+                    <tr><td>Total Link Views (Floorplan)</td><td id="kpi-link-opened"></td></tr>
+                    <tr><td>Total Checkout Starts</td><td id="kpi-checkout-started"></td></tr>
+                    <tr><td>Total Paid Bookings (Conversion)</td><td id="kpi-paid"></td></tr>
+                    <tr><td>Conversion Rate (Paid / Viewed)</td><td id="kpi-rate"></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="table-report">
+            <h2>2. Table Demand Breakdown</h2>
+            <table class="kpi-table">
+                <thead>
+                    <tr>
+                        <th>Table Size</th>
+                        <th>Booked Count (Paid)</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr><td>2-Seaters Booked</td><td id="kpi-2-seat"></td></tr>
+                    <tr><td>4-Seaters Booked</td><td id="kpi-4-seat"></td></tr>
+                    <tr><td>6-Seaters Booked</td><td id="kpi-6-seat"></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
+        // Note: Using the anonymous key here is acceptable since we are only performing SELECT queries on VIEWS.
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
+        const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+        // This ID should match the one used by your Admin and Customer pages
+        const CURRENT_TENANT_ID = 'R-VERIFIED-Z99';
+        const statusElement = document.getElementById('status');
+
+        async function loadReports() {
+            try {
+                // 1. Fetch Engagement Funnel Data
+                const { data: funnelData, error: funnelError } = await _supa
+                    .from('v_engagement_funnel')
+                    .select('*')
+                    .eq('tenant_id', CURRENT_TENANT_ID)
+                    .single();
+
+                if (funnelError && funnelError.code !== 'PGRST116') { // PGRST116 is 'no rows found'
+                    throw new Error(funnelError.message);
+                }
+
+                const funnel = funnelData || {};
+                const linksOpened = funnel.total_links_opened || 0;
+                const paidBookings = funnel.total_paid_bookings || 0;
+                const conversionRate = (linksOpened > 0) ? ((paidBookings / linksOpened) * 100).toFixed(2) + '%' : '0.00%';
+
+                document.getElementById('kpi-link-opened').textContent = linksOpened;
+                document.getElementById('kpi-checkout-started').textContent = funnel.total_checkout_started || 0;
+                document.getElementById('kpi-paid').textContent = paidBookings;
+                document.getElementById('kpi-rate').textContent = conversionRate;
+
+
+                // 2. Fetch Table Demand Metrics
+                const { data: metricsData, error: metricsError } = await _supa
+                    .from('v_table_booking_metrics')
+                    .select('*')
+                    .eq('tenant_id', CURRENT_TENANT_ID)
+                    .single();
+                
+                if (metricsError && metricsError.code !== 'PGRST116') {
+                    throw new Error(metricsError.message);
+                }
+                
+                const metrics = metricsData || {};
+                document.getElementById('kpi-2-seat').textContent = metrics.count_2_seaters || 0;
+                document.getElementById('kpi-4-seat').textContent = metrics.count_4_seaters || 0;
+                document.getElementById('kpi-6-seat').textContent = metrics.count_6_seaters || 0;
+                
+                // You can add more metrics here from the view, like utilization
+                
+                statusElement.textContent = `Report loaded successfully for Tenant: ${CURRENT_TENANT_ID}`;
+                statusElement.style.backgroundColor = '#b7d7a8';
+
+            } catch (error) {
+                console.error("Failed to load reports:", error);
+                statusElement.textContent = `Error loading reports: ${error.message}`;
+                statusElement.style.backgroundColor = '#ff5050';
+            }
+        }
+
+        // You should eventually update CURRENT_TENANT_ID from a URL parameter like your other pages
+        loadReports();
+    </script>
+</body>
+</html>
