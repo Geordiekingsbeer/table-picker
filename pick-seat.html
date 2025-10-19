@@ -794,14 +794,13 @@
             const trackingEvent = {
                 tenant_id: URL_PARAMS.tenant_id,
                 booking_ref: URL_PARAMS.booking_ref,
-                checkout_started: 'TRUE',
+                checkout_started: 'TRUE', // Set the flag
             };
             
-            // FIX: Use upsert to guarantee the row exists, then update the flag.
+            // FIX: Use single upsert operation to set checkout_started=TRUE
             const { error } = await _supa
                 .from('engagement_tracking')
-                .upsert([trackingEvent], { onConflict: 'booking_ref' })
-                .update({ checkout_started: 'TRUE' });
+                .upsert([trackingEvent], { onConflict: 'booking_ref' }); 
 
 			if (error) console.error('Tracking Error (Checkout Start):', error);
 		}
@@ -868,7 +867,7 @@
 	});
 	
     getUrlParams();
-    logInitialClick(); // FIX: Call this immediately to track the link open
+    logInitialClick(); 
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
 	loadFloorplan(loadTables);
