@@ -544,30 +544,20 @@
 			multiBookButton.style.display = 'none';
 
 			await loadBookings();	
-			setupRealtimeSubscription();
+			startBookingPolling();
 		}
 		
-		function setupRealtimeSubscription() {
-			_supa.channel('bookings-change')
-				.on('postgres_changes', 
-					{ event: 'INSERT', schema: 'public', table: 'premium_slots' },
-					(payload) => {
-						const selectedTimeMinutes = timeToMinutes(currentSelectedTime);
-						
-						if (payload.new.date === currentSelectedDate) {
-							const bookingStartMinutes = timeToMinutes(payload.new.start_time);
-							const bookingEndMinutes = timeToMinutes(payload.new.end_time);
-
-							if (selectedTimeMinutes >= bookingStartMinutes && selectedTimeMinutes < bookingEndMinutes) {
-								console.log('Realtime update received. Reloading bookings...');
-								loadBookings();
-							}
-						}
-					}
-				)
-				.subscribe();
-				
-			console.log('Realtime subscription set up for premium_slots.');
+		// NEW: Polling function to check for updates every 10 seconds
+		function startBookingPolling() {
+			// Check every 10 seconds (10000 milliseconds)
+			setInterval(() => {
+				// Only load if the date/time selectors have values
+				if (document.getElementById('booking-date').value && document.getElementById('booking-time').value) {
+					console.log('Polling for new bookings...');
+					loadBookings(); 
+				}
+			}, 10000);
+			console.log('Booking polling started (10s interval).');
 		}
 
 		function updateTableVisuals() {
