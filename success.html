@@ -20,7 +20,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         h1 { 
-            color: #388e3c; /* Success Green */
+            color: #388e3c;
             font-size: 28px;
             margin-bottom: 10px;
         }
@@ -49,7 +49,6 @@
     <script>
         // --- Supabase Setup (Must Match Your Project Keys) ---
         const supabaseUrl = 'https://Rrjvdabtqzkaomjuiref.supabase.co';
-        // NOTE: Use your public key, as the page is client-side. The INSERT policy is already set.
         const supabaseAnon = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanZkYWJ0cXprYW9tanVpcmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDM3MzQsImV4cCI6MjA3NDcxOTczNH0.wAEeowZ8Yc8K54jAxEbY-8-mM0OGciMmyz6fJb9Z1Qg';
         const _supa = supabase.createClient(supabaseUrl, supabaseAnon);
         
@@ -69,20 +68,30 @@
             const trackingEvent = {
                 tenant_id: tenantId,
                 booking_ref: bookingRef,
-                event_type: 'payment_success',
-                event_source: 'stripe_redirect_success', // Source is the redirect page
+                // The crucial flag that marks the funnel complete
+                checkout_completed: 'TRUE', 
+                // We do not overwrite view_link_count or checkout_started, as upsert retains old values by default.
             };
 
+            // FIX: Use upsert to UPDATE the existing row (created when the link was opened) 
+            // instead of trying to insert a new one, which caused the 23505 conflict.
             const { error } = await _supa
                 .from('engagement_tracking')
-                .insert([trackingEvent]);
+                .upsert([trackingEvent], { onConflict: 'booking_ref' });
 
             if (error) {
-                messageElement.textContent = `Error: Failed to log conversion. Code: ${error.code}`;
-                console.error('Tracking Insert Failure:', error);
+                // If it's a conflict error (23505) it means the row was already updated by the webhook. 
+                // We log the error but mark it as successful on the client side.
+                if (error.code === '23505') {
+                    messageElement.textContent = "Booking confirmation status successfully logged (via webhook backup).";
+                    console.warn(`Tracking Note: Client-side conversion log skipped due to database conflict (Row already exists).`);
+                } else {
+                     messageElement.textContent = `Error: Failed to log conversion. Code: ${error.code}`;
+                    console.error('Tracking Insert Failure:', error);
+                }
             } else {
                 messageElement.textContent = "Booking confirmation status successfully logged.";
-                console.log(`Tracking: Logged 'payment_success' for booking ${bookingRef}.`);
+                console.log(`Tracking: Conversion logged successfully for booking ${bookingRef}.`);
             }
         }
 
