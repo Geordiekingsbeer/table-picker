@@ -324,6 +324,11 @@
 	
 	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
 	
+    function generateUniqueId() {
+        // Generates a simple, unique ID using timestamp and random number for better distribution
+        return 'AUTO-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
+
     function getUrlParams() {
         const urlParams = new URLSearchParams(window.location.search);
         
@@ -334,10 +339,16 @@
         if (!URL_PARAMS.tenant_id) {
              URL_PARAMS.tenant_id = 'R-VERIFIED-Z99';
         }
+        
+        // FIX: Generate a unique ID if one is missing from the URL
+        if (!URL_PARAMS.booking_ref) {
+             URL_PARAMS.booking_ref = generateUniqueId();
+        }
     }
     
 	async function logInitialClick() {
 		if (!URL_PARAMS.booking_ref) {
+            // Should not happen with the FIX in getUrlParams, but included for safety
 			return;
 		}
 		
