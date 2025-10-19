@@ -784,13 +784,13 @@
 			const trackingEvent = {
 				tenant_id: URL_PARAMS.tenant_id,
 				booking_ref: URL_PARAMS.booking_ref,
-				checkout_started: 'TRUE', // Changed to string
+				checkout_started: true,
 			};
             
             const { error } = await _supa
                 .from('engagement_tracking')
                 .upsert([trackingEvent], { onConflict: 'booking_ref', ignoreDuplicates: false })
-                .update({ checkout_started: 'TRUE' }); // Explicitly update the existing row
+                .update({ checkout_started: true });
                 
 			if (error) console.error('Tracking Error (Checkout Start):', error);
 		}
