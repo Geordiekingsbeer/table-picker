@@ -302,10 +302,9 @@
 	let currentBookings = [];	
 	let tableDataMap = new Map();	
 	let isMultiSelectMode = false;	
-    let selectedGroup = null; // Defined for multi-select logic cleanup
-    let selectedMultiTables = new Set(); // Defined for multi-select logic cleanup
-
-    const MULTI_BOOK_BUTTON = { style: { display: 'none' } }; // Mocked element for multi-select logic cleanup
+    let selectedGroup = null; 
+    let selectedMultiTables = new Set(); 
+    const MULTI_BOOK_BUTTON = { style: { display: 'none' } };
 
     let URL_PARAMS = {
         tenant_id: null,
@@ -342,33 +341,30 @@
 			return;
 		}
 		
-        const { data: existingData } = await _supa
-            .from('engagement_tracking')
-            .select('view_link_count')
-            .eq('booking_ref', URL_PARAMS.booking_ref)
-            .maybeSingle();
+        const { data: existingData } = await _supa
+            .from('engagement_tracking')
+            .select('view_link_count')
+            .eq('booking_ref', URL_PARAMS.booking_ref)
+            .maybeSingle();
 
-        let newCount = 1;
-        if (existingData) {
-            newCount = existingData.view_link_count + 1;
-        }
+        const currentCount = existingData ? existingData.view_link_count : 0;
+        const newCount = currentCount + 1;
 
-		const { error: upsertError } = await _supa
-			.from('engagement_tracking')
-			.upsert([
-                {
-                    tenant_id: URL_PARAMS.tenant_id,
-                    booking_ref: URL_PARAMS.booking_ref,
-                    view_link_count: 1,
-                }
-            ], { onConflict: 'booking_ref' })
-            .update({ view_link_count: newCount }, { onConflict: 'booking_ref' });
+        const trackingEvent = {
+            tenant_id: URL_PARAMS.tenant_id,
+            booking_ref: URL_PARAMS.booking_ref,
+            view_link_count: newCount,
+        };
 
-		if (upsertError) {
-			console.error('Error logging initial link click:', upsertError);
-		} else {
-			console.log(`Tracking: Logged/Updated link_click for booking ${URL_PARAMS.booking_ref}. New Count: ${newCount}`);
-		}
+        const { error: upsertError } = await _supa
+            .from('engagement_tracking')
+            .upsert([trackingEvent], { onConflict: 'booking_ref' });
+
+        if (upsertError) {
+            console.error('Error logging initial link click:', upsertError);
+        } else {
+            console.log(`Tracking: Logged/Updated link_click for booking ${URL_PARAMS.booking_ref}. New Count: ${newCount}`);
+        }
 	}
 
 
@@ -795,17 +791,18 @@
 		}
 
 		if (URL_PARAMS.booking_ref) {
-			const trackingEvent = {
-				tenant_id: URL_PARAMS.tenant_id,
-				booking_ref: URL_PARAMS.booking_ref,
-				checkout_started: 'TRUE',
-			};
-            
-            const { error } = await _supa
-                .from('engagement_tracking')
-                .upsert([trackingEvent], { onConflict: 'booking_ref', ignoreDuplicates: false })
-                .update({ checkout_started: 'TRUE' });
-                
+            const trackingEvent = {
+                tenant_id: URL_PARAMS.tenant_id,
+                booking_ref: URL_PARAMS.booking_ref,
+                checkout_started: 'TRUE',
+            };
+            
+            // FIX: Use upsert to guarantee the row exists, then update the flag.
+            const { error } = await _supa
+                .from('engagement_tracking')
+                .upsert([trackingEvent], { onConflict: 'booking_ref' })
+                .update({ checkout_started: 'TRUE' });
+
 			if (error) console.error('Tracking Error (Checkout Start):', error);
 		}
 
@@ -820,7 +817,7 @@
 		const customerName = document.getElementById('customer-name').value;
 		const partySize = parseInt(document.getElementById('party-size').value);
 		const email = document.getElementById('customer-email').value;
-        const receiveOffers = document.getElementById('future-offers-optin').checked;
+        const receiveOffers = document.getElementById('future-offers-optin').checked;
 
 		if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
 			alert('Please fill out all fields correctly.');
@@ -853,7 +850,7 @@
 					party_size: partySize,
 					tenant_id: URL_PARAMS.tenant_id,
 					booking_ref: URL_PARAMS.booking_ref,
-                    receive_offers: receiveOffers
+                    receive_offers: receiveOffers
 				})
 			});
 			
@@ -871,9 +868,10 @@
 	});
 	
     getUrlParams();
+    logInitialClick(); // FIX: Call this immediately to track the link open
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
 	loadFloorplan(loadTables);
-</script>
+	</script>
 </body>
 </html>
