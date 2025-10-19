@@ -455,7 +455,7 @@
 				
 				if (callback) callback();
 			};
-			imageObj.src = 'floorplan.png?v=' + new Date().getTime();
+			imageObj.src = 'floorplan.png?v=' + new Date().getTime(); // CACHE BUSTER
 		}
 
 		async function loadDisplayName() {
