@@ -305,17 +305,12 @@
     let selectedGroup = null; 
     let selectedMultiTables = new Set(); 
     const MULTI_BOOK_BUTTON = { style: { display: 'none' } };
-    
-    function generateUniqueId() {
-        // Generates a simple, unique ID using timestamp and random number for better distribution
-        return 'AUTO-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
-    }
 
-    let URL_PARAMS = {
-        tenant_id: null,
-        booking_ref: null,
-        source: null,
-    };
+    let URL_PARAMS = {
+        tenant_id: null,
+        booking_ref: null,
+        source: null,
+    };
 
 	const PRICE_2_SEATER = 499;	
 	const PRICE_4_SEATER = 999;	
@@ -329,49 +324,31 @@
 	
 	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
 	
-    function getUrlParams() {
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        URL_PARAMS.tenant_id = urlParams.get('tenant_id');
-        URL_PARAMS.booking_ref = urlParams.get('booking_ref');
-        URL_PARAMS.source = urlParams.get('source');
+    function generateUniqueId() {
+        // Generates a simple, unique ID using timestamp and random number for better distribution
+        return 'AUTO-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
 
-        if (!URL_PARAMS.tenant_id) {
-             URL_PARAMS.tenant_id = 'R-VERIFIED-Z99';
-        }
+    function getUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        URL_PARAMS.tenant_id = urlParams.get('tenant_id');
+        URL_PARAMS.booking_ref = urlParams.get('booking_ref');
+        URL_PARAMS.source = urlParams.get('source');
+
+        if (!URL_PARAMS.tenant_id) {
+             URL_PARAMS.tenant_id = 'R-VERIFIED-Z99';
+        }
         
         // FIX: Generate a unique ID if one is missing from the URL
         if (!URL_PARAMS.booking_ref) {
              URL_PARAMS.booking_ref = generateUniqueId();
         }
-    }
-    
-    // NEW FUNCTION: Determine the maximum seating capacity of selected tables
-    function getSelectedTablesCapacity() {
-        let maxCapacity = 0;
-        selectedTableIds.forEach(id => {
-            const data = tableDataMap.get(id);
-            if (data) {
-                const { w, h } = data;
-                let tableCapacity = 0;
-                
-                // Determine capacity based on dimensions (must match table sizing logic)
-                if (w === 30 && h === 30) tableCapacity = 2;
-                else if ((w === 30 && h === 50) || (w === 50 && h === 30)) tableCapacity = 4;
-                else if (w === 90 && h === 30) tableCapacity = 6;
-                
-                // Use max capacity based on the closest standard size (to prevent 3 people booking a 6-seater)
-                // This implements the rule: 1-2=2-seater, 3-4=4-seater, 5-6=6-seater
-                if (tableCapacity === 6) maxCapacity += 6;
-                else if (tableCapacity === 4) maxCapacity += 4;
-                else if (tableCapacity === 2) maxCapacity += 2;
-            }
-        });
-        return maxCapacity;
     }
-    
+    
 	async function logInitialClick() {
 		if (!URL_PARAMS.booking_ref) {
+            // Should not happen with the FIX in getUrlParams, but included for safety
 			return;
 		}
 		
@@ -489,7 +466,7 @@
 	}
 
 	async function loadBookings() {
-        if (!URL_PARAMS.tenant_id) return false; 
+        if (!URL_PARAMS.tenant_id) return false; 
 
 		const selectedDateSupabase = document.getElementById('booking-date').value;
 		const selectedTime = document.getElementById('booking-time').value;
@@ -503,7 +480,7 @@
 		const { data, error } = await _supa
 			.from('premium_slots')	
 			.select('*')
-			.eq('date', selectedDateSupabase); 
+			.eq('date', selectedDateSupabase); 
 			
 		if(error){	
 			console.error('Error fetching bookings:', error);	
@@ -564,10 +541,10 @@
 	}
 	
 	async function loadTables() {
-        if (!URL_PARAMS.tenant_id) {
-             console.error("Critical Error: Missing tenant_id. Stopping map load.");
-             return;
-        }
+        if (!URL_PARAMS.tenant_id) {
+             console.error("Critical Error: Missing tenant_id. Stopping map load.");
+             return;
+        }
 
 		const baseTables = [
 			{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
@@ -845,77 +822,17 @@
 	customerForm.addEventListener('submit', async function(e) {
 		e.preventDefault();
 
-        getUrlParams(); 
+        getUrlParams(); 
 
 		const customerName = document.getElementById('customer-name').value;
 		const partySize = parseInt(document.getElementById('party-size').value);
 		const email = document.getElementById('customer-email').value;
-        const receiveOffers = document.getElementById('future-offers-optin').checked;
+        const receiveOffers = document.getElementById('future-offers-optin').checked;
 
 		if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
 			alert('Please fill out all fields correctly.');
 			return;
 		}
-
-        // --- NEW RESTRICTION LOGIC ---
-        const totalCapacity = getSelectedTablesCapacity();
-        
-        // Restriction 1: Party size cannot be smaller than the minimum size of the table.
-        // For simplicity with multiple tables, let's focus on the upper limit restriction,
-        // as the pricing model already disincentivizes under-booking.
-
-        // Restriction 2: Party size cannot be larger than the total capacity of tables (This is currently allowed)
-        
-        // Restriction 3: If only ONE table is selected, party size must be appropriate.
-        if (selectedTableIds.length === 1) {
-            const tableId = selectedTableIds[0];
-            const tableData = tableDataMap.get(tableId);
-            
-            let requiredCapacity;
-            if (partySize <= 2) requiredCapacity = 2;
-            else if (partySize <= 4) requiredCapacity = 4;
-            else if (partySize <= 6) requiredCapacity = 6;
-            else requiredCapacity = 6; // Max party size for this example
-
-            const tableCapacity = tableData.w === 30 && tableData.h === 30 ? 2 : 
-                                  (tableData.w === 90 && tableData.h === 30 ? 6 : 4);
-                                  
-            // Enforce the rule: Party must use a table that is sized for them.
-            // If party is 3, they need a 4-seater. If they selected a 2-seater, block it.
-            if (requiredCapacity > tableCapacity) {
-                alert(`Error: Your party of ${partySize} needs a table of capacity ${requiredCapacity} or higher. Please select a larger table.`);
-                return;
-            }
-            
-            // Enforce the rule: Small party cannot book a large table (waste).
-            // Example: Party of 2 cannot book a 4-seater.
-            if (partySize <= 2 && tableCapacity > 2) {
-                alert("Error: To ensure efficient seating, parties of 1 or 2 must select a 2-seater table.");
-                return;
-            }
-            if (partySize > 2 && partySize <= 4 && tableCapacity > 4) {
-                alert("Error: To ensure efficient seating, parties of 3 or 4 must select a 4-seater table, not a 6-seater.");
-                return;
-            }
-        } else {
-            // Multiple tables selected: Ensure party size doesn't exceed total max capacity
-            if (partySize > totalCapacity) {
-                alert(`Error: Your party of ${partySize} exceeds the maximum combined capacity of the tables you selected (${totalCapacity}).`);
-                return;
-            }
-            
-            // For multiple tables, enforcing the *under* booking rule is complex, so we typically rely on pricing.
-            // But we must enforce the max capacity.
-            
-            // We can add a warning if total capacity is significantly oversized, e.g., capacity is > 2 * partySize
-            if (totalCapacity > partySize * 2) {
-                if (!confirm(`Warning: The selected tables (${totalCapacity} capacity) are much larger than your party of ${partySize}. Are you sure you want to proceed?`)) {
-                    return;
-                }
-            }
-        }
-        // --- END NEW RESTRICTION LOGIC ---
-
 
 		customerModal.style.display = 'none';	
 
@@ -943,7 +860,7 @@
 					party_size: partySize,
 					tenant_id: URL_PARAMS.tenant_id,
 					booking_ref: URL_PARAMS.booking_ref,
-                    receive_offers: receiveOffers
+                    receive_offers: receiveOffers
 				})
 			});
 			
@@ -960,7 +877,7 @@
 		}
 	});
 	
-    getUrlParams();
+    getUrlParams();
     logInitialClick(); 
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
@@ -968,3 +885,5 @@
 	</script>
 </body>
 </html>
+
+
