@@ -73,6 +73,7 @@
                     <tr><td>Average Booking Value (70% Share)</td><td id="kpi-avg-value"></td><td><span id="kpi-avg-value-trend"></span></td></tr>
                     <tr><td>Total People Viewed Link</td><td id="kpi-link-opened"></td><td><span id="kpi-view-trend"></span></td></tr>
                     <tr><td>Total Paid Bookings</td><td id="kpi-paid"></td><td><span id="kpi-paid-trend"></span></td></tr>
+                    <tr><td>Conversion Rate (Paid / Viewed)</td><td id="kpi-rate"></td><td></td></tr>
                 </tbody>
             </table>
         </div>
@@ -115,8 +116,6 @@
         const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
         const CURRENT_TENANT_ID = 'R-VERIFIED-Z99';
-        // Removed global statusElement declaration
-        const dailyProfitBody = document.getElementById('daily-profit-body');
         const PROFIT_SHARE = 0.70;
         
         const currencyFormatter = new Intl.NumberFormat('en-GB', {
@@ -166,7 +165,6 @@
 
             const tableCapacityMap = new Map(tables.map(t => [t.id, { w: t.w, h: t.h }]));
 
-            // FIX: Filter out manual bookings before processing the revenue/demand metrics
             const customerSlots = slots.filter(s => s.payment_status === 'PAID' && s.is_manual_booking !== true);
 
             customerSlots.forEach(slot => {
@@ -232,6 +230,7 @@
 
                 const [slotsResult, tablesResult, trackingResult] = await Promise.all([slotsPromise, tablesPromise, trackingPromise]);
                 
+                // CRITICAL CHECK: Throw error if any essential data fetch fails
                 if (slotsResult.error) throw new Error("Booking Data Error: " + slotsResult.error.message);
                 if (tablesResult.error) throw new Error("Table Data Error: " + tablesResult.error.message);
                 if (trackingResult.error) throw new Error("Tracking Data Error: " + trackingResult.error.message);
@@ -259,6 +258,7 @@
                 const totalProfit = financial.total_profit_pence;
                 const avgValue = financial.avg_booking_value_pence;
                 
+                // FIX: Conversion Rate Calculation
                 const conversionRate = (linksViewed > 0) ? ((paidBookings / linksViewed) * 100).toFixed(2) + '%' : '0.00%';
 
                 // Display Values
@@ -266,7 +266,7 @@
                 document.getElementById('kpi-avg-value').textContent = formatPenceToGBP(avgValue);
                 document.getElementById('kpi-link-opened').textContent = linksViewed;
                 document.getElementById('kpi-paid').textContent = paidBookings;
-                document.getElementById('kpi-rate').textContent = conversionRate;
+                document.getElementById('kpi-rate').textContent = conversionRate; // Display the Conversion Rate
 
                 // Display Trends
                 const profitTrend = calculateTrend(totalProfit, lastMonthMetrics.total_profit_pence);
@@ -283,6 +283,7 @@
 
 
                 // --- 3. Daily Profit Metrics ---
+                const dailyProfitBody = document.getElementById('daily-profit-body');
                 dailyProfitBody.innerHTML = '';
                 const dailyData = rawMetrics.daily;
                 if (dailyData && dailyData.length > 0) {
@@ -300,13 +301,14 @@
                 document.getElementById('kpi-4-seat').textContent = rawMetrics.demand[4] || 0;
                 document.getElementById('kpi-6-seat').textContent = rawMetrics.demand[6] || 0;
                 
+                // Final success status
                 statusElement.textContent = `Report loaded successfully for Tenant: ${CURRENT_TENANT_ID} (Client-Side Aggregation)`;
                 statusElement.style.backgroundColor = '#b7d7a8';
 
             } catch (error) {
                 console.error("Failed to load reports:", error);
                 
-                // FINAL FIX: This element is guaranteed to exist due to DOMContentLoaded
+                // Final safe error assignment
                 statusElement.textContent = `Error loading reports: ${error.message}`;
                 statusElement.style.backgroundColor = '#ff5050';
             }
