@@ -33,15 +33,24 @@
             color: #388e3c;
             margin-bottom: 15px;
         }
+        /* New class for main confirmation message */
+        .confirmation-text {
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <div class="icon">✅</div>
-        <h1>Reservation Confirmed!</h1>
-        <p>Thank you for your payment. Your table reservation has been successfully booked for the selected date and time.</p>
-        <p id="tracking-message" style="font-size: 14px; color: #1976d2;">(Processing confirmation data...)</p>
+        <h1>Table Confirmed! 🍽️</h1>
+        
+        <p class="confirmation-text">Thank you for your payment. Your table reservation has been successfully booked for the selected date and time - See you soon!</p>
+        
+        <p id="tracking-message" style="font-size: 14px; color: #1976d2; margin-top: 5px;">Booking confirmation status successfully logged.</p>
+        
         <p>Your payment receipt has been sent to the email address you provided.</p>
         <p>You can close this window now or return to the <a href="pick-seat.html">floor plan</a>.</p>
     </div>
@@ -60,7 +69,10 @@
             const messageElement = document.getElementById('tracking-message');
 
             if (!tenantId || !bookingRef) {
-                messageElement.textContent = "Error: Could not finalize tracking (Missing IDs in URL).";
+                if (messageElement) {
+                    messageElement.textContent = "Error: Could not finalize tracking (Missing IDs in URL).";
+                    messageElement.style.color = '#d32f2f';
+                }
                 console.error("Tracking Error: Missing tenant_id or booking_ref in success URL.");
                 return;
             }
@@ -68,30 +80,25 @@
             const trackingEvent = {
                 tenant_id: tenantId,
                 booking_ref: bookingRef,
-                // The crucial flag that marks the funnel complete
                 checkout_completed: 'TRUE', 
-                // We do not overwrite view_link_count or checkout_started, as upsert retains old values by default.
             };
 
-            // FIX: Use upsert to UPDATE the existing row (created when the link was opened) 
-            // instead of trying to insert a new one, which caused the 23505 conflict.
             const { error } = await _supa
                 .from('engagement_tracking')
                 .upsert([trackingEvent], { onConflict: 'booking_ref' });
 
             if (error) {
-                // If it's a conflict error (23505) it means the row was already updated by the webhook. 
-                // We log the error but mark it as successful on the client side.
-                if (error.code === '23505') {
+                if (error.code === '23505' && messageElement) {
+                    // Conflict means the webhook already logged success, which is fine.
                     messageElement.textContent = "Booking confirmation status successfully logged (via webhook backup).";
-                    console.warn(`Tracking Note: Client-side conversion log skipped due to database conflict (Row already exists).`);
-                } else {
+                } else if (messageElement) {
                      messageElement.textContent = `Error: Failed to log conversion. Code: ${error.code}`;
-                    console.error('Tracking Insert Failure:', error);
+                     messageElement.style.color = '#d32f2f';
                 }
-            } else {
+                console.error('Tracking Insert Failure:', error);
+            } else if (messageElement) {
                 messageElement.textContent = "Booking confirmation status successfully logged.";
-                console.log(`Tracking: Conversion logged successfully for booking ${bookingRef}.`);
+                messageElement.style.color = '#388e3c';
             }
         }
 
