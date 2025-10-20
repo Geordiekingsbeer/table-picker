@@ -394,17 +394,11 @@
         if (CURRENT_PARTY_SIZE === 0) return false;
         
         // Rule 1: Too large (wasted space)
-        // Party of 1-2 can only select 2-seater (Capacity 4 or 6 is too big)
         if (CURRENT_PARTY_SIZE <= 2 && tableCapacity > 2) return true; 
-
-        // Party of 3-4 can only select 4-seater (Capacity 6 is too big)
         if (CURRENT_PARTY_SIZE <= 4 && tableCapacity === 6) return true;
         
-        // Rule 2: Too small (cannot accommodate party size)
-        // Party of 3+ cannot select a 2-seater (Capacity 2 is too small)
+        // Rule 2: Too small (cannot accommodate party size) - FIX APPLIED HERE
         if (CURRENT_PARTY_SIZE > 2 && tableCapacity === 2) return true;
-        
-        // Party of 5+ cannot select a 4-seater (Capacity 4 is too small)
         if (CURRENT_PARTY_SIZE > 4 && tableCapacity === 4) return true;
         
         return false;
@@ -585,7 +579,7 @@
                 const isFiltered = isTableTooBig(tableCapacity);
                 const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
                 
-                // If in Multi-Select Mode, ignore the 'isFiltered' state.
+                // If in Multi-Select Mode, ignore the 'isFiltered' state and show availability
                 if (isMultiSelectMode) {
                     tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
                 } else if (isFiltered) {
@@ -621,10 +615,7 @@
 	}
 	
 	async function loadTables() {
-        if (!URL_PARAMS.tenant_id) {
-             console.error("Critical Error: Missing tenant_id. Stopping map load.");
-             return;
-        }
+        if (!URL_PARAMS.tenant_id) return false; 
 
 		const baseTables = [
 			{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
@@ -801,7 +792,7 @@
 		const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
 		const isMulti = isShiftPressed || isMultiSelectMode;
         
-        // Clear existing selection if NOT in multi-select mode and a new table is clicked.
+        // FIX: Clear existing selection if NOT in multi-select mode and a new table is clicked.
         if (index === -1 && !isMulti) {
             stage.find('.main-table').forEach(rect => {
                 if (rect.fill() === TABLE_COLOR) {
@@ -954,12 +945,30 @@
 			alert('Please fill out all fields correctly.');
 			return;
 		}
-
+        
+        // --- FINAL CHECK: Enforce Minimum Capacity in ALL MODES ---
         const totalCapacity = getSelectedTablesCapacity();
+        
+        // Determine the smallest capacity required to seat this party
+        let requiredMinCapacity;
+        if (partySize <= 2) requiredMinCapacity = 2;
+        else if (partySize <= 4) requiredMinCapacity = 4;
+        else if (partySize <= 6) requiredMinCapacity = 6;
+        else requiredMinCapacity = 6; // Max single table capacity
+
+        // If party size requires a larger table than the smallest selected table, block it.
+        // If they select multiple tables, the total capacity must meet the required minimum.
+        if (totalCapacity < requiredMinCapacity) {
+             alert(`Error: Your party of ${partySize} requires a minimum combined capacity of ${requiredMinCapacity}. Please select a larger table or combination of tables.`);
+             return;
+        }
+
+        // Max Capacity Check (Party size cannot exceed total selected table capacity)
         if (partySize > totalCapacity) {
              alert(`Error: Your party size (${partySize}) exceeds the total selected table capacity (${totalCapacity}).`);
              return;
         }
+        // --- END FINAL CHECK ---
 
 
 		customerModal.style.display = 'none';	
