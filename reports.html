@@ -166,7 +166,10 @@
 
             const tableCapacityMap = new Map(tables.map(t => [t.id, { w: t.w, h: t.h }]));
 
-            slots.filter(s => s.payment_status === 'PAID').forEach(slot => {
+            // FIX: Filter out manual bookings before processing the revenue/demand metrics
+            const customerSlots = slots.filter(s => s.payment_status === 'PAID' && s.is_manual_booking !== true);
+
+            customerSlots.forEach(slot => {
                 // 1. Financial Metrics
                 rawMetrics.total_profit_pence += (slot.total_pence || 0) * PROFIT_SHARE;
                 rawMetrics.total_paid_slots++;
@@ -192,6 +195,7 @@
             });
             
             // 4. Conversion Metrics (from tracking table)
+            // Tracking metrics (views/starts) are inherently customer actions and don't need filtering here.
             const uniqueVisitors = new Set(tracking.map(t => t.booking_ref));
             const totalCheckoutStarts = tracking.filter(t => t.checkout_started === 'TRUE').length;
 
@@ -200,7 +204,6 @@
             return {
                 financial: {
                     total_profit_pence: rawMetrics.total_profit_pence,
-                    // Handle division by zero for ABV
                     avg_booking_value_pence: rawMetrics.total_profit_pence / (rawMetrics.total_paid_slots || 1), 
                     total_paid_bookings: rawMetrics.total_paid_slots,
                 },
@@ -305,7 +308,6 @@
             }
         }
 
-        // FIX: Ensure loadReports runs only after all HTML elements are defined.
         document.addEventListener('DOMContentLoaded', loadReports);
     </script>
 </body>
