@@ -115,7 +115,7 @@
         const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
         const CURRENT_TENANT_ID = 'R-VERIFIED-Z99';
-        // Removed statusElement declaration here, it will be defined inside loadReports for safety
+        // Removed global statusElement declaration
         const dailyProfitBody = document.getElementById('daily-profit-body');
         const PROFIT_SHARE = 0.70;
         
@@ -221,7 +221,7 @@
 
 
         async function loadReports() {
-            // Define statusElement locally for safety (it was previously defined globally but failing)
+            // Retrieve status element locally inside the function
             const statusElement = document.getElementById('status');
             
             try {
@@ -306,8 +306,8 @@
             } catch (error) {
                 console.error("Failed to load reports:", error);
                 
-                // FINAL FIX: We now safely reference statusElement, which is guaranteed to exist.
-                statusElement.textContent = `Error loading reports: ${error.message}. Check console for data errors.`;
+                // FINAL FIX: This element is guaranteed to exist due to DOMContentLoaded
+                statusElement.textContent = `Error loading reports: ${error.message}`;
                 statusElement.style.backgroundColor = '#ff5050';
             }
         }
