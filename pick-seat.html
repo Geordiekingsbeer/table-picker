@@ -331,7 +331,8 @@
     let selectedMultiTables = new Set(); 
     const MULTI_BOOK_BUTTON = { style: { display: 'none' } };
     
-    let CURRENT_PARTY_SIZE = 0; // NEW: Stores the size set by the prompt
+    let CURRENT_PARTY_SIZE = 0;
+    const FILTERED_COLOR = '#cccccc';
 
     function generateUniqueId() {
         return 'AUTO-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -350,7 +351,6 @@
 	const TABLE_COLOR = '#b7d7a8';		
 	const BOOKED_COLOR = '#e0e0e0';		
 	const UNAVAILABLE_COLOR = '#ffffff';
-	const FILTERED_COLOR = '#cccccc'; // NEW: Color for filtered (too big) tables
 	const SEAT_COLOR = '#555';	
 	const HIGHLIGHT_COLOR = '#ffeb3b';
 	
@@ -360,7 +360,7 @@
         if (w === 30 && h === 30) return 2;
         if ((w === 30 && h === 50) || (w === 50 && h === 30)) return 4;
         if (w === 90 && h === 30) return 6;
-        return 0; // Default or unknown size
+        return 0;
     }
 	
     function getUrlParams() {
@@ -379,9 +379,19 @@
         }
     }
     
-    // NEW: Function to check if a single table is too large for the party
+    function getSelectedTablesCapacity() {
+        let maxCapacity = 0;
+        selectedTableIds.forEach(id => {
+            const data = tableDataMap.get(id);
+            if (data) {
+                maxCapacity += getTableCapacity(data.w, data.h);
+            }
+        });
+        return maxCapacity;
+    }
+
     function isTableTooBig(tableCapacity) {
-        if (CURRENT_PARTY_SIZE === 0) return false; // Should not happen after prompt
+        if (CURRENT_PARTY_SIZE === 0) return false;
 
         // Rule: Party of 1-2 can only book a 2-seater (Capacity 4 or 6 is too big)
         if (CURRENT_PARTY_SIZE <= 2 && tableCapacity > 2) return true; 
@@ -707,7 +717,7 @@
 			stroke: '#000',	
 			strokeWidth: 1,
 			name: 'main-table',
-            table_capacity: tableCapacity // Store capacity on the rect for easy access
+            table_capacity: tableCapacity
 		});
 		group.add(tableRect);
 
@@ -758,16 +768,17 @@
 		const group = layer.findOne('#g-' + id);
 		const tableRect = group.findOne('.main-table');
 		
-		// Check 1: Block if staff use only OR too big
+		// Check 1: Block if staff use only
 		if (tableRect.fill() === UNAVAILABLE_COLOR) {
 			alert('This table is reserved for staff walk-ins.');
 			return;
 		}
+        // Check 2: Block if too big for party size (NEW MESSAGE)
         if (tableRect.fill() === FILTERED_COLOR) {
-            alert(`This table is too large for your party size of ${CURRENT_PARTY_SIZE}.`);
+            alert('Table unavailable.');
             return;
         }
-        // Check 2: Block if already booked by time
+        // Check 3: Block if already booked by time
 		if (tableRect.fill() === BOOKED_COLOR) {
 			alert('This table is already booked at this time.');
 			return;
@@ -871,7 +882,7 @@
 
 	payBtn.onclick = async () => {
 		if (selectedTableIds.length === 0) return;
-        
+		
         // Set the hidden party size field for the checkout modal
         document.getElementById('party-size-hidden').value = CURRENT_PARTY_SIZE;
         // Optionally update placeholder text in modal for clarity
@@ -902,10 +913,9 @@
             const trackingEvent = {
                 tenant_id: URL_PARAMS.tenant_id,
                 booking_ref: URL_PARAMS.booking_ref,
-                checkout_started: 'TRUE', // Set the flag
+                checkout_started: 'TRUE',
             };
             
-            // FIX: Use single upsert operation to set checkout_started=TRUE
             const { error } = await _supa
                 .from('engagement_tracking')
                 .upsert([trackingEvent], { onConflict: 'booking_ref' }); 
@@ -922,7 +932,6 @@
         getUrlParams(); 
 
 		const customerName = document.getElementById('customer-name').value;
-		// Use the value from the hidden field set by the party prompt
 		const partySize = parseInt(document.getElementById('party-size-hidden').value); 
 		const email = document.getElementById('customer-email').value;
         const receiveOffers = document.getElementById('future-offers-optin').checked;
@@ -931,8 +940,7 @@
 			alert('Please fill out all fields correctly.');
 			return;
 		}
-        
-        // Re-validate against max capacity for safety
+
         const totalCapacity = getSelectedTablesCapacity();
         if (partySize > totalCapacity) {
              alert(`Error: Your party size (${partySize}) exceeds the total selected table capacity (${totalCapacity}).`);
@@ -983,7 +991,7 @@
 		}
 	});
     
-    // NEW: Party Size Prompt Handlers
+    // Party Size Prompt Handlers
     document.getElementById('set-party-size').onclick = () => {
         const inputElement = document.getElementById('initial-party-size');
         const size = parseInt(inputElement.value);
@@ -996,11 +1004,9 @@
         CURRENT_PARTY_SIZE = size;
         document.getElementById('party-prompt-modal').style.display = 'none';
         
-        // Hide the original party size input in the confirmation modal, use the value we stored.
         const originalPartyInput = document.getElementById('party-size-hidden');
         originalPartyInput.type = 'hidden'; 
 
-        // Update the floorplan to apply RLS filtering based on size
         updateTableVisuals();
     };
 
