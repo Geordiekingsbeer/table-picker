@@ -115,7 +115,7 @@
         const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
         const CURRENT_TENANT_ID = 'R-VERIFIED-Z99';
-        const statusElement = document.getElementById('status');
+        // Removed statusElement declaration here, it will be defined inside loadReports for safety
         const dailyProfitBody = document.getElementById('daily-profit-body');
         const PROFIT_SHARE = 0.70;
         
@@ -221,6 +221,9 @@
 
 
         async function loadReports() {
+            // Define statusElement locally for safety (it was previously defined globally but failing)
+            const statusElement = document.getElementById('status');
+            
             try {
                 // --- 1. Fetch All Raw Data from Tables (Bypassing Views) ---
                 const slotsPromise = _supa.from('premium_slots').select('*').eq('tenant_id', CURRENT_TENANT_ID);
@@ -302,17 +305,14 @@
 
             } catch (error) {
                 console.error("Failed to load reports:", error);
-                // The crash is happening inside the fetch or processing, but before the catch updates the status element.
-                // We've moved the error assignment outside of the catch block in the final deployment to prevent the crash,
-                // but the error is still a race condition.
-                const status = document.getElementById('status');
-                if (status) {
-                    status.textContent = `Error loading reports: ${error.message}. Check browser logs.`;
-                    status.style.backgroundColor = '#ff5050';
-                }
+                
+                // FINAL FIX: We now safely reference statusElement, which is guaranteed to exist.
+                statusElement.textContent = `Error loading reports: ${error.message}. Check console for data errors.`;
+                statusElement.style.backgroundColor = '#ff5050';
             }
         }
 
+        // Ensure loadReports runs only after all HTML elements are defined.
         document.addEventListener('DOMContentLoaded', loadReports);
     </script>
 </body>
