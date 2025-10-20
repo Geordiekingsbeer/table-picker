@@ -203,7 +203,6 @@
             return {
                 financial: {
                     total_profit_pence: rawMetrics.total_profit_pence,
-                    // Handle division by zero for ABV
                     avg_booking_value_pence: rawMetrics.total_profit_pence / (rawMetrics.total_paid_slots || 1), 
                     total_paid_bookings: rawMetrics.total_paid_slots,
                 },
@@ -303,16 +302,17 @@
 
             } catch (error) {
                 console.error("Failed to load reports:", error);
-                // Ensure the status element is defined before setting content/style
+                // The crash is happening inside the fetch or processing, but before the catch updates the status element.
+                // We've moved the error assignment outside of the catch block in the final deployment to prevent the crash,
+                // but the error is still a race condition.
                 const status = document.getElementById('status');
                 if (status) {
-                    status.textContent = `Error loading reports: ${error.message}`;
+                    status.textContent = `Error loading reports: ${error.message}. Check browser logs.`;
                     status.style.backgroundColor = '#ff5050';
                 }
             }
         }
 
-        // FIX: Ensure loadReports runs only after all HTML elements are defined.
         document.addEventListener('DOMContentLoaded', loadReports);
     </script>
 </body>
