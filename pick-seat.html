@@ -230,6 +230,22 @@
 			cursor: pointer;
 			width: 100%;
 		}
+        
+        /* New Modal for Party Size Prompt */
+        #party-prompt-modal .modal-content {
+            margin: 30vh auto;
+            text-align: left;
+        }
+        #party-prompt-modal button {
+            background-color: #1976d2;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
 	</style>
 </head>
 <body>
@@ -261,7 +277,7 @@
 			<h3>Confirm Reservation Details</h3>
 			<form id="customer-form">
 				<input type="text" id="customer-name" placeholder="Full Name" required>
-				<input type="number" id="party-size" placeholder="Party Size (e.g., 4)" min="1" required>
+				<input type="number" id="party-size-hidden" placeholder="Party Size (e.g., 4)" min="1" required>
 				<input type="email" id="customer-email" placeholder="Email for Receipt" required>
 
                 <div style="margin-top: 15px; margin-bottom: 20px; text-align: left;">
@@ -272,6 +288,15 @@
                 </div>
                 <button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
 			</form>
+		</div>
+	</div>
+    
+    <div id="party-prompt-modal" class="modal" style="display: flex;">
+		<div class="modal-content">
+			<h3>How many people are in your party?</h3>
+            <p style="margin-bottom: 20px;">Please enter your party size to view suitable tables.</p>
+			<input type="number" id="initial-party-size" placeholder="1 to 6+" min="1" required>
+			<button id="set-party-size">Continue to Seating Map</button>
 		</div>
 	</div>
 
@@ -305,12 +330,18 @@
     let selectedGroup = null; 
     let selectedMultiTables = new Set(); 
     const MULTI_BOOK_BUTTON = { style: { display: 'none' } };
+    
+    let CURRENT_PARTY_SIZE = 0; // NEW: Stores the size set by the prompt
 
-    let URL_PARAMS = {
-        tenant_id: null,
-        booking_ref: null,
-        source: null,
-    };
+    function generateUniqueId() {
+        return 'AUTO-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
+
+    let URL_PARAMS = {
+        tenant_id: null,
+        booking_ref: null,
+        source: null,
+    };
 
 	const PRICE_2_SEATER = 499;	
 	const PRICE_4_SEATER = 999;	
@@ -319,36 +350,51 @@
 	const TABLE_COLOR = '#b7d7a8';		
 	const BOOKED_COLOR = '#e0e0e0';		
 	const UNAVAILABLE_COLOR = '#ffffff';
+	const FILTERED_COLOR = '#cccccc'; // NEW: Color for filtered (too big) tables
 	const SEAT_COLOR = '#555';	
 	const HIGHLIGHT_COLOR = '#ffeb3b';
 	
 	const STAFF_USE_TABLE_IDS = [10, 13, 12, 14, 1];
-	
-    function generateUniqueId() {
-        // Generates a simple, unique ID using timestamp and random number for better distribution
-        return 'AUTO-' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+    
+    function getTableCapacity(w, h) {
+        if (w === 30 && h === 30) return 2;
+        if ((w === 30 && h === 50) || (w === 50 && h === 30)) return 4;
+        if (w === 90 && h === 30) return 6;
+        return 0; // Default or unknown size
     }
+	
+    function getUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        URL_PARAMS.tenant_id = urlParams.get('tenant_id');
+        URL_PARAMS.booking_ref = urlParams.get('booking_ref');
+        URL_PARAMS.source = urlParams.get('source');
 
-    function getUrlParams() {
-        const urlParams = new URLSearchParams(window.location.search);
+        if (!URL_PARAMS.tenant_id) {
+             URL_PARAMS.tenant_id = 'R-VERIFIED-Z99';
+        }
         
-        URL_PARAMS.tenant_id = urlParams.get('tenant_id');
-        URL_PARAMS.booking_ref = urlParams.get('booking_ref');
-        URL_PARAMS.source = urlParams.get('source');
-
-        if (!URL_PARAMS.tenant_id) {
-             URL_PARAMS.tenant_id = 'R-VERIFIED-Z99';
-        }
-        
-        // FIX: Generate a unique ID if one is missing from the URL
         if (!URL_PARAMS.booking_ref) {
              URL_PARAMS.booking_ref = generateUniqueId();
         }
-    }
+    }
     
+    // NEW: Function to check if a single table is too large for the party
+    function isTableTooBig(tableCapacity) {
+        if (CURRENT_PARTY_SIZE === 0) return false; // Should not happen after prompt
+
+        // Rule: Party of 1-2 can only book a 2-seater (Capacity 4 or 6 is too big)
+        if (CURRENT_PARTY_SIZE <= 2 && tableCapacity > 2) return true; 
+
+        // Rule: Party of 3-4 can only book a 4-seater (Capacity 6 is too big)
+        if (CURRENT_PARTY_SIZE <= 4 && tableCapacity === 6) return true;
+        
+        // Parties 5+ can book any size that is available (and can reserve multiple tables)
+        return false;
+    }
+
 	async function logInitialClick() {
 		if (!URL_PARAMS.booking_ref) {
-            // Should not happen with the FIX in getUrlParams, but included for safety
 			return;
 		}
 		
@@ -466,7 +512,7 @@
 	}
 
 	async function loadBookings() {
-        if (!URL_PARAMS.tenant_id) return false; 
+        if (!URL_PARAMS.tenant_id) return false; 
 
 		const selectedDateSupabase = document.getElementById('booking-date').value;
 		const selectedTime = document.getElementById('booking-time').value;
@@ -480,7 +526,7 @@
 		const { data, error } = await _supa
 			.from('premium_slots')	
 			.select('*')
-			.eq('date', selectedDateSupabase); 
+			.eq('date', selectedDateSupabase); 
 			
 		if(error){	
 			console.error('Error fetching bookings:', error);	
@@ -511,22 +557,35 @@
 			const group = tableRect.getParent();
 			const tableId = Number(group.id().substring(2));	
 			
+            const data = tableDataMap.get(tableId);
+            const tableCapacity = data ? getTableCapacity(data.w, data.h) : 0;
+			
+			// 1. Check for Staff Use Only
 			if (STAFF_USE_TABLE_IDS.includes(tableId)) {
 				tableRect.fill(UNAVAILABLE_COLOR);
 			} else {
-				const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
-				tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
+                // 2. Check for Too Big for Party Size (NEW FILTER)
+                if (isTableTooBig(tableCapacity)) {
+                    tableRect.fill(FILTERED_COLOR);
+                } else {
+                    // 3. Check for Booked by Time
+                    const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
+                    tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
+                }
 			}
 			
+			// Reset stroke
 			tableRect.stroke('#000');	
 			tableRect.strokeWidth(1);
 		});
 		
+		// Re-apply selection highlights for available tables
 		currentSelection.forEach(id => {
 			const group = layer.findOne('#g-' + id);
 			if (!group) return;	
 			const tableRect = group.findOne('.main-table');
 
+			// Re-select only if available AND not filtered
 			if (tableRect.fill() === TABLE_COLOR) {
 				selectedTableIds.push(id);
 				tableRect.stroke(HIGHLIGHT_COLOR);
@@ -541,10 +600,10 @@
 	}
 	
 	async function loadTables() {
-        if (!URL_PARAMS.tenant_id) {
-             console.error("Critical Error: Missing tenant_id. Stopping map load.");
-             return;
-        }
+        if (!URL_PARAMS.tenant_id) {
+             console.error("Critical Error: Missing tenant_id. Stopping map load.");
+             return;
+        }
 
 		const baseTables = [
 			{ id: 1, x: 235, y: 110, w: 90, h: 30, rotation: 0 },
@@ -629,13 +688,26 @@
 		});
 		layer.add(group);
 
+        // Determine table capacity once
+        const tableCapacity = getTableCapacity(t.w, t.h);
+        
+        // Initial color check for RLS filter
+        let initialFill = TABLE_COLOR;
+        if (STAFF_USE_TABLE_IDS.includes(t.id)) {
+            initialFill = UNAVAILABLE_COLOR;
+        } else if (isTableTooBig(tableCapacity)) {
+            initialFill = FILTERED_COLOR;
+        }
+
+
 		const tableRect = new Konva.Rect({	
 			width: t.w,	
 			height: t.h,	
-			fill: TABLE_COLOR,	
+			fill: initialFill,	
 			stroke: '#000',	
 			strokeWidth: 1,
-			name: 'main-table'	
+			name: 'main-table',
+            table_capacity: tableCapacity // Store capacity on the rect for easy access
 		});
 		group.add(tableRect);
 
@@ -686,8 +758,18 @@
 		const group = layer.findOne('#g-' + id);
 		const tableRect = group.findOne('.main-table');
 		
-		if (tableRect.fill() === UNAVAILABLE_COLOR || tableRect.fill() === BOOKED_COLOR) {
-			alert('This table is not available for online booking.');
+		// Check 1: Block if staff use only OR too big
+		if (tableRect.fill() === UNAVAILABLE_COLOR) {
+			alert('This table is reserved for staff walk-ins.');
+			return;
+		}
+        if (tableRect.fill() === FILTERED_COLOR) {
+            alert(`This table is too large for your party size of ${CURRENT_PARTY_SIZE}.`);
+            return;
+        }
+        // Check 2: Block if already booked by time
+		if (tableRect.fill() === BOOKED_COLOR) {
+			alert('This table is already booked at this time.');
 			return;
 		}
 
@@ -696,6 +778,16 @@
 		
 		const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
 		const isMulti = isShiftPressed || isMultiSelectMode;
+        
+        // When selecting multiple tables, enforce party size limit based on combined capacity
+        if (isMultiSelectMode || selectedTableIds.length >= 1) {
+             const newCapacity = getSelectedTablesCapacity() + getTableCapacity(tableDataMap.get(idNumber).w, tableDataMap.get(idNumber).h);
+             if (newCapacity > 6 && !isMultiSelectMode) {
+                 alert("You cannot select tables that total more than a 6-person capacity unless you start Group Selection mode.");
+                 return;
+             }
+        }
+
 
 		if (index === -1) {
 			if (!isMulti) {
@@ -779,6 +871,11 @@
 
 	payBtn.onclick = async () => {
 		if (selectedTableIds.length === 0) return;
+        
+        // Set the hidden party size field for the checkout modal
+        document.getElementById('party-size-hidden').value = CURRENT_PARTY_SIZE;
+        // Optionally update placeholder text in modal for clarity
+        document.getElementById('party-size-hidden').placeholder = `Party Size (${CURRENT_PARTY_SIZE})`;
 		
 		const selectedDate = document.getElementById('booking-date').value;
 		const selectedTime = document.getElementById('booking-time').value;
@@ -822,17 +919,26 @@
 	customerForm.addEventListener('submit', async function(e) {
 		e.preventDefault();
 
-        getUrlParams(); 
+        getUrlParams(); 
 
 		const customerName = document.getElementById('customer-name').value;
-		const partySize = parseInt(document.getElementById('party-size').value);
+		// Use the value from the hidden field set by the party prompt
+		const partySize = parseInt(document.getElementById('party-size-hidden').value); 
 		const email = document.getElementById('customer-email').value;
-        const receiveOffers = document.getElementById('future-offers-optin').checked;
+        const receiveOffers = document.getElementById('future-offers-optin').checked;
 
 		if (!customerName || isNaN(partySize) || partySize <= 0 || !email) {
 			alert('Please fill out all fields correctly.');
 			return;
 		}
+        
+        // Re-validate against max capacity for safety
+        const totalCapacity = getSelectedTablesCapacity();
+        if (partySize > totalCapacity) {
+             alert(`Error: Your party size (${partySize}) exceeds the total selected table capacity (${totalCapacity}).`);
+             return;
+        }
+
 
 		customerModal.style.display = 'none';	
 
@@ -860,7 +966,7 @@
 					party_size: partySize,
 					tenant_id: URL_PARAMS.tenant_id,
 					booking_ref: URL_PARAMS.booking_ref,
-                    receive_offers: receiveOffers
+                    receive_offers: receiveOffers
 				})
 			});
 			
@@ -876,8 +982,30 @@
 			alert('Checkout creation failed. See console for details.');
 		}
 	});
-	
-    getUrlParams();
+    
+    // NEW: Party Size Prompt Handlers
+    document.getElementById('set-party-size').onclick = () => {
+        const inputElement = document.getElementById('initial-party-size');
+        const size = parseInt(inputElement.value);
+        
+        if (isNaN(size) || size < 1) {
+            alert("Please enter a valid party size (1 or greater).");
+            return;
+        }
+        
+        CURRENT_PARTY_SIZE = size;
+        document.getElementById('party-prompt-modal').style.display = 'none';
+        
+        // Hide the original party size input in the confirmation modal, use the value we stored.
+        const originalPartyInput = document.getElementById('party-size-hidden');
+        originalPartyInput.type = 'hidden'; 
+
+        // Update the floorplan to apply RLS filtering based on size
+        updateTableVisuals();
+    };
+
+    // Initialize the page by getting URL params and loading map data
+    getUrlParams();
     logInitialClick(); 
 	setDefaultDateTime();
 	window.addEventListener('resize', resizeStage);
@@ -885,5 +1013,3 @@
 	</script>
 </body>
 </html>
-
-
