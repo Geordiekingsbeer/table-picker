@@ -41,6 +41,9 @@
         .kpi-table td:last-child {
             font-weight: bold;
         }
+        .trend-up { color: #388e3c; }
+        .trend-down { color: #d32f2f; }
+        .trend-flat { color: #555; }
         #status {
             padding: 15px;
             background-color: #ffcc80;
@@ -56,25 +59,40 @@
         <div id="status">Loading data...</div>
 
         <div id="funnel-report">
-            <h2>1. Engagement Funnel & Conversion</h2>
+            <h2>1. Financial & Trend Analysis (70% Profit Share)</h2>
             <table class="kpi-table">
                 <thead>
                     <tr>
                         <th>Metric</th>
                         <th>Value</th>
+                        <th>Trend (vs. Last Month)</th>
                     </tr>
                 </thead>
                 <tbody id="funnel-body">
-                    <tr><td>Total People Viewed Link</td><td id="kpi-link-opened"></td></tr>
-                    <tr><td>Total Checkout Starts</td><td id="kpi-checkout-started"></td></tr>
-                    <tr><td>Total Paid Bookings (Conversion)</td><td id="kpi-paid"></td></tr>
-                    <tr><td>Conversion Rate (Paid / Viewed)</td><td id="kpi-rate"></td></tr>
+                    <tr><td>Total Monthly Profit (70% Share)</td><td id="kpi-total-profit"></td><td><span id="kpi-profit-trend"></span></td></tr>
+                    <tr><td>Average Booking Value (70% Share)</td><td id="kpi-avg-value"></td><td><span id="kpi-avg-value-trend"></span></td></tr>
+                    <tr><td>Total People Viewed Link</td><td id="kpi-link-opened"></td><td><span id="kpi-view-trend"></span></td></tr>
+                    <tr><td>Total Paid Bookings</td><td id="kpi-paid"></td><td><span id="kpi-paid-trend"></span></td></tr>
                 </tbody>
             </table>
         </div>
 
+        <div id="daily-report">
+            <h2>2. Average Profit Per Day (70% Share)</h2>
+            <table class="kpi-table">
+                <thead>
+                    <tr>
+                        <th>Day of Week</th>
+                        <th>Average Profit Per Day</th>
+                    </tr>
+                </thead>
+                <tbody id="daily-profit-body">
+                    </tbody>
+            </table>
+        </div>
+
         <div id="table-report">
-            <h2>2. Table Demand Breakdown</h2>
+            <h2>3. Table Demand Breakdown</h2>
             <table class="kpi-table">
                 <thead>
                     <tr>
@@ -98,51 +116,123 @@
 
         const CURRENT_TENANT_ID = 'R-VERIFIED-Z99';
         const statusElement = document.getElementById('status');
+        const dailyProfitBody = document.getElementById('daily-profit-body');
+        
+        const currencyFormatter = new Intl.NumberFormat('en-GB', {
+            style: 'currency',
+            currency: 'GBP',
+            minimumFractionDigits: 2
+        });
+        
+        function formatPenceToGBP(pence) {
+            // Ensure pence is treated as a number before division
+            return currencyFormatter.format(Number(pence) / 100);
+        }
+
+        /**
+         * Calculates the percentage difference between two values.
+         * @returns {{text: string, class: string}}
+         */
+        function calculateTrend(current, previous) {
+            current = Number(current) || 0;
+            previous = Number(previous) || 0;
+            
+            if (previous === 0) {
+                const text = current > 0 ? 'NEW (+100%)' : 'N/A';
+                return { text: text, class: current > 0 ? 'trend-up' : 'trend-flat' };
+            }
+            
+            const percent = ((current - previous) / previous) * 100;
+            const sign = percent >= 0 ? '+' : '';
+            return {
+                text: `${sign}${percent.toFixed(1)}%`,
+                class: percent > 0 ? 'trend-up' : (percent < 0 ? 'trend-down' : 'trend-flat')
+            };
+        }
+
+        async function fetchMetrics(viewName) {
+            const { data, error } = await _supa
+                .from(viewName)
+                .select('*')
+                .eq('tenant_id', CURRENT_TENANT_ID);
+            
+            if (error) throw new Error(error.message);
+            
+            // Return only the first row for the main metrics
+            return data && data.length > 0 ? data[0] : null;
+        }
 
         async function loadReports() {
             try {
-                // 1. Fetch Engagement Funnel Data
-                const { data: funnelData, error: funnelError } = await _supa
-                    .from('v_engagement_funnel')
-                    .select('*')
-                    .eq('tenant_id', CURRENT_TENANT_ID);
+                // --- MOCKING LAST MONTH DATA (Replace with actual fetch in production) ---
+                // We use placeholder data for the trend.
+                const lastMonthMetrics = { 
+                    total_profit_pence: 20000, 
+                    avg_booking_value_pence: 500,
+                    total_people_viewed_link: 20,
+                    total_paid_bookings: 3
+                }; 
+                // ----------------------------------------------------
 
-                if (funnelError) {
-                    throw new Error(funnelError.message);
-                }
 
-                // Access data from the first element of the returned array
-                const funnel = funnelData && funnelData.length > 0 ? funnelData[0] : {};
+                // 1. Fetch Summary Metrics (Financials)
+                const financialSummary = await fetchMetrics('v_financial_summary');
+                const funnelSummary = await fetchMetrics('v_engagement_funnel'); 
                 
-                if (Object.keys(funnel).length === 0) {
-                    statusElement.textContent = `Report loaded, but no funnel data found for Tenant: ${CURRENT_TENANT_ID}.`;
-                    statusElement.style.backgroundColor = '#ffcc80';
-                    return;
-                }
+                const dailyDataPromise = _supa.from('v_daily_profit').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+                const metricsDataPromise = _supa.from('v_table_booking_metrics').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+
+                const [dailyResult, metricsResult] = await Promise.all([dailyDataPromise, metricsDataPromise]);
                 
-                // --- FIX: Use the new column name: total_people_viewed_link ---
-                const linksViewed = funnel.total_people_viewed_link || 0;
-                const paidBookings = funnel.total_paid_bookings || 0;
+                if (dailyResult.error) throw new Error(dailyResult.error.message);
+                if (metricsResult.error) throw new Error(metricsResult.error.message);
+                
+                const metrics = metricsResult.data && metricsResult.data.length > 0 ? metricsResult.data[0] : {};
+
+
+                // --- 1. Financial & Trend Analysis ---
+                const linksViewed = funnelSummary?.total_people_viewed_link || 0;
+                const paidBookings = financialSummary?.total_paid_bookings || 0; // Use financial summary for paid bookings count
+                const totalProfit = financialSummary?.total_profit_pence || 0;
+                const avgValue = financialSummary?.avg_booking_value_pence || 0;
+                
                 const conversionRate = (linksViewed > 0) ? ((paidBookings / linksViewed) * 100).toFixed(2) + '%' : '0.00%';
 
+                // Display Values
+                document.getElementById('kpi-total-profit').textContent = formatPenceToGBP(totalProfit);
+                document.getElementById('kpi-avg-value').textContent = formatPenceToGBP(avgValue);
                 document.getElementById('kpi-link-opened').textContent = linksViewed;
-                document.getElementById('kpi-checkout-started').textContent = funnel.total_checkout_started || 0;
                 document.getElementById('kpi-paid').textContent = paidBookings;
                 document.getElementById('kpi-rate').textContent = conversionRate;
 
-
-                // 2. Fetch Table Demand Metrics
-                const { data: metricsData, error: metricsError } = await _supa
-                    .from('v_table_booking_metrics')
-                    .select('*')
-                    .eq('tenant_id', CURRENT_TENANT_ID);
+                // Display Trends
+                const profitTrend = calculateTrend(totalProfit, lastMonthMetrics.total_profit_pence);
+                document.getElementById('kpi-profit-trend').innerHTML = `<span class="${profitTrend.class}">${profitTrend.text}</span>`;
                 
-                if (metricsError) {
-                    throw new Error(metricsError.message);
+                const avgTrend = calculateTrend(avgValue, lastMonthMetrics.avg_booking_value_pence);
+                document.getElementById('kpi-avg-value-trend').innerHTML = `<span class="${avgTrend.class}">${avgTrend.text}</span>`;
+                
+                const viewTrend = calculateTrend(linksViewed, lastMonthMetrics.total_people_viewed_link);
+                document.getElementById('kpi-view-trend').innerHTML = `<span class="${viewTrend.class}">${viewTrend.text}</span>`;
+                
+                const paidTrend = calculateTrend(paidBookings, lastMonthMetrics.total_paid_bookings);
+                document.getElementById('kpi-paid-trend').innerHTML = `<span class="${paidTrend.class}">${paidTrend.text}</span>`;
+
+
+                // --- 2. Daily Profit Metrics ---
+                dailyProfitBody.innerHTML = '';
+                const dailyData = dailyResult.data;
+                if (dailyData && dailyData.length > 0) {
+                    dailyData.forEach(day => {
+                        const row = dailyProfitBody.insertRow();
+                        row.insertCell().textContent = day.day_of_week.trim();
+                        row.insertCell().textContent = formatPenceToGBP(day.avg_daily_profit_pence);
+                    });
+                } else {
+                    dailyProfitBody.innerHTML = '<tr><td colspan="2">No paid data for daily analysis.</td></tr>';
                 }
-                
-                const metrics = metricsData && metricsData.length > 0 ? metricsData[0] : {};
 
+                // --- 3. Table Demand Metrics ---
                 document.getElementById('kpi-2-seat').textContent = metrics.count_2_seaters || 0;
                 document.getElementById('kpi-4-seat').textContent = metrics.count_4_seaters || 0;
                 document.getElementById('kpi-6-seat').textContent = metrics.count_6_seaters || 0;
