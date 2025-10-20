@@ -394,11 +394,17 @@
         if (CURRENT_PARTY_SIZE === 0) return false;
         
         // Rule 1: Too large (wasted space)
+        // Party of 1-2 can only select 2-seater (Capacity 4 or 6 is too big)
         if (CURRENT_PARTY_SIZE <= 2 && tableCapacity > 2) return true; 
+
+        // Party of 3-4 can only select 4-seater (Capacity 6 is too big)
         if (CURRENT_PARTY_SIZE <= 4 && tableCapacity === 6) return true;
         
         // Rule 2: Too small (cannot accommodate party size)
+        // Party of 3+ cannot select a 2-seater (Capacity 2 is too small)
         if (CURRENT_PARTY_SIZE > 2 && tableCapacity === 2) return true;
+        
+        // Party of 5+ cannot select a 4-seater (Capacity 4 is too small)
         if (CURRENT_PARTY_SIZE > 4 && tableCapacity === 4) return true;
         
         return false;
@@ -575,12 +581,16 @@
 			if (STAFF_USE_TABLE_IDS.includes(tableId)) {
 				tableRect.fill(UNAVAILABLE_COLOR);
 			} else {
-                // 2. Check for Too Big/Small for Party Size (NEW FILTER)
-                if (isTableTooBig(tableCapacity)) {
+                // 2. Check for Filter (Too Big/Small) OR Time Booked
+                const isFiltered = isTableTooBig(tableCapacity);
+                const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
+                
+                // If in Multi-Select Mode, ignore the 'isFiltered' state.
+                if (isMultiSelectMode) {
+                    tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
+                } else if (isFiltered) {
                     tableRect.fill(FILTERED_COLOR);
                 } else {
-                    // 3. Check for Booked by Time
-                    const isBooked = currentBookings.some(b => Number(b.table_id) === tableId);
                     tableRect.fill(isBooked ? BOOKED_COLOR : TABLE_COLOR);
                 }
 			}
@@ -791,17 +801,15 @@
 		const isShiftPressed = evt && (evt.shiftKey || evt.ctrlKey || evt.metaKey);
 		const isMulti = isShiftPressed || isMultiSelectMode;
         
-        // FIX: Clear existing selection if NOT in multi-select mode and a new table is clicked.
-        if (index === -1) {
-             if (!isMulti) {
-                stage.find('.main-table').forEach(rect => {
-                    if (rect.fill() === TABLE_COLOR) {
-                        rect.stroke('#000');
-                        rect.strokeWidth(1);
-                    }
-                });
-                selectedTableIds = [];
-            }
+        // Clear existing selection if NOT in multi-select mode and a new table is clicked.
+        if (index === -1 && !isMulti) {
+            stage.find('.main-table').forEach(rect => {
+                if (rect.fill() === TABLE_COLOR) {
+                    rect.stroke('#000');
+                    rect.strokeWidth(1);
+                }
+            });
+            selectedTableIds = [];
         }
 
 
@@ -855,7 +863,6 @@
 		} else {
 			toggleButton.dataset.active = 'false';
 			toggleButton.classList.remove('active');
-			// FIX: Ensure consistent text when mode is inactive
 			toggleButton.textContent = 'Start Multi-Select Mode';
 			
 			selectedMultiTables.clear();
@@ -864,6 +871,7 @@
 			layer.find('Group').forEach(group => group.draggable(true));
 		}
 
+		// FIX: Must update visuals when toggling to/from multi-select mode
 		updateTableVisuals();
 	};
 
