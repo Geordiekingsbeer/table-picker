@@ -28,32 +28,17 @@
             color: #555;
             font-size: 16px;
         }
-        .icon {
-            font-size: 48px;
-            color: #388e3c;
-            margin-bottom: 15px;
-        }
-        /* New class for main confirmation message */
-        .confirmation-text {
-            color: #555;
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
+        /* The .icon and .confirmation-text styles are now implicitly handled or removed */
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
-        <div class="icon">✅</div>
         <h1>Table Confirmed! 🍽️</h1>
         
-        <p class="confirmation-text">Thank you for your payment. Your table reservation has been successfully booked for the selected date and time - See you soon!</p>
+        <p>Thank you for your payment. Your table reservation has been successfully booked for the selected date and time - See you soon!</p>
         
-        <p id="tracking-message" style="font-size: 14px; color: #1976d2; margin-top: 5px;">Booking confirmation status successfully logged.</p>
-        
-        <p>Your payment receipt has been sent to the email address you provided.</p>
-        <p>You can close this window now or return to the <a href="pick-seat.html">floor plan</a>.</p>
-    </div>
+        </div>
 
     <script>
         // --- Supabase Setup (Must Match Your Project Keys) ---
@@ -66,13 +51,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const tenantId = urlParams.get('tenant_id');
             const bookingRef = urlParams.get('booking_ref');
-            const messageElement = document.getElementById('tracking-message');
-
+            
+            // Removed direct message element references, but keep console logging for debugging if needed
             if (!tenantId || !bookingRef) {
-                if (messageElement) {
-                    messageElement.textContent = "Error: Could not finalize tracking (Missing IDs in URL).";
-                    messageElement.style.color = '#d32f2f';
-                }
                 console.error("Tracking Error: Missing tenant_id or booking_ref in success URL.");
                 return;
             }
@@ -88,17 +69,13 @@
                 .upsert([trackingEvent], { onConflict: 'booking_ref' });
 
             if (error) {
-                if (error.code === '23505' && messageElement) {
-                    // Conflict means the webhook already logged success, which is fine.
-                    messageElement.textContent = "Booking confirmation status successfully logged (via webhook backup).";
-                } else if (messageElement) {
-                     messageElement.textContent = `Error: Failed to log conversion. Code: ${error.code}`;
-                     messageElement.style.color = '#d32f2f';
+                if (error.code === '23505') {
+                    console.warn("Booking confirmation status already logged via webhook backup.");
+                } else {
+                    console.error('Tracking Insert Failure:', error);
                 }
-                console.error('Tracking Insert Failure:', error);
-            } else if (messageElement) {
-                messageElement.textContent = "Booking confirmation status successfully logged.";
-                messageElement.style.color = '#388e3c';
+            } else {
+                console.log("Booking confirmation status successfully logged.");
             }
         }
 
