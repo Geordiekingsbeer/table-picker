@@ -117,6 +117,7 @@
         const CURRENT_TENANT_ID = 'R-VERIFIED-Z99';
         const statusElement = document.getElementById('status');
         const dailyProfitBody = document.getElementById('daily-profit-body');
+        const PROFIT_SHARE = 0.70;
         
         const currencyFormatter = new Intl.NumberFormat('en-GB', {
             style: 'currency',
@@ -125,13 +126,11 @@
         });
         
         function formatPenceToGBP(pence) {
-            // Ensure pence is treated as a number before division
             return currencyFormatter.format(Number(pence) / 100);
         }
 
         /**
          * Calculates the percentage difference between two values.
-         * @returns {{text: string, class: string}}
          */
         function calculateTrend(current, previous) {
             current = Number(current) || 0;
@@ -150,22 +149,93 @@
             };
         }
 
-        async function fetchMetrics(viewName) {
-            const { data, error } = await _supa
-                .from(viewName)
-                .select('*')
-                .eq('tenant_id', CURRENT_TENANT_ID);
-            
-            if (error) throw new Error(error.message);
-            
-            // Return only the first row for the main metrics
-            return data && data.length > 0 ? data[0] : null;
+        function getTableCapacity(w, h) {
+            if (w === 30 && h === 30) return 2;
+            if ((w === 30 && h === 50) || (w === 50 && h === 30)) return 4;
+            if (w === 90 && h === 30) return 6;
+            return 0;
         }
+
+        function processRawData(slots, tables, tracking) {
+            const rawMetrics = {
+                total_profit_pence: 0,
+                total_paid_slots: 0,
+                daily_sales_count: new Map(),
+                table_size_count: { 2: 0, 4: 0, 6: 0 },
+            };
+
+            const tableCapacityMap = new Map(tables.map(t => [t.id, { w: t.w, h: t.h }]));
+
+            slots.filter(s => s.payment_status === 'PAID').forEach(slot => {
+                // 1. Financial Metrics
+                rawMetrics.total_profit_pence += (slot.total_pence || 0) * PROFIT_SHARE;
+                rawMetrics.total_paid_slots++;
+
+                // 2. Daily Profit Aggregation
+                const dateKey = slot.date;
+                const dayOfWeek = new Date(dateKey).toLocaleString('en-US', { weekday: 'long' });
+
+                if (!rawMetrics.daily_sales_count.has(dayOfWeek)) {
+                    rawMetrics.daily_sales_count.set(dayOfWeek, { total_profit: 0, unique_dates: new Set() });
+                }
+                rawMetrics.daily_sales_count.get(dayOfWeek).total_profit += (slot.total_pence || 0) * PROFIT_SHARE;
+                rawMetrics.daily_sales_count.get(dayOfWeek).unique_dates.add(dateKey);
+
+                // 3. Table Demand Breakdown
+                const tableData = tableCapacityMap.get(slot.table_id);
+                if (tableData) {
+                    const capacity = getTableCapacity(tableData.w, tableData.h);
+                    if (rawMetrics.table_size_count[capacity] !== undefined) {
+                        rawMetrics.table_size_count[capacity]++;
+                    }
+                }
+            });
+            
+            // 4. Conversion Metrics (from tracking table)
+            const uniqueVisitors = new Set(tracking.map(t => t.booking_ref));
+            const totalCheckoutStarts = tracking.filter(t => t.checkout_started === 'TRUE').length;
+
+            const totalBookings = rawMetrics.total_paid_slots || 1; 
+
+            return {
+                financial: {
+                    total_profit_pence: rawMetrics.total_profit_pence,
+                    // Handle division by zero for ABV
+                    avg_booking_value_pence: rawMetrics.total_profit_pence / (rawMetrics.total_paid_slots || 1), 
+                    total_paid_bookings: rawMetrics.total_paid_slots,
+                },
+                daily: Array.from(rawMetrics.daily_sales_count).map(([dayOfWeek, data]) => ({
+                    day_of_week: dayOfWeek,
+                    avg_daily_profit_pence: data.total_profit / data.unique_dates.size,
+                })).sort((a, b) => new Date(a.day_of_week + ', 2000').getDay() - new Date(b.day_of_week + ', 2000').getDay()), 
+                
+                demand: rawMetrics.table_size_count,
+                funnel: {
+                    total_people_viewed_link: uniqueVisitors.size,
+                    total_checkout_started: totalCheckoutStarts,
+                }
+            };
+        }
+
 
         async function loadReports() {
             try {
-                // --- MOCKING LAST MONTH DATA (Replace with actual fetch in production) ---
-                // We use placeholder data for the trend.
+                // --- 1. Fetch All Raw Data from Tables (Bypassing Views) ---
+                const slotsPromise = _supa.from('premium_slots').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+                const tablesPromise = _supa.from('tables').select('id, w, h').eq('tenant_id', CURRENT_TENANT_ID);
+                const trackingPromise = _supa.from('engagement_tracking').select('*').eq('tenant_id', CURRENT_TENANT_ID);
+
+                const [slotsResult, tablesResult, trackingResult] = await Promise.all([slotsPromise, tablesPromise, trackingPromise]);
+                
+                if (slotsResult.error) throw new Error("Booking Data Error: " + slotsResult.error.message);
+                if (tablesResult.error) throw new Error("Table Data Error: " + tablesResult.error.message);
+                if (trackingResult.error) throw new Error("Tracking Data Error: " + trackingResult.error.message);
+                
+                // Process and aggregate all metrics client-side
+                const rawMetrics = processRawData(slotsResult.data, tablesResult.data, trackingResult.data);
+                
+                
+                // --- MOCKING LAST MONTH DATA (Needed for trend calculation) ---
                 const lastMonthMetrics = { 
                     total_profit_pence: 20000, 
                     avg_booking_value_pence: 500,
@@ -175,26 +245,14 @@
                 // ----------------------------------------------------
 
 
-                // 1. Fetch Summary Metrics (Financials)
-                const financialSummary = await fetchMetrics('v_financial_summary');
-                const funnelSummary = await fetchMetrics('v_engagement_funnel'); 
+                // --- 2. Financial & Trend Analysis ---
+                const funnel = rawMetrics.funnel;
+                const financial = rawMetrics.financial;
                 
-                const dailyDataPromise = _supa.from('v_daily_profit').select('*').eq('tenant_id', CURRENT_TENANT_ID);
-                const metricsDataPromise = _supa.from('v_table_booking_metrics').select('*').eq('tenant_id', CURRENT_TENANT_ID);
-
-                const [dailyResult, metricsResult] = await Promise.all([dailyDataPromise, metricsDataPromise]);
-                
-                if (dailyResult.error) throw new Error(dailyResult.error.message);
-                if (metricsResult.error) throw new Error(metricsResult.error.message);
-                
-                const metrics = metricsResult.data && metricsResult.data.length > 0 ? metricsResult.data[0] : {};
-
-
-                // --- 1. Financial & Trend Analysis ---
-                const linksViewed = funnelSummary?.total_people_viewed_link || 0;
-                const paidBookings = financialSummary?.total_paid_bookings || 0; // Use financial summary for paid bookings count
-                const totalProfit = financialSummary?.total_profit_pence || 0;
-                const avgValue = financialSummary?.avg_booking_value_pence || 0;
+                const linksViewed = funnel.total_people_viewed_link;
+                const paidBookings = financial.total_paid_bookings;
+                const totalProfit = financial.total_profit_pence;
+                const avgValue = financial.avg_booking_value_pence;
                 
                 const conversionRate = (linksViewed > 0) ? ((paidBookings / linksViewed) * 100).toFixed(2) + '%' : '0.00%';
 
@@ -219,9 +277,9 @@
                 document.getElementById('kpi-paid-trend').innerHTML = `<span class="${paidTrend.class}">${paidTrend.text}</span>`;
 
 
-                // --- 2. Daily Profit Metrics ---
+                // --- 3. Daily Profit Metrics ---
                 dailyProfitBody.innerHTML = '';
-                const dailyData = dailyResult.data;
+                const dailyData = rawMetrics.daily;
                 if (dailyData && dailyData.length > 0) {
                     dailyData.forEach(day => {
                         const row = dailyProfitBody.insertRow();
@@ -232,12 +290,12 @@
                     dailyProfitBody.innerHTML = '<tr><td colspan="2">No paid data for daily analysis.</td></tr>';
                 }
 
-                // --- 3. Table Demand Metrics ---
-                document.getElementById('kpi-2-seat').textContent = metrics.count_2_seaters || 0;
-                document.getElementById('kpi-4-seat').textContent = metrics.count_4_seaters || 0;
-                document.getElementById('kpi-6-seat').textContent = metrics.count_6_seaters || 0;
+                // --- 4. Table Demand Metrics ---
+                document.getElementById('kpi-2-seat').textContent = rawMetrics.demand[2] || 0;
+                document.getElementById('kpi-4-seat').textContent = rawMetrics.demand[4] || 0;
+                document.getElementById('kpi-6-seat').textContent = rawMetrics.demand[6] || 0;
                 
-                statusElement.textContent = `Report loaded successfully for Tenant: ${CURRENT_TENANT_ID}`;
+                statusElement.textContent = `Report loaded successfully for Tenant: ${CURRENT_TENANT_ID} (Client-Side Aggregation)`;
                 statusElement.style.backgroundColor = '#b7d7a8';
 
             } catch (error) {
@@ -247,7 +305,8 @@
             }
         }
 
-        loadReports();
+        // FIX: Ensure loadReports runs only after all HTML elements are defined.
+        document.addEventListener('DOMContentLoaded', loadReports);
     </script>
 </body>
 </html>
