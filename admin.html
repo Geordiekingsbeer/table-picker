@@ -36,7 +36,7 @@
 			border: none;
 			cursor: pointer;
 			color: #fff;
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 
 		.admin-controls-top button#save {
@@ -50,7 +50,7 @@
 		}
 		
 		.admin-controls-top button:hover {
-			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
 			opacity: 0.95;
 		}
 
@@ -84,7 +84,7 @@
 			max-width: none;
 			font-weight: 500;
 			text-align: center;
-			font-family: Arial, sans-serif; 
+			font-family: Arial, sans-serif; 
 		}
 		
 		#load-bookings {
@@ -94,7 +94,7 @@
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
-			font-weight: 600; 
+			font-weight: 600; 
 			flex-grow: 1;
 			box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 			white-space: nowrap;
@@ -129,7 +129,7 @@
 			width: 90vw;
 			max-width: 480px;
 			text-align: center;
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 		
 		#multi-select-toggle:hover, #multi-book-button:hover {
@@ -182,7 +182,7 @@
 			height: 15px;
 			border-radius: 3px;
 			margin-right: 5px;
-			border: 1px solid #000; 
+			border: 1px solid #000; 
 		}
 		
 		.modal {
@@ -266,7 +266,7 @@
 	</style>
 </head>
 <body>
-    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
 
 	<div class="admin-controls-top">
 		<button id="save">Save layout</button>
@@ -367,8 +367,8 @@
 		let isMultiSelectMode = false;
 		let selectedMultiTables = new Set();
 		
-		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-fresh.vercel.app/admin-booking';
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
+        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-fresh.vercel.app/admin-booking';
 
 
 		const TABLE_COLOR = '#b7d7a8';
@@ -551,7 +551,7 @@
 			setInterval(() => {
 				if (document.getElementById('booking-date').value && document.getElementById('booking-time').value) {
 					console.log('Polling for new bookings...');
-					loadBookings(); 
+					loadBookings(); 
 				}
 			}, 10000);
 			console.log('Booking polling started (10s interval).');
@@ -768,7 +768,7 @@
 
 				console.log('Admin Booking Successful:', result.message);
 				await loadBookings();
-				return true; 
+				return true; 
 				
 			} catch (error) {
 				alert('Network Error: Could not reach the booking service. Check console.');
@@ -783,7 +783,7 @@
 			let failedTables = [];
 
 			for (const tableId of tableIds) {
-				const success = await createBooking(tableId, startTime, endTime, notes); 
+				const success = await createBooking(tableId, startTime, endTime, notes); 
 				if (success) {
 					successfulBookings++;
 				} else {
@@ -797,7 +797,7 @@
 					message += ` Tables ${failedTables.join(', ')} failed due to overlaps or errors.`;
 				}
 				alert(message);
-				await loadBookings(); 
+				await loadBookings(); 
 			} else {
 				alert('Bulk booking failed. Check console for details.');
 			}
@@ -1033,5 +1033,3 @@
 	</script>
 </body>
 </html>
-
-
