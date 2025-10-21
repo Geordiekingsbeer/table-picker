@@ -368,7 +368,8 @@
 		let selectedMultiTables = new Set();
 		
 		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-fresh.vercel.app/admin-booking';
+        // FIX: Update API endpoint to use the new professional subdomain
+        const ADMIN_BOOKING_API_URL = 'https://api.dineselect.co/admin-booking';
 
 
 		const TABLE_COLOR = '#b7d7a8';
@@ -749,6 +750,8 @@
 				endTime: endTime,
 				notes: notes,
 				tenantId: tenantId,
+                // NOTE: Admin manual bookings are assumed to be partySize 4 for simplicity in this frontend
+                partySize: 4 
 			};
 
 			try {
@@ -785,7 +788,7 @@
 			for (const tableId of tableIds) {
 				const success = await createBooking(tableId, startTime, endTime, notes); 
 				if (success) {
-					successfulBookings++;
+					successfulBookfulBookings++;
 				} else {
 					failedTables.push(tableId);
 				}
@@ -959,13 +962,15 @@
 			const endTime = document.getElementById('multi-end-time').value;
 			const notes = document.getElementById('multi-notes').value;
 			const tableIds = Array.from(selectedMultiTables);
+            // Default party size for multi-admin booking is 4
+            const partySize = 4; 
 
 			if (tableIds.length === 0) {
 				alert("No tables selected for booking.");
 				return;
 			}
 
-			await createBulkBooking(tableIds, startTime, endTime, notes);
+			await createBulkBooking(tableIds, startTime, endTime, notes, partySize);
 			multiModal.style.display = 'none';
 			
 			selectedMultiTables.clear();
@@ -985,8 +990,10 @@
 			const startTime = document.getElementById('start-time').value;
 			const endTime = document.getElementById('end-time').value;
 			const notes = document.getElementById('notes').value;
+            // Default party size for single admin booking is 4
+            const partySize = 4; 
 
-			const success = await createBooking(tableId, startTime, endTime, notes);
+			const success = await createBooking(tableId, startTime, endTime, notes, partySize);
 			if (success) {	
 				singleModal.style.display = 'none';
 				await loadBookings();	
