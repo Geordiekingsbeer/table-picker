@@ -214,12 +214,12 @@
 			border-radius: 5px;
 			box-sizing: border-box;
 		}
-        
-        #future-offers-optin {
-            width: auto !important; 
-            margin: 0 10px 0 0 !important; 
-            display: inline-block !important; 
-        }
+        
+        #future-offers-optin {
+            width: auto !important; 
+            margin: 0 10px 0 0 !important; 
+            display: inline-block !important; 
+        }
 
 		#confirm-booking-btn {
 			background-color: #388e3c;
@@ -230,26 +230,27 @@
 			cursor: pointer;
 			width: 100%;
 		}
-        
-        /* New Modal for Party Size Prompt */
-        #party-prompt-modal .modal-content {
-            margin: 30vh auto;
-            text-align: left;
-        }
-        #party-prompt-modal button {
-            background-color: #1976d2;
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 15px;
-        }
+        
+        /* New Modal for Party Size Prompt */
+        #party-prompt-modal .modal-content {
+            margin: 30vh auto;
+            text-align: left;
+        }
+        #party-prompt-modal button {
+            background-color: #1976d2;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
 	</style>
 </head>
 <body>
 	<h1 class="header-title" style="font-size: 24px;">Reserve Your Table</h1>
+	
 	<div id="datetime-controls">
 		<input type="date" id="booking-date" value="" placeholder="dd/mm/yyyy" style="text-align: left;">
 		<input type="time" id="booking-time" value="" placeholder="--:--" style="text-align: left;">
@@ -278,21 +279,21 @@
 				<input type="number" id="party-size-hidden" placeholder="Party Size (e.g., 4)" min="1" required>
 				<input type="email" id="customer-email" placeholder="Email for Receipt" required>
 
-                <div style="margin-top: 15px; margin-bottom: 20px; text-align: left;">
-                    <input type="checkbox" id="future-offers-optin">
-                    <label for="future-offers-optin" style="font-size: 14px; font-weight: normal; color: #555;">
-                        Yes, I would like to receive future offers and discounts from restaurants in my area.
-                    </label>
-                </div>
-                <button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
+                <div style="margin-top: 15px; margin-bottom: 20px; text-align: left;">
+                    <input type="checkbox" id="future-offers-optin">
+                    <label for="future-offers-optin" style="font-size: 14px; font-weight: normal; color: #555;">
+                        Yes, I would like to receive future offers and discounts from restaurants in my area.
+                    </label>
+                </div>
+                <button type="submit" id="confirm-booking-btn">Proceed to Payment</button>
 			</form>
 		</div>
 	</div>
-    
-    <div id="party-prompt-modal" class="modal" style="display: flex;">
+    
+    <div id="party-prompt-modal" class="modal" style="display: flex;">
 		<div class="modal-content">
 			<h3>How many people are in your party?</h3>
-            <p style="margin-bottom: 20px;">Please enter your party size to view suitable tables.</p>
+            <p style="margin-bottom: 20px;">Please enter your party size to view suitable tables.</p>
 			<input type="number" id="initial-party-size" placeholder="1 to 6+" min="1" required>
 			<button id="set-party-size">Continue to Seating Map</button>
 		</div>
@@ -935,7 +936,7 @@
         getUrlParams(); 
 
 		const customerName = document.getElementById('customer-name').value;
-		const partySize = parseInt(document.getElementById('party-size-hidden').value); 
+		const partySize = parseInt(document.getElementById('party-size-hidden').value); 
 		const email = document.getElementById('customer-email').value;
         const receiveOffers = document.getElementById('future-offers-optin').checked;
 
@@ -978,7 +979,7 @@
 		}
 
 		try {
-			const res = await fetch('https://stripe-serverless-fresh.vercel.app/api/create-checkout', {
+			const res = await fetch('https://api.dineselect.co/api/create-checkout', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({	
@@ -1007,27 +1008,27 @@
 			alert('Checkout creation failed. See console for details.');
 		}
 	});
-    
-    // Party Size Prompt Handlers
-    document.getElementById('set-party-size').onclick = () => {
-        const inputElement = document.getElementById('initial-party-size');
-        const size = parseInt(inputElement.value);
-        
-        if (isNaN(size) || size < 1) {
-            alert("Please enter a valid party size (1 or greater).");
-            return;
-        }
-        
-        CURRENT_PARTY_SIZE = size;
-        document.getElementById('party-prompt-modal').style.display = 'none';
-        
-        const originalPartyInput = document.getElementById('party-size-hidden');
-        originalPartyInput.type = 'hidden'; 
+    
+    // Party Size Prompt Handlers
+    document.getElementById('set-party-size').onclick = () => {
+        const inputElement = document.getElementById('initial-party-size');
+        const size = parseInt(inputElement.value);
+        
+        if (isNaN(size) || size < 1) {
+            alert("Please enter a valid party size (1 or greater).");
+            return;
+        }
+        
+        CURRENT_PARTY_SIZE = size;
+        document.getElementById('party-prompt-modal').style.display = 'none';
+        
+        const originalPartyInput = document.getElementById('party-size-hidden');
+        originalPartyInput.type = 'hidden'; 
 
-        updateTableVisuals();
-    };
+        updateTableVisuals();
+    };
 
-    // Initialize the page by getting URL params and loading map data
+    // Initialize the page by getting URL params and loading map data
     getUrlParams();
     logInitialClick(); 
 	setDefaultDateTime();
