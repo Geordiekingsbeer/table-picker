@@ -36,7 +36,7 @@
 			border: none;
 			cursor: pointer;
 			color: #fff;
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 
 		.admin-controls-top button#save {
@@ -50,7 +50,7 @@
 		}
 		
 		.admin-controls-top button:hover {
-			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+			box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
 			opacity: 0.95;
 		}
 
@@ -84,7 +84,7 @@
 			max-width: none;
 			font-weight: 500;
 			text-align: center;
-			font-family: Arial, sans-serif; 
+			font-family: Arial, sans-serif; 
 		}
 		
 		#load-bookings {
@@ -94,7 +94,7 @@
 			border: none;
 			border-radius: 4px;
 			cursor: pointer;
-			font-weight: 600; 
+			font-weight: 600; 
 			flex-grow: 1;
 			box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 			white-space: nowrap;
@@ -129,7 +129,7 @@
 			width: 90vw;
 			max-width: 480px;
 			text-align: center;
-			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+			box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
 		}
 		
 		#multi-select-toggle:hover, #multi-book-button:hover {
@@ -182,7 +182,7 @@
 			height: 15px;
 			border-radius: 3px;
 			margin-right: 5px;
-			border: 1px solid #000; 
+			border: 1px solid #000; 
 		}
 		
 		.modal {
@@ -266,7 +266,7 @@
 	</style>
 </head>
 <body>
-    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
+    <h3 id="restaurant-display-name" style="margin-bottom: 20px;">Admin Panel</h3>
 
 	<div class="admin-controls-top">
 		<button id="save">Save layout</button>
@@ -367,9 +367,8 @@
 		let isMultiSelectMode = false;
 		let selectedMultiTables = new Set();
 		
-		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
-        // FIX: Update API endpoint to use the new professional subdomain
-        const ADMIN_BOOKING_API_URL = 'https://api.dineselect.co/admin-booking';
+		const CURRENT_TENANT_ID = 'R-VERIFIED-Z99'; 
+        const ADMIN_BOOKING_API_URL = 'https://stripe-serverless-fresh.vercel.app/admin-booking';
 
 
 		const TABLE_COLOR = '#b7d7a8';
@@ -552,7 +551,7 @@
 			setInterval(() => {
 				if (document.getElementById('booking-date').value && document.getElementById('booking-time').value) {
 					console.log('Polling for new bookings...');
-					loadBookings(); 
+					loadBookings(); 
 				}
 			}, 10000);
 			console.log('Booking polling started (10s interval).');
@@ -750,8 +749,6 @@
 				endTime: endTime,
 				notes: notes,
 				tenantId: tenantId,
-                // NOTE: Admin manual bookings are assumed to be partySize 4 for simplicity in this frontend
-                partySize: 4 
 			};
 
 			try {
@@ -771,7 +768,7 @@
 
 				console.log('Admin Booking Successful:', result.message);
 				await loadBookings();
-				return true; 
+				return true; 
 				
 			} catch (error) {
 				alert('Network Error: Could not reach the booking service. Check console.');
@@ -786,9 +783,9 @@
 			let failedTables = [];
 
 			for (const tableId of tableIds) {
-				const success = await createBooking(tableId, startTime, endTime, notes); 
+				const success = await createBooking(tableId, startTime, endTime, notes); 
 				if (success) {
-					successfulBookfulBookings++;
+					successfulBookings++;
 				} else {
 					failedTables.push(tableId);
 				}
@@ -800,7 +797,7 @@
 					message += ` Tables ${failedTables.join(', ')} failed due to overlaps or errors.`;
 				}
 				alert(message);
-				await loadBookings(); 
+				await loadBookings(); 
 			} else {
 				alert('Bulk booking failed. Check console for details.');
 			}
@@ -962,15 +959,13 @@
 			const endTime = document.getElementById('multi-end-time').value;
 			const notes = document.getElementById('multi-notes').value;
 			const tableIds = Array.from(selectedMultiTables);
-            // Default party size for multi-admin booking is 4
-            const partySize = 4; 
 
 			if (tableIds.length === 0) {
 				alert("No tables selected for booking.");
 				return;
 			}
 
-			await createBulkBooking(tableIds, startTime, endTime, notes, partySize);
+			await createBulkBooking(tableIds, startTime, endTime, notes);
 			multiModal.style.display = 'none';
 			
 			selectedMultiTables.clear();
@@ -990,10 +985,8 @@
 			const startTime = document.getElementById('start-time').value;
 			const endTime = document.getElementById('end-time').value;
 			const notes = document.getElementById('notes').value;
-            // Default party size for single admin booking is 4
-            const partySize = 4; 
 
-			const success = await createBooking(tableId, startTime, endTime, notes, partySize);
+			const success = await createBooking(tableId, startTime, endTime, notes);
 			if (success) {	
 				singleModal.style.display = 'none';
 				await loadBookings();	
@@ -1040,3 +1033,4 @@
 	</script>
 </body>
 </html>
+
